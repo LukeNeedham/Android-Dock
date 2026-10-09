@@ -106,6 +106,25 @@ object DockPrefs {
         prefs(context).edit().putInt(INNER_KEY, value).apply()
     }
 
+    /**
+     * The clear space, in dp, between the first or last icon of a row and the screen edge it is
+     * nearest: the bottom edge for the first, the side edge for the last.
+     */
+    enum class Padding(val key: String) {
+        BOTTOM("padding_bottom_dp"),
+        SIDE("padding_side_dp"),
+    }
+
+    const val PADDING_MAX = 80
+    private const val PADDING_DEFAULT = 8
+
+    fun getPadding(context: Context, padding: Padding): Int =
+        prefs(context).getInt(padding.key, PADDING_DEFAULT).coerceIn(0, PADDING_MAX)
+
+    fun setPadding(context: Context, padding: Padding, value: Int) {
+        prefs(context).edit().putInt(padding.key, value).apply()
+    }
+
     /** Whether the sheet's items sit against the right edge, with the icon on the right. */
     fun isAlignRight(context: Context): Boolean =
         prefs(context).getBoolean(ALIGN_RIGHT_KEY, false)

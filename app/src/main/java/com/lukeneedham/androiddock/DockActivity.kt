@@ -23,6 +23,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
+import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -201,29 +202,47 @@ class DockActivity : AppCompatActivity() {
         // the screen. Its icons are as large as fit in that band and without touching along the
         // chord between neighbours, up to [MAX_ICON_SIZE].
         val bands = rowBands(rows, radius)
+        val bottomPad = DockPrefs.getPadding(this, DockPrefs.Padding.BOTTOM).dp
+        val sidePad = DockPrefs.getPadding(this, DockPrefs.Padding.SIDE).dp
+        // The icons of a row run from `from` (nearest the bottom edge) to `to` (nearest the side
+        // edge), measured as the angle up from the bottom edge. The first and last icon keep the
+        // padding clear of those edges, and the rest are spread evenly between them.
+        data class Placement(val centreRadius: Float, val size: Int, val from: Float, val to: Float)
+
+        fun arc(centreRadius: Float, size: Int): Pair<Float, Float> {
+            val from = asin(((bottomPad + size / 2f) / centreRadius).coerceAtMost(1f))
+            val to = (Math.PI / 2).toFloat() - asin(((sidePad + size / 2f) / centreRadius).coerceAtMost(1f))
+            // No room for the padding: put the row's icons on the diagonal.
+            return if (to >= from) from to to else (Math.PI / 4).toFloat().let { it to it }
+        }
+
         val placed = rows.mapIndexed { i, _ ->
             val (start, end) = bands[i]
-            val band = end - start
             val centreRadius = (start + end) / 2
             val n = filled[i]
-            if (n == 0) return@mapIndexed centreRadius to 0
-            val step = (Math.PI / 2 / n).toFloat()
-            val chord = 2 * centreRadius * sin(step / 2)
-            val size = minOf(MAX_ICON_SIZE.dp.toFloat(), band / ROW_SPACING, chord / ICON_SPACING)
-                .toInt()
-                .coerceAtLeast(MIN_ICON_SIZE.dp)
-            centreRadius to size
+            var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
+            while (size > MIN_ICON_SIZE.dp && n > 0) {
+                val (from, to) = arc(centreRadius, size)
+                val fits = if (n == 1) to >= from else {
+                    val step = (to - from) / (n - 1)
+                    to > from && 2 * centreRadius * sin(step / 2) >= size * ICON_SPACING
+                }
+                if (fits) break
+                size--
+            }
+            size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
+            val (from, to) = arc(centreRadius, size)
+            Placement(centreRadius, size, from, to)
         }
 
         var next = 0
         filled.forEachIndexed { i, n ->
-            val (centreRadius, size) = placed[i]
-            val step = (Math.PI / 2 / n).toFloat()
+            val (centreRadius, size, from, to) = placed[i]
             repeat(n) { slot ->
                 val app = apps[next++]
                 // The most recent app is nearest the bottom edge, where the thumb that pressed the
                 // corner button is, and the oldest is at the top of the arc.
-                val angle = step * (slot + 0.5f)
+                val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
                 val cx = centreRadius * cos(angle)
                 val cy = centreRadius * sin(angle)
                 root.addView(

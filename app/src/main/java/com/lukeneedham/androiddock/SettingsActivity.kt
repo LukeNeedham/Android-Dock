@@ -160,6 +160,22 @@ private fun SettingsScreen(resumes: Int) {
             },
             valueRange = 0f..DockPrefs.INNER_MAX.toFloat(),
         )
+        DockPrefs.Padding.entries.forEach { padding ->
+            var value by remember { mutableIntStateOf(DockPrefs.getPadding(context, padding)) }
+            val label = when (padding) {
+                DockPrefs.Padding.BOTTOM -> R.string.slider_padding_bottom
+                DockPrefs.Padding.SIDE -> R.string.slider_padding_side
+            }
+            Text(stringResource(label, value), modifier = Modifier.padding(top = 16.dp))
+            Slider(
+                value = value.toFloat(),
+                onValueChange = {
+                    value = it.toInt()
+                    DockPrefs.setPadding(context, padding, value)
+                },
+                valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
+            )
+        }
         RowsEditor(context)
         var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
         Row(verticalAlignment = Alignment.CenterVertically) {
