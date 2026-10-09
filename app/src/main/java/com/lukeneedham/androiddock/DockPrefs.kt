@@ -53,14 +53,17 @@ object DockPrefs {
         prefs(context).edit().putInt(setting.key, value).apply()
     }
 
-    /** How many apps the sheet lists at most. The sheet's height is fixed from this. */
-    const val MAX_ITEMS_MIN = 1
-    const val MAX_ITEMS_MAX = 12
-    private const val MAX_ITEMS_KEY = "max_items"
-    const val ROWS_MIN = 1
-    const val ROWS_MAX = 4
+    /** One circular row of icons: how many it holds, and how large they are, in dp. */
+    data class Row(val count: Int, val iconSizeDp: Int)
+
+    const val ROW_COUNT_MIN = 1
+    const val ROW_COUNT_MAX = 12
+    const val ROW_SIZE_MIN = 24
+    const val ROW_SIZE_MAX = 72
+    const val ROWS_MAX = 6
     private const val ROWS_KEY = "rows"
-    private const val RADIUS_KEY = "sheet_radius_dp"
+    private const val OLD_MAX_ITEMS_KEY = "max_items"
+    private const val DEFAULT_ICON_SIZE = 56
     private const val ALIGN_RIGHT_KEY = "align_right"
 
     fun getMaxItems(context: Context): Int =
@@ -70,13 +73,31 @@ object DockPrefs {
         prefs(context).edit().putInt(MAX_ITEMS_KEY, value).apply()
     }
 
-    /** How many circular rows the icons are split into. */
-    fun getRows(context: Context): Int =
-        prefs(context).getInt(ROWS_KEY, ROWS_MIN).coerceIn(ROWS_MIN, ROWS_MAX)
-
-    fun setRows(context: Context, value: Int) {
-        prefs(context).edit().putInt(ROWS_KEY, value).apply()
+    /**
+     * The rows of the sheet, innermost (closest to the corner) first; never empty. Stored as
+     * "count:size,count:size". Falls back to one row sized from the old "maximum apps" setting.
+     */
+    fun getRows(context: Context): List<Row> {
+        val prefs = prefs(context)
+        val parsed = prefs.getString(ROWS_KEY, null)?.split(',')?.mapNotNull { part ->
+            val (count, size) = part.split(':').takeIf { it.size == 2 } ?: return@mapNotNull null
+            Row(
+                (count.toIntOrNull() ?: return@mapNotNull null).coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX),
+                (size.toIntOrNull() ?: return@mapNotNull null).coerceIn(ROW_SIZE_MIN, ROW_SIZE_MAX),
+            )
+        }?.take(ROWS_MAX)
+        if (!parsed.isNullOrEmpty()) return parsed
+        val old = prefs.getInt(OLD_MAX_ITEMS_KEY, 6).coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX)
+        return listOf(Row(old, DEFAULT_ICON_SIZE))
     }
+
+    fun setRows(context: Context, rows: List<Row>) {
+        prefs(context).edit()
+            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.iconSizeDp}" })
+            .apply()
+    }
+
+    fun newRow() = Row(6, DEFAULT_ICON_SIZE)
 
     /** The radius of the sheet's quarter circle, in dp. */
     const val RADIUS_MIN = 120

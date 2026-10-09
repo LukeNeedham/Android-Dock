@@ -39,8 +39,14 @@
     <string name="color_alpha">Opacity: %1$d</string>
     <string name="sheet_title_loading">Loading apps…</string>
     <string name="sheet_title_section">Sheet</string>
-    <string name="slider_max_items">Maximum apps listed: %1$d</string>
     <string name="slider_radius">Sheet radius: %1$d dp</string>
-    <string name="slider_rows">Rows of icons: %1$d</string>
+    <string name="rows_description">Row 1 is closest to the corner. Icons fill row 1 first, then the next row out. The sheet lists as many apps as all the rows hold.</string>
+    <string name="row_title">Row %1$d</string>
+    <string name="row_count">Items: %1$d</string>
+    <string name="row_icon_size">Icon size: %1$d dp</string>
+    <string name="row_move_up">Move towards the corner</string>
+    <string name="row_move_down">Move away from the corner</string>
+    <string name="row_delete">Delete row</string>
+    <string name="row_add">Add row</string>
     <string name="align_right">Align items to the right</string>
 </resources>

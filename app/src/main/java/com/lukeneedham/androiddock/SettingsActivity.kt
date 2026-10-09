@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
@@ -38,10 +39,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -145,18 +149,8 @@ private fun SettingsScreen(resumes: Int) {
             SettingSlider(context, setting, label)
         }
 
-        SectionHeader(R.string.sheet_title_section, null)
-        var maxItems by remember { mutableIntStateOf(DockPrefs.getMaxItems(context)) }
-        Text(stringResource(R.string.slider_max_items, maxItems), modifier = Modifier.padding(top = 16.dp))
-        Slider(
-            value = maxItems.toFloat(),
-            onValueChange = {
-                maxItems = it.toInt()
-                DockPrefs.setMaxItems(context, maxItems)
-            },
-            valueRange = DockPrefs.MAX_ITEMS_MIN.toFloat()..DockPrefs.MAX_ITEMS_MAX.toFloat(),
-            steps = DockPrefs.MAX_ITEMS_MAX - DockPrefs.MAX_ITEMS_MIN - 1,
-        )
+        SectionHeader(R.string.sheet_title_section, R.string.rows_description)
+        RowsEditor(context)
         var radius by remember { mutableIntStateOf(DockPrefs.getRadius(context)) }
         Text(stringResource(R.string.slider_radius, radius), modifier = Modifier.padding(top = 16.dp))
         Slider(
@@ -166,17 +160,6 @@ private fun SettingsScreen(resumes: Int) {
                 DockPrefs.setRadius(context, radius)
             },
             valueRange = DockPrefs.RADIUS_MIN.toFloat()..DockPrefs.RADIUS_MAX.toFloat(),
-        )
-        var rows by remember { mutableIntStateOf(DockPrefs.getRows(context)) }
-        Text(stringResource(R.string.slider_rows, rows), modifier = Modifier.padding(top = 16.dp))
-        Slider(
-            value = rows.toFloat(),
-            onValueChange = {
-                rows = it.toInt()
-                DockPrefs.setRows(context, rows)
-            },
-            valueRange = DockPrefs.ROWS_MIN.toFloat()..DockPrefs.ROWS_MAX.toFloat(),
-            steps = DockPrefs.ROWS_MAX - DockPrefs.ROWS_MIN - 1,
         )
         var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -200,6 +183,75 @@ private fun SettingsScreen(resumes: Int) {
                 .fillMaxWidth()
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.onboarding_view_log)) }
+    }
+}
+
+/** Edits the sheet's rows: add, delete, reorder, and each row's item count and icon size. */
+@Composable
+private fun RowsEditor(context: Context) {
+    val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
+    val moveUp = stringResource(R.string.row_move_up)
+    val moveDown = stringResource(R.string.row_move_down)
+    val delete = stringResource(R.string.row_delete)
+    fun save() = DockPrefs.setRows(context, rows.toList())
+    fun move(from: Int, to: Int) {
+        rows.add(to, rows.removeAt(from))
+        save()
+    }
+
+    rows.forEachIndexed { index, row ->
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.row_title, index + 1),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { move(index, index - 1) }, enabled = index > 0) {
+                        Text("↑", modifier = Modifier.semantics { contentDescription = moveUp })
+                    }
+                    IconButton(onClick = { move(index, index + 1) }, enabled = index < rows.lastIndex) {
+                        Text("↓", modifier = Modifier.semantics { contentDescription = moveDown })
+                    }
+                    IconButton(
+                        onClick = {
+                            rows.removeAt(index)
+                            save()
+                        },
+                        enabled = rows.size > 1,
+                    ) { Text("✕", modifier = Modifier.semantics { contentDescription = delete }) }
+                }
+                Text(stringResource(R.string.row_count, row.count))
+                Slider(
+                    value = row.count.toFloat(),
+                    onValueChange = {
+                        rows[index] = row.copy(count = it.toInt())
+                        save()
+                    },
+                    valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
+                    steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
+                )
+                Text(stringResource(R.string.row_icon_size, row.iconSizeDp))
+                Slider(
+                    value = row.iconSizeDp.toFloat(),
+                    onValueChange = {
+                        rows[index] = row.copy(iconSizeDp = it.toInt())
+                        save()
+                    },
+                    valueRange = DockPrefs.ROW_SIZE_MIN.toFloat()..DockPrefs.ROW_SIZE_MAX.toFloat(),
+                )
+            }
+        }
+    }
+    if (rows.size < DockPrefs.ROWS_MAX) {
+        FilledTonalButton(
+            onClick = {
+                rows.add(DockPrefs.newRow())
+                save()
+            },
+            modifier = Modifier.padding(top = 12.dp),
+        ) { Text(stringResource(R.string.row_add)) }
     }
 }
 
