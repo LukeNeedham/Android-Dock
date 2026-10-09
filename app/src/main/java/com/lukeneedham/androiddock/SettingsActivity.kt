@@ -28,7 +28,7 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
         steps = findViewById(R.id.steps)
         allSet = findViewById(R.id.all_set)
-        setUpPositionSlider()
+        setUpPositionSliders()
         findViewById<View>(R.id.view_log).setOnClickListener {
             startActivity(Intent(this, LogActivity::class.java))
         }
@@ -62,23 +62,39 @@ class SettingsActivity : AppCompatActivity() {
         )
     }
 
-    private fun setUpPositionSlider() {
-        val seek = findViewById<SeekBar>(R.id.position_seek)
-        val value = findViewById<TextView>(R.id.position_value)
-        seek.max = DockPrefs.MAX_BOTTOM_OFFSET_DP
-        seek.progress = DockPrefs.bottomOffsetDp(this)
-        value.text = getString(R.string.position_value, seek.progress)
+    private fun setUpPositionSliders() {
+        val container = findViewById<LinearLayout>(R.id.position_sliders)
+        addSlider(container, DockPrefs.Setting.RIGHT_OFFSET, R.string.slider_right)
+        addSlider(container, DockPrefs.Setting.BOTTOM_OFFSET, R.string.slider_bottom)
+        addSlider(container, DockPrefs.Setting.WIDTH, R.string.slider_width)
+        addSlider(container, DockPrefs.Setting.HEIGHT, R.string.slider_height)
+    }
+
+    /** A labelled slider that saves its value as it moves; the running service applies it live. */
+    private fun addSlider(container: LinearLayout, setting: DockPrefs.Setting, label: Int) {
+        val value = TextView(this).apply {
+            setPadding(0, 16.dp, 0, 0)
+        }
+        val seek = SeekBar(this)
+        seek.max = setting.max(this) - setting.min
+        seek.progress = DockPrefs.get(this, setting) - setting.min
+        value.text = getString(label, seek.progress + setting.min)
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
-                value.text = getString(R.string.position_value, progress)
-                if (fromUser) DockPrefs.setBottomOffsetDp(this@SettingsActivity, progress)
+                val dp = progress + setting.min
+                value.text = getString(label, dp)
+                if (fromUser) DockPrefs.set(this@SettingsActivity, setting, dp)
             }
 
             override fun onStartTrackingTouch(bar: SeekBar) = Unit
 
             override fun onStopTrackingTouch(bar: SeekBar) = Unit
         })
+        container.addView(value)
+        container.addView(seek)
     }
+
+    private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 
     override fun onResume() {
         super.onResume()

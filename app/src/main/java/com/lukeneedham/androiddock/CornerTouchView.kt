@@ -21,6 +21,9 @@ import android.view.View
 @SuppressLint("ViewConstructor")
 class CornerTouchView(context: Context) : View(context) {
 
+    /** Called when a finger goes down on the view. */
+    var onPress: (() -> Unit)? = null
+
     private var lastMoveLoggedAt = 0L
     private var downAt = 0L
     private var downX = 0f
@@ -73,6 +76,7 @@ class CornerTouchView(context: Context) : View(context) {
             downAt = SystemClock.uptimeMillis()
             downX = event.rawX
             downY = event.rawY
+            onPress?.invoke()
         }
         val inside = event.x >= 0 && event.y >= 0 && event.x < width && event.y < height
         DockLog.log(

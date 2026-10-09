@@ -60,17 +60,11 @@
             android:text="@string/position_description"
             android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-        <TextView
-            android:id="@+id/position_value"
+        <LinearLayout
+            android:id="@+id/position_sliders"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-        <SeekBar
-            android:id="@+id/position_seek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:orientation="vertical" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/view_log"

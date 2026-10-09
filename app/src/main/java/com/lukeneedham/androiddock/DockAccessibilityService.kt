@@ -12,7 +12,7 @@ import android.view.accessibility.AccessibilityEvent
 
 /**
  * Places a [CornerTouchView] over the bottom-right corner of the screen, on top of the
- * navigation bar, lifted by the user's bottom offset setting. Opening the sheet from it is not implemented yet.
+ * navigation bar. Its position and size come from [DockPrefs]. Touching it opens the sheet.
  */
 class DockAccessibilityService : AccessibilityService() {
 
@@ -20,7 +20,7 @@ class DockAccessibilityService : AccessibilityService() {
     private var cornerParams: WindowManager.LayoutParams? = null
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == DockPrefs.KEY_BOTTOM_OFFSET_DP) applyBottomOffset()
+        if (DockPrefs.isSettingKey(key)) applyLayout()
     }
 
     override fun onServiceConnected() {
@@ -37,11 +37,9 @@ class DockAccessibilityService : AccessibilityService() {
 
     private fun addCornerView() {
         if (cornerView != null) return
-        val windowManager = getSystemService(WindowManager::class.java)
-        val size = (CORNER_SIZE_DP * resources.displayMetrics.density).toInt()
         val params = WindowManager.LayoutParams(
-            size,
-            size,
+            0,
+            0,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -49,23 +47,44 @@ class DockAccessibilityService : AccessibilityService() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.END
-            y = bottomOffsetPx()
         }
-        val view = CornerTouchView(this)
-        windowManager.addView(view, params)
+        fillLayout(params)
+        val view = CornerTouchView(this).apply { onPress = ::openSheet }
+        getSystemService(WindowManager::class.java).addView(view, params)
         cornerView = view
         cornerParams = params
     }
 
-    private fun bottomOffsetPx() =
-        (DockPrefs.bottomOffsetDp(this) * resources.displayMetrics.density).toInt()
+    private fun dpToPx(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 
-    private fun applyBottomOffset() {
+    /** Sets the window's size and offsets, measured from the bottom-right corner, from the prefs. */
+    private fun fillLayout(params: WindowManager.LayoutParams) {
+        params.width = dpToPx(DockPrefs.get(this, DockPrefs.Setting.WIDTH))
+        params.height = dpToPx(DockPrefs.get(this, DockPrefs.Setting.HEIGHT))
+        params.x = dpToPx(DockPrefs.get(this, DockPrefs.Setting.RIGHT_OFFSET))
+        params.y = dpToPx(DockPrefs.get(this, DockPrefs.Setting.BOTTOM_OFFSET))
+    }
+
+    private fun applyLayout() {
         val view = cornerView ?: return
         val params = cornerParams ?: return
-        params.y = bottomOffsetPx()
+        fillLayout(params)
         getSystemService(WindowManager::class.java).updateViewLayout(view, params)
-        DockLog.log(this, "bottom offset set to ${DockPrefs.bottomOffsetDp(this)}dp")
+        DockLog.log(
+            this,
+            "touch target set to " + DockPrefs.Setting.entries.joinToString(" ") {
+                "${it.name.lowercase()}=${DockPrefs.get(this, it)}dp"
+            },
+        )
+    }
+
+    private fun openSheet() {
+        try {
+            startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            DockLog.log(this, "opening sheet")
+        } catch (e: RuntimeException) {
+            DockLog.log(this, "could not open sheet: $e")
+        }
     }
 
     private fun removeCornerView() {
@@ -83,9 +102,5 @@ class DockAccessibilityService : AccessibilityService() {
         DockPrefs.prefs(this).unregisterOnSharedPreferenceChangeListener(prefsListener)
         removeCornerView()
         return super.onUnbind(intent)
-    }
-
-    private companion object {
-        const val CORNER_SIZE_DP = 64
     }
 }
