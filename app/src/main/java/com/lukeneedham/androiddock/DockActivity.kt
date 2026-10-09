@@ -2,6 +2,7 @@ package com.lukeneedham.androiddock
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -91,6 +92,14 @@ class DockActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A tap to close can arrive before this activity has been created. A recreation (such as
+        // a rotation) was not asked for by a tap, but is still a sheet to keep.
+        val wanted = starting
+        starting = false
+        if (!wanted && savedInstanceState == null) {
+            finishAndRemoveTask()
+            return
+        }
         current = this
         WindowCompat.setDecorFitsSystemWindows(window, false)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -101,7 +110,8 @@ class DockActivity : AppCompatActivity() {
 
     /** The square holding the whole sheet; it scales about the screen corner. */
     private var sheet: View? = null
-    private var closing = false
+    var closing = false
+        private set
 
     /**
      * Shrinks the sheet back into the corner, then closes this activity. Gives a tick, unless
@@ -121,8 +131,52 @@ class DockActivity : AppCompatActivity() {
             .scaleX(0f).scaleY(0f)
             .setDuration(EXIT_MS)
             .setInterpolator(AccelerateInterpolator())
-            .withEndAction { finishAndRemoveTask() }
+            .withEndAction { if (closing) finishAndRemoveTask() }
             .start()
+        // The animation does not run while the sheet is not visible (for example once it has
+        // launched an app), which would leave a closing sheet registered as current forever.
+        view.postDelayed(forceFinish, EXIT_MS * 2)
+    }
+
+    private val forceFinish = Runnable { if (closing) finishAndRemoveTask() }
+
+    /** A tap to open arrived while this sheet was still closing: grow it back instead. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Not a new activity, so nothing else consumes the tap's request to open.
+        val wanted = starting
+        starting = false
+        if (!wanted) return
+        if (isFinishing) {
+            // Too late to revive this one; the tap to open must still get a sheet.
+            starting = true
+            try {
+                startActivity(Intent(applicationContext, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: RuntimeException) {
+                starting = false
+            }
+            return
+        }
+        val view = sheet ?: return
+        if (!closing) return
+        closing = false
+        view.removeCallbacks(forceFinish)
+        view.animate().cancel()
+        view.animate()
+            .scaleX(1f).scaleY(1f)
+            .setDuration(ENTER_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+    }
+
+    override fun onStop() {
+        // A sheet that is no longer visible (Home, screen off, an app launched from it) has no
+        // purpose and nothing left to animate, so it must not linger as an unseen "open" sheet.
+        if (!isChangingConfigurations) {
+            closing = true
+            finishAndRemoveTask()
+        }
+        super.onStop()
     }
 
     private fun buildContent(): View {
@@ -152,6 +206,8 @@ class DockActivity : AppCompatActivity() {
         sheet = sheetView
         root.addView(sheetView, FrameLayout.LayoutParams(radius, radius, Gravity.BOTTOM or Gravity.END))
         sheetView.post {
+            // A tap to close can land before this first frame; do not grow what is closing.
+            if (closing) return@post
             sheetView.animate()
                 .scaleX(1f).scaleY(1f)
                 .setDuration(ENTER_MS)
@@ -320,6 +376,23 @@ class DockActivity : AppCompatActivity() {
         /** The sheet currently on screen, so the corner button can close it. */
         var current: DockActivity? = null
             private set
+
+        /**
+         * A tap has asked for the sheet to open, and no activity has yet taken up the request.
+         * Taps in that gap have no activity to act on, so this stands in for the sheet.
+         */
+        @Volatile
+        var starting = false
+
+        /** Whether a tap on the corner should close the sheet, rather than open it. */
+        val isOpen: Boolean
+            get() = starting || current?.let { !it.closing && !it.isFinishing } == true
+
+        /** Cancels a pending open, and closes the sheet if it is up. */
+        fun close(haptic: Boolean = true) {
+            starting = false
+            current?.closeSheet(haptic)
+        }
 
         private const val ENTER_MS = 280L
         private const val EXIT_MS = 200L
