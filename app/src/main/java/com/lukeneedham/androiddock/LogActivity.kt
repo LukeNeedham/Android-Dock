@@ -33,6 +33,8 @@ class LogActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_log)
+        findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+            .setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
         logText = findViewById(R.id.log_text)
         scroll = findViewById(R.id.scroll)
         findViewById<View>(R.id.refresh).setOnClickListener { refresh(forceScroll = true) }

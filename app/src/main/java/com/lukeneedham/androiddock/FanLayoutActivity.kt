@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -88,7 +87,7 @@ private fun FanLayoutScreen() {
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
-    Column(modifier = Modifier.systemBarsPadding()) {
+    SubPage(R.string.fan_layout_title) {
         FanPreview(inner, bottomPad, sidePad, rows.toList(), editingRow, sheetColor, edgeColor)
         Column(
             modifier = Modifier
@@ -96,7 +95,6 @@ private fun FanLayoutScreen() {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
-            Text(stringResource(R.string.fan_layout_title), style = MaterialTheme.typography.headlineSmall)
             Text(
                 stringResource(R.string.rows_description),
                 style = MaterialTheme.typography.bodyMedium,

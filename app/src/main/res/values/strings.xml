@@ -62,5 +62,7 @@
     <string name="fan_layout_summary">The rows of apps in the fan: how many, how big, and how they are coloured.</string>
     <string name="fan_layout_open">Customise fan layout</string>
     <string name="fan_layout_preview_note">Preview with placeholder apps</string>
+    <string name="back">Back</string>
+    <string name="blacklist_open">Edit hidden apps</string>
     <string name="row_add">Add row</string>
 </resources>
