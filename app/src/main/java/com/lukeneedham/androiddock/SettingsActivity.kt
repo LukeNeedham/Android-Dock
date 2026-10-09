@@ -53,6 +53,19 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -202,6 +215,9 @@ private fun SettingsScreen(resumes: Int) {
         ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)
         ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet)
 
+        SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
+        BlacklistEditor(context)
+
         TextButton(
             onClick = { context.startActivity(Intent(context, LogActivity::class.java)) },
             modifier = Modifier
@@ -324,6 +340,118 @@ private fun RowsEditor(context: Context) {
             },
             modifier = Modifier.padding(top = 12.dp),
         ) { Text(stringResource(R.string.row_add)) }
+    }
+}
+
+/** An app's name and icon, for the lists of apps. */
+private class AppEntry(val packageName: String, val label: String, val icon: ImageBitmap?)
+
+private const val APP_ICON_PX = 96
+
+private fun loadAppEntry(context: Context, packageName: String): AppEntry {
+    val packages = context.packageManager
+    return try {
+        val info = packages.getApplicationInfo(packageName, 0)
+        AppEntry(
+            packageName,
+            packages.getApplicationLabel(info).toString(),
+            packages.getApplicationIcon(info).toBitmap(APP_ICON_PX, APP_ICON_PX).asImageBitmap(),
+        )
+    } catch (e: Exception) {
+        AppEntry(packageName, packageName, null)
+    }
+}
+
+/** Every app with a launcher icon, by name. Slow: run it off the main thread. */
+private fun loadLaunchableApps(context: Context): List<AppEntry> =
+    context.packageManager
+        .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+        .map { it.activityInfo.packageName }
+        .distinct()
+        .map { loadAppEntry(context, it) }
+        .sortedBy { it.label.lowercase() }
+
+@Composable
+private fun AppRow(app: AppEntry, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        if (app.icon != null) {
+            Image(app.icon, contentDescription = null, modifier = Modifier.size(36.dp))
+        } else {
+            Spacer(Modifier.size(36.dp))
+        }
+        Text(app.label, modifier = Modifier.weight(1f).padding(start = 12.dp))
+        trailing()
+    }
+}
+
+/** The blacklist: the apps that never show in the sheet, with a way to add and remove them. */
+@Composable
+private fun BlacklistEditor(context: Context) {
+    val haptic = LocalHapticFeedback.current
+    val hidden = remember { mutableStateListOf<String>().apply { addAll(DockPrefs.getBlacklist(context).sorted()) } }
+    var picking by remember { mutableStateOf(false) }
+    fun save() = DockPrefs.setBlacklist(context, hidden.toList())
+
+    val entries by produceState(emptyList<AppEntry>(), hidden.toList()) {
+        value = withContext(Dispatchers.IO) { hidden.toList().map { loadAppEntry(context, it) } }
+    }
+    if (hidden.isEmpty()) {
+        Text(stringResource(R.string.blacklist_empty), modifier = Modifier.padding(top = 8.dp))
+    }
+    entries.forEach { app ->
+        AppRow(app) {
+            TextButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                hidden.remove(app.packageName)
+                save()
+            }) { Text(stringResource(R.string.blacklist_remove)) }
+        }
+    }
+    FilledTonalButton(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            picking = true
+        },
+        modifier = Modifier.padding(top = 8.dp),
+    ) { Text(stringResource(R.string.blacklist_add)) }
+
+    if (picking) {
+        AppPickerSheet(
+            context = context,
+            exclude = hidden.toSet(),
+            onPick = {
+                hidden.add(it)
+                save()
+                picking = false
+            },
+            onDismiss = { picking = false },
+        )
+    }
+}
+
+/** A bottom sheet listing the installed apps, for choosing one. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    val apps by produceState<List<AppEntry>?>(null) {
+        value = withContext(Dispatchers.IO) { loadLaunchableApps(context) }
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            stringResource(R.string.blacklist_pick_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 24.dp),
+        )
+        val list = apps
+        if (list == null) {
+            CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+        } else {
+            LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
+                items(list.filter { it.packageName !in exclude }, key = { it.packageName }) { app ->
+                    AppRow(app, Modifier.clickable { onPick(app.packageName) })
+                }
+            }
+        }
     }
 }
 

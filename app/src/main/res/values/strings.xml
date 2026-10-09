@@ -45,6 +45,12 @@
     <string name="slider_inner_offset">Gap from the corner to row 1: %1$d dp</string>
     <string name="slider_padding_bottom">Padding from the bottom edge to the first icon: %1$d dp</string>
     <string name="slider_padding_side">Padding from the side edge to the last icon: %1$d dp</string>
+    <string name="blacklist_title">Hidden apps</string>
+    <string name="blacklist_description">These apps never show on the sheet, and a double tap never switches to them.</string>
+    <string name="blacklist_empty">No hidden apps.</string>
+    <string name="blacklist_add">Hide an app</string>
+    <string name="blacklist_remove">Show again</string>
+    <string name="blacklist_pick_title">Choose an app to hide</string>
     <string name="row_width">Width: %1$d dp</string>
     <string name="row_color">Background colour</string>
     <string name="row_move_up">Move towards the corner</string>

@@ -149,6 +149,16 @@ object DockPrefs {
         prefs(context).edit().putStringSet(DISMISSED_KEY, entries).apply()
     }
 
+    /** Apps that never show on the sheet, or as the previous app of a double tap. */
+    private const val BLACKLIST_KEY = "blacklist"
+
+    fun getBlacklist(context: Context): Set<String> =
+        prefs(context).getStringSet(BLACKLIST_KEY, null).orEmpty().toSet()
+
+    fun setBlacklist(context: Context, packages: Collection<String>) {
+        prefs(context).edit().putStringSet(BLACKLIST_KEY, packages.toSet()).apply()
+    }
+
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }
 
     fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }
