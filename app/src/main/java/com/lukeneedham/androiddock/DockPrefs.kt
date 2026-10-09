@@ -39,5 +39,21 @@ object DockPrefs {
         prefs(context).edit().putInt(setting.key, value).apply()
     }
 
+    /** The colours the user can change, stored as ARGB ints. */
+    enum class ColorSetting(val key: String, val default: Int) {
+        /** The touch target over the navigation bar. Translucent red by default. */
+        BUTTON("button_color", 0x3CFF0000),
+        SHEET("sheet_color", 0xFF2B2B2B.toInt()),
+    }
+
+    fun getColor(context: Context, setting: ColorSetting): Int =
+        prefs(context).getInt(setting.key, setting.default)
+
+    fun setColor(context: Context, setting: ColorSetting, value: Int) {
+        prefs(context).edit().putInt(setting.key, value).apply()
+    }
+
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }
+
+    fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }
 }
