@@ -150,7 +150,7 @@ class DockActivity : AppCompatActivity() {
 
         val maxItems = rows.sumOf { it.count }
         Thread {
-            val apps = loadRecentApps.Apps(maxItems)
+            val apps = RecentApps.load(this, maxItems)
             runOnUiThread {
                 if (isDestroyed || isFinishing) return@runOnUiThread
                 sheetView.removeView(loading)
