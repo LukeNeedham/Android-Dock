@@ -39,10 +39,26 @@ object SetupState {
         )
         val updated = if (enabled.isNullOrEmpty()) service else "$enabled:$service"
         return try {
-            Settings.Secure.putString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated)
-            Settings.Secure.putInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
-            true
+            val listPut = Settings.Secure.putString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                updated,
+            )
+            val flagPut = Settings.Secure.putInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
+            // What the setting holds straight after the write, to tell a refused write from one
+            // the system reverts later.
+            val readBack = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+            )
+            DockLog.log(
+                context,
+                "enable accessibility: before=[$enabled] wrote=[$updated] listPut=$listPut flagPut=$flagPut " +
+                    "readBack=[$readBack] flag=${Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, -1)}",
+            )
+            isAccessibilityEnabled(context)
         } catch (e: SecurityException) {
+            DockLog.log(context, "enable accessibility: refused: $e")
             false
         }
     }
