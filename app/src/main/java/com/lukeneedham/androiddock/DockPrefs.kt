@@ -17,8 +17,8 @@ object DockPrefs {
     enum class Setting(val key: String, val default: Int, val min: Int) {
         RIGHT_OFFSET("right_offset_dp", 0, 0),
         BOTTOM_OFFSET("bottom_offset_dp", 0, 0),
-        WIDTH("width_dp", 64, 16),
-        HEIGHT("height_dp", 64, 16),
+        WIDTH("width_dp", 31, 16),
+        HEIGHT("height_dp", 24, 16),
         ;
 
         fun max(context: Context): Int = when (this) {
@@ -42,10 +42,10 @@ object DockPrefs {
     /** The colours the user can change, stored as ARGB ints. */
     enum class ColorSetting(val key: String, val default: Int) {
         /** The touch target over the navigation bar. Translucent red by default. */
-        BUTTON("button_color", 0x3CFF0000),
+        BUTTON("button_color", 0x29FFFFFF),
         /** The sheet's colour at the corner; it fades to [SHEET_EDGE] at the outer edge. */
-        SHEET("sheet_color", 0xFF2B2B2B.toInt()),
-        SHEET_EDGE("sheet_edge_color", 0xFF0A0A0A.toInt()),
+        SHEET("sheet_color", 0xFF000000.toInt()),
+        SHEET_EDGE("sheet_edge_color", 0x00000000),
     }
 
     fun getColor(context: Context, setting: ColorSetting): Int =
@@ -69,13 +69,19 @@ object DockPrefs {
     private const val ROW_WIDTH_DEFAULT = 64
     const val ROWS_MAX = 6
     private const val ROWS_KEY = "rows"
-    private const val OLD_MAX_ITEMS_KEY = "max_items"
     /** The background colour a row starts with, and gets when it is switched on while clear. */
     const val ROW_COLOR_DEFAULT = 0xFF3A3A3A.toInt()
 
+    /** The rows a fresh install has. Their colours are set but switched off. */
+    val DEFAULT_ROWS = listOf(
+        Row(3, 58, 0xFF962C2C.toInt()),
+        Row(5, 59, 0xFF457A45.toInt()),
+        Row(8, 39),
+    )
+
     /**
      * The rows of the sheet, innermost (closest to the corner) first; never empty. Stored as
-     * "count:width:color:show,..."; the colour is ARGB, and only drawn when show is set. Falls back to one row sized from the old "maximum apps" setting.
+     * "count:width:color:show,..."; the colour is ARGB, and only drawn when show is set. Starts with [DEFAULT_ROWS].
      */
     fun getRows(context: Context): List<Row> {
         val prefs = prefs(context)
@@ -88,8 +94,7 @@ object DockPrefs {
             Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX), color, show)
         }?.take(ROWS_MAX)
         if (!parsed.isNullOrEmpty()) return parsed
-        val old = prefs.getInt(OLD_MAX_ITEMS_KEY, 6).coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX)
-        return listOf(Row(old, ROW_WIDTH_MAX))
+        return DEFAULT_ROWS
     }
 
     fun setRows(context: Context, rows: List<Row>) {
@@ -102,10 +107,11 @@ object DockPrefs {
 
     /** How far from the corner, in dp, the first row starts. */
     const val INNER_MAX = 150
+    private const val INNER_DEFAULT = 70
     private const val INNER_KEY = "inner_offset_dp"
 
     fun getInnerOffset(context: Context): Int =
-        prefs(context).getInt(INNER_KEY, 0).coerceIn(0, INNER_MAX)
+        prefs(context).getInt(INNER_KEY, INNER_DEFAULT).coerceIn(0, INNER_MAX)
 
     fun setInnerOffset(context: Context, value: Int) {
         prefs(context).edit().putInt(INNER_KEY, value).apply()
@@ -115,16 +121,15 @@ object DockPrefs {
      * The clear space, in dp, between the first or last icon of a row and the screen edge it is
      * nearest: the bottom edge for the first, the side edge for the last.
      */
-    enum class Padding(val key: String) {
-        BOTTOM("padding_bottom_dp"),
-        SIDE("padding_side_dp"),
+    enum class Padding(val key: String, val default: Int) {
+        BOTTOM("padding_bottom_dp", 20),
+        SIDE("padding_side_dp", 4),
     }
 
     const val PADDING_MAX = 80
-    private const val PADDING_DEFAULT = 8
 
     fun getPadding(context: Context, padding: Padding): Int =
-        prefs(context).getInt(padding.key, PADDING_DEFAULT).coerceIn(0, PADDING_MAX)
+        prefs(context).getInt(padding.key, padding.default).coerceIn(0, PADDING_MAX)
 
     fun setPadding(context: Context, padding: Padding, value: Int) {
         prefs(context).edit().putInt(padding.key, value).apply()
