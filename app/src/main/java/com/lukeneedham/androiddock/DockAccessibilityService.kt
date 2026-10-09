@@ -93,13 +93,19 @@ class DockAccessibilityService : AccessibilityService() {
     private fun onCornerPress() {
         val now = SystemClock.uptimeMillis()
         val isDouble = now - lastPressAt <= ViewConfiguration.getDoubleTapTimeout()
+        // The press itself gives the feedback, so the sheet closing from it does not.
+        when {
+            isDouble -> Haptics.confirm(cornerView)
+            DockActivity.current != null -> Haptics.tick(cornerView)
+            else -> Haptics.tap(cornerView)
+        }
         // A third press starts a new tap rather than a second double tap.
         lastPressAt = if (isDouble) 0L else now
         if (isDouble) switchToPreviousApp() else openSheet()
     }
 
     private fun switchToPreviousApp() {
-        DockActivity.current?.closeSheet()
+        DockActivity.current?.closeSheet(haptic = false)
         Thread {
             val app = RecentApps.load(this, 1).firstOrNull()
             if (app == null) {
@@ -118,7 +124,7 @@ class DockAccessibilityService : AccessibilityService() {
     private fun openSheet() {
         // A press on the button while the sheet is up closes it.
         DockActivity.current?.let {
-            it.closeSheet()
+            it.closeSheet(haptic = false)
             DockLog.log(this, "closing sheet")
             return
         }
@@ -132,7 +138,8 @@ class DockAccessibilityService : AccessibilityService() {
 
     /** A long press on the button opens the dock's settings, and closes the sheet it also opened. */
     private fun openSettings() {
-        DockActivity.current?.closeSheet()
+        Haptics.longPress(cornerView)
+        DockActivity.current?.closeSheet(haptic = false)
         try {
             startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             DockLog.log(this, "long press: opening settings")

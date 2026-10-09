@@ -47,7 +47,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -96,6 +98,7 @@ class SettingsActivity : ComponentActivity() {
 @Composable
 private fun SettingsScreen(resumes: Int) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     // Reading [resumes] here makes the checks below re-run after returning from system settings.
     val accessibilityDone = resumes >= 0 && SetupState.isAccessibilityEnabled(context)
     val usageDone = resumes >= 0 && SetupState.isUsageAccessGranted(context)
@@ -146,7 +149,10 @@ private fun SettingsScreen(resumes: Int) {
             )
         }
         Button(
-            onClick = { context.startActivity(Intent(context, DockActivity::class.java)) },
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                context.startActivity(Intent(context, DockActivity::class.java))
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
@@ -209,12 +215,14 @@ private fun SettingsScreen(resumes: Int) {
 @Composable
 private fun RowsEditor(context: Context) {
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
+    val haptic = LocalHapticFeedback.current
     var pickerRow by remember { mutableStateOf<Int?>(null) }
     val moveUp = stringResource(R.string.row_move_up)
     val moveDown = stringResource(R.string.row_move_down)
     val delete = stringResource(R.string.row_delete)
     fun save() = DockPrefs.setRows(context, rows.toList())
     fun move(from: Int, to: Int) {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         rows.add(to, rows.removeAt(from))
         save()
     }
@@ -236,6 +244,7 @@ private fun RowsEditor(context: Context) {
                     }
                     IconButton(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             rows.removeAt(index)
                             save()
                         },
@@ -246,6 +255,7 @@ private fun RowsEditor(context: Context) {
                 Slider(
                     value = row.count.toFloat(),
                     onValueChange = {
+                        if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         rows[index] = row.copy(count = it.toInt())
                         save()
                     },
@@ -265,6 +275,7 @@ private fun RowsEditor(context: Context) {
                     Checkbox(
                         checked = row.showColor,
                         onCheckedChange = { show ->
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             // Switching on a clear colour would show nothing, so give it one.
                             val color = if (show && row.color ushr 24 == 0) DockPrefs.ROW_COLOR_DEFAULT else row.color
                             rows[index] = row.copy(showColor = show, color = color)
@@ -275,7 +286,10 @@ private fun RowsEditor(context: Context) {
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { pickerRow = index }
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                pickerRow = index
+                            }
                             .padding(vertical = 8.dp),
                     ) {
                         Text(stringResource(R.string.row_color), modifier = Modifier.weight(1f))
@@ -304,6 +318,7 @@ private fun RowsEditor(context: Context) {
     if (rows.size < DockPrefs.ROWS_MAX) {
         FilledTonalButton(
             onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 rows.add(DockPrefs.newRow())
                 save()
             },

@@ -8,7 +8,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
 import android.view.Gravity
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateInterpolator
@@ -96,11 +95,15 @@ class DockActivity : AppCompatActivity() {
     private var sheet: View? = null
     private var closing = false
 
-    /** Shrinks the sheet back into the corner, then closes this activity. */
-    fun closeSheet() {
+    /**
+     * Shrinks the sheet back into the corner, then closes this activity. Gives a tick, unless
+     * the caller has already given its own feedback for the touch that closed it.
+     */
+    fun closeSheet(haptic: Boolean = true) {
         if (closing) return
         closing = true
         val view = sheet
+        if (haptic) Haptics.tick(view ?: window.decorView)
         if (view == null) {
             finishAndRemoveTask()
             return
@@ -285,9 +288,12 @@ class DockActivity : AppCompatActivity() {
                         setImageDrawable(app.icon)
                         contentDescription = app.label
                         isClickable = true
-                        setOnClickListener { launch(app) }
+                        setOnClickListener {
+                            Haptics.confirm(this)
+                            launch(app)
+                        }
                         setOnLongClickListener {
-                            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            Haptics.longPress(this)
                             dismiss(app)
                             true
                         }
@@ -302,7 +308,7 @@ class DockActivity : AppCompatActivity() {
     }
 
     private fun launch(app: RecentApps.App) {
-        closeSheet()
+        closeSheet(haptic = false)
         RecentApps.launch(this, app)
     }
 
