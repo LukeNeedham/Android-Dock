@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.lukeneedham.androiddock"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.lukeneedham.androiddock"
@@ -56,4 +56,6 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
 }

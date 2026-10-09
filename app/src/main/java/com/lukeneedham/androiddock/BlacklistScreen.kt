@@ -2,9 +2,6 @@ package com.lukeneedham.androiddock
 
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -52,21 +49,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** The apps that never show in the sheet, on a page of their own. */
-class BlacklistActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-                Surface(modifier = Modifier.fillMaxSize()) { BlacklistScreen() }
-            }
-        }
-    }
-}
-
 @Composable
-private fun BlacklistScreen() {
+internal fun BlacklistScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    SubPage(R.string.blacklist_title) {
+    SubPage(R.string.blacklist_title, onBack) {
         Column(
             modifier = Modifier
                 .weight(1f)

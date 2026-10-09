@@ -39,26 +39,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Edits the trigger's position, size and colour. -->
-        <activity
-            android:name=".TriggerActivity"
-            android:exported="false" />
-
-        <!-- Edits the fan's rows, with a live preview. -->
-        <activity
-            android:name=".FanLayoutActivity"
-            android:exported="false" />
-
-        <!-- The hidden apps list. -->
-        <activity
-            android:name=".BlacklistActivity"
-            android:exported="false" />
-
-        <!-- Shows the persisted debug log. -->
-        <activity
-            android:name=".LogActivity"
-            android:exported="false" />
-
         <!--
             The corner sheet. Translucent, and excluded from recents so it never shows up as
             a task of its own. Launched by the accessibility service, or from the settings screen.

@@ -1,8 +1,5 @@
 package com.lukeneedham.androiddock
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,21 +18,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 /** The trigger on a page of its own: where it sits, how big it is, and its colour. */
-class TriggerActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-                Surface(modifier = Modifier.fillMaxSize()) { TriggerScreen() }
-            }
-        }
-    }
-}
-
 @Composable
-private fun TriggerScreen() {
+internal fun TriggerScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    SubPage(R.string.position_title) {
+    SubPage(R.string.position_title, onBack) {
         Column(
             modifier = Modifier
                 .weight(1f)

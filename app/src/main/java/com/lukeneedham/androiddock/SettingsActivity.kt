@@ -37,6 +37,13 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.ui.NavDisplay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -68,6 +75,9 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** The pages of the settings app. */
+internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Log }
+
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
  * dock needs, plus links to the trigger and fan layout pages. The setup steps are re-checked every
@@ -83,8 +93,8 @@ class SettingsActivity : ComponentActivity() {
         openCount++
         setContent {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-                Surface(modifier = Modifier.fillMaxWidth()) {
-                    SettingsScreen(resumes)
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    AppNavigation(resumes)
                 }
             }
         }
@@ -109,8 +119,37 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
+/** The settings app's navigation: a back stack of [Route]s, shown by Navigation 3. */
 @Composable
-private fun SettingsScreen(resumes: Int) {
+private fun AppNavigation(resumes: Int) {
+    // Saved as route names, so the stack survives rotation and the process being recreated.
+    val backStack = rememberSaveable(
+        saver = listSaver<SnapshotStateList<Route>, String>(
+            save = { stack -> stack.map { it.name } },
+            restore = { names -> names.map { Route.valueOf(it) }.toMutableStateList() },
+        ),
+    ) { mutableStateListOf(Route.Settings) }
+    val back: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
+
+    NavDisplay(
+        backStack = backStack,
+        onBack = back,
+        entryProvider = { route ->
+            NavEntry(route) {
+                when (route) {
+                    Route.Settings -> SettingsScreen(resumes) { backStack.add(it) }
+                    Route.Trigger -> TriggerScreen(back)
+                    Route.FanLayout -> FanLayoutScreen(back)
+                    Route.Blacklist -> BlacklistScreen(back)
+                    Route.Log -> LogScreen(back)
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     // Reading [resumes] here makes the checks below re-run after returning from system settings.
@@ -175,7 +214,7 @@ private fun SettingsScreen(resumes: Int) {
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
-            onClick = { context.startActivity(Intent(context, TriggerActivity::class.java)) },
+            onClick = { navigate(Route.Trigger) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
@@ -184,7 +223,7 @@ private fun SettingsScreen(resumes: Int) {
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             FilledTonalButton(
-                onClick = { context.startActivity(Intent(context, FanLayoutActivity::class.java)) },
+                onClick = { navigate(Route.FanLayout) },
                 modifier = Modifier.weight(1f),
             ) { Text(stringResource(R.string.fan_layout_open)) }
             // A small, read-only picture of the fan as it is now, refreshed on every return here.
@@ -205,14 +244,14 @@ private fun SettingsScreen(resumes: Int) {
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         FilledTonalButton(
-            onClick = { context.startActivity(Intent(context, BlacklistActivity::class.java)) },
+            onClick = { navigate(Route.Blacklist) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.blacklist_open)) }
 
         TextButton(
-            onClick = { context.startActivity(Intent(context, LogActivity::class.java)) },
+            onClick = { navigate(Route.Log) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),

@@ -1,9 +1,6 @@
 package com.lukeneedham.androiddock
 
 import android.content.Context
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -64,19 +61,8 @@ import kotlin.math.sin
  * circles for apps, and below it the controls for the rows. Every change shows in the preview as
  * it is made.
  */
-class FanLayoutActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-                Surface(modifier = Modifier.fillMaxSize()) { FanLayoutScreen() }
-            }
-        }
-    }
-}
-
 @Composable
-private fun FanLayoutScreen() {
+internal fun FanLayoutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var inner by remember { mutableIntStateOf(DockPrefs.getInnerOffset(context)) }
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
@@ -87,7 +73,7 @@ private fun FanLayoutScreen() {
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
-    SubPage(R.string.fan_layout_title) {
+    SubPage(R.string.fan_layout_title, onBack) {
         FanPreview(inner, bottomPad, sidePad, rows.toList(), editingRow, sheetColor, edgeColor)
         Column(
             modifier = Modifier
