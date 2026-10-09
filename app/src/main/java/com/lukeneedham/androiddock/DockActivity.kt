@@ -14,7 +14,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -27,9 +26,8 @@ import kotlin.math.sin
 
 /**
  * Hosts the corner sheet of open apps: a quarter circle in the bottom-right corner of the screen.
- * The app icons run along its arc and the settings cog sits in the corner, at the centre of the
- * circle. Has no other UI: the activity is transparent, and when the sheet goes away the whole
- * task is removed, so the app never lingers in the system task switcher.
+ * The app icons run along its arc. Has no other UI: the activity is transparent, and when the
+ * sheet goes away the whole task is removed, so the app never lingers in the system task switcher.
  */
 class DockActivity : AppCompatActivity() {
 
@@ -73,21 +71,6 @@ class DockActivity : AppCompatActivity() {
         root.addView(
             QuarterCircleView(this, sheetColor).apply { isClickable = true },
             FrameLayout.LayoutParams(radius, radius, Gravity.BOTTOM or Gravity.END),
-        )
-
-        val cogSize = COG_SIZE.dp
-        root.addView(
-            ImageButton(this).apply {
-                setImageResource(android.R.drawable.ic_menu_preferences)
-                imageTintList = ColorStateList.valueOf(textColor)
-                background = null
-                contentDescription = getString(R.string.sheet_settings)
-                setOnClickListener {
-                    startActivity(Intent(this@DockActivity, SettingsActivity::class.java))
-                    closeSheet()
-                }
-            },
-            FrameLayout.LayoutParams(cogSize, cogSize, Gravity.BOTTOM or Gravity.END),
         )
 
         val loading = ProgressBar(this).apply { indeterminateTintList = ColorStateList.valueOf(textColor) }
@@ -241,7 +224,6 @@ class DockActivity : AppCompatActivity() {
             private set
 
         private const val MAX_RADIUS = 300
-        private const val COG_SIZE = 56
         private const val MAX_ICON_SIZE = 56
         private const val MIN_ICON_SIZE = 24
         private const val EDGE_MARGIN = 12

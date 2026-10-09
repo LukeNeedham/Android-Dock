@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import kotlin.math.abs
 
 /**
  * The touch target over the bottom-right corner of the navigation bar.
@@ -22,6 +24,12 @@ class CornerTouchView(context: Context) : View(context) {
 
     /** Called when a finger goes down on the view. */
     var onPress: (() -> Unit)? = null
+
+    /** Called when the finger has stayed down on the view for the system's long-press time. */
+    var onLongPress: (() -> Unit)? = null
+
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val longPress = Runnable { onLongPress?.invoke() }
 
     private var lastMoveLoggedAt = 0L
     private var downAt = 0L
@@ -80,6 +88,10 @@ class CornerTouchView(context: Context) : View(context) {
             downX = event.rawX
             downY = event.rawY
             onPress?.invoke()
+            postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
+        }
+        if (name == "MOVE" && (abs(event.rawX - downX) > touchSlop || abs(event.rawY - downY) > touchSlop)) {
+            removeCallbacks(longPress)
         }
         val inside = event.x >= 0 && event.y >= 0 && event.x < width && event.y < height
         DockLog.log(
@@ -88,6 +100,7 @@ class CornerTouchView(context: Context) : View(context) {
                 "local=(${event.x.toInt()}, ${event.y.toInt()}) ${if (inside) "inside" else "outside"}",
         )
         if (name == "CANCEL" || name == "UP") {
+            removeCallbacks(longPress)
             val dx = (event.rawX - downX).toInt()
             val dy = (event.rawY - downY).toInt()
             DockLog.log(
