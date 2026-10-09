@@ -120,6 +120,12 @@ private fun SettingsScreen(resumes: Int) {
                 onAction = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
             )
         }
+        val canAutoEnable = SetupState.canWriteSecureSettings(context)
+        Text(
+            stringResource(if (canAutoEnable) R.string.auto_enable_on else R.string.auto_enable_off),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 12.dp),
+        )
         if (accessibilityDone && usageDone) {
             Text(
                 stringResource(R.string.onboarding_all_set),

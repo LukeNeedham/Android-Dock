@@ -13,6 +13,8 @@
     <string name="step_accessibility_hint">If the switch is greyed out: open the app info page, tap the ⋮ menu and choose Allow restricted settings, then try again.</string>
     <string name="step_accessibility_action">Open accessibility settings</string>
     <string name="step_app_info_action">Open app info</string>
+    <string name="auto_enable_on">Accessibility will switch itself back on after an update.</string>
+    <string name="auto_enable_off">To have accessibility switch itself back on after an update, run this once from a computer, with USB debugging on:\n\nadb shell pm grant com.lukeneedham.androiddock android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="step_usage_title">2. Allow usage access</string>
     <string name="step_usage_description">Lets Android Dock see which apps you have used recently, to build the list of open apps.</string>
     <string name="step_usage_action">Open usage access settings</string>
