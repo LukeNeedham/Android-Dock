@@ -123,6 +123,15 @@ class DockActivity : AppCompatActivity() {
             .setInterpolator(AccelerateInterpolator())
             .withEndAction { finishAndRemoveTask() }
             .start()
+        // The animation does not run while the sheet is not visible (for example once it has
+        // launched an app), which would leave a closing sheet registered as current forever.
+        view.postDelayed({ finishAndRemoveTask() }, EXIT_MS * 2)
+    }
+
+    override fun onStop() {
+        // A sheet that is closing and no longer visible has nothing left to animate.
+        if (closing) finishAndRemoveTask()
+        super.onStop()
     }
 
     private fun buildContent(): View {
