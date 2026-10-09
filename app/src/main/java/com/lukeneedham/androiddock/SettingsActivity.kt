@@ -185,12 +185,26 @@ private fun SettingsScreen(resumes: Int) {
         }
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
-        FilledTonalButton(
-            onClick = { context.startActivity(Intent(context, FanLayoutActivity::class.java)) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-        ) { Text(stringResource(R.string.fan_layout_open)) }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            FilledTonalButton(
+                onClick = { context.startActivity(Intent(context, FanLayoutActivity::class.java)) },
+                modifier = Modifier.weight(1f),
+            ) { Text(stringResource(R.string.fan_layout_open)) }
+            // A small, read-only picture of the fan as it is now, refreshed on every return here.
+            val sheetColor = if (resumes >= 0) DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET) else 0
+            val edgeColor = if (resumes >= 0) DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE) else 0
+            FanPreview(
+                inner = if (resumes >= 0) DockPrefs.getInnerOffset(context) else 0,
+                bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
+                sidePad = DockPrefs.getPadding(context, DockPrefs.Padding.SIDE),
+                rows = if (resumes >= 0) DockPrefs.getRows(context) else emptyList(),
+                editingRow = null,
+                sheetColor = sheetColor,
+                edgeColor = edgeColor,
+                thumbnailDp = 96,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        }
 
         SectionHeader(R.string.colors_title, null)
         ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)

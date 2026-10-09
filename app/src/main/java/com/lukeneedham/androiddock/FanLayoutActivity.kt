@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +44,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -147,7 +151,7 @@ private val PLACEHOLDER_COLORS = listOf(
  * corner.
  */
 @Composable
-private fun FanPreview(
+internal fun FanPreview(
     inner: Int,
     bottomPad: Int,
     sidePad: Int,
@@ -155,22 +159,26 @@ private fun FanPreview(
     editingRow: Int?,
     sheetColor: Int,
     edgeColor: Int,
+    thumbnailDp: Int? = null,
+    modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
+            .then(if (thumbnailDp != null) Modifier.size(thumbnailDp.dp).clip(RoundedCornerShape(8.dp)) else Modifier.fillMaxWidth())
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         // As in the sheet: the gap plus the rows' widths is the radius, shrunk to fit the width.
         val total = inner + rows.sumOf { it.widthDp }
-        val radiusDp = min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
+        // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
+        val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
+        else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
         Canvas(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .width(maxWidth)
-                .height(radiusDp.dp),
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(radiusDp.dp))
+                .align(Alignment.BottomEnd),
         ) {
             val dp = density
+            val fit = if (thumbnailDp != null) thumbnailDp * dp / (radiusDp * dp) else 1f
+            withTransform({ scale(fit, fit, pivot = Offset(size.width, size.height)) }) {
             val radius = radiusDp * dp
             val corner = Offset(size.width, size.height)
             val scale = radius / (total * dp)
@@ -233,6 +241,7 @@ private fun FanPreview(
                         center = Offset(corner.x - centreRadius * cos(angle), corner.y - centreRadius * sin(angle)),
                     )
                 }
+            }
             }
         }
     }
