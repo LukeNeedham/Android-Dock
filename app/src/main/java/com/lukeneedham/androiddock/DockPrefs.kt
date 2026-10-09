@@ -58,7 +58,7 @@ object DockPrefs {
      * bottom edge. The rows' widths add up to the sheet's radius, and the icons in a row are
      * sized to the room it has.
      */
-    data class Row(val count: Int, val widthDp: Int)
+    data class Row(val count: Int, val widthDp: Int, val color: Int = 0)
 
     const val ROW_COUNT_MIN = 1
     const val ROW_COUNT_MAX = 12
@@ -72,14 +72,15 @@ object DockPrefs {
 
     /**
      * The rows of the sheet, innermost (closest to the corner) first; never empty. Stored as
-     * "count:width,count:width". Falls back to one row sized from the old "maximum apps" setting.
+     * "count:width:color,count:width:color"; the colour is ARGB, transparent by default. Falls back to one row sized from the old "maximum apps" setting.
      */
     fun getRows(context: Context): List<Row> {
         val prefs = prefs(context)
         val parsed = prefs.getString(ROWS_KEY, null)?.split(',')?.mapNotNull { part ->
             val count = part.substringBefore(':').toIntOrNull() ?: return@mapNotNull null
-            val width = part.substringAfter(':', "").toIntOrNull() ?: ROW_WIDTH_DEFAULT
-            Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX))
+            val width = part.split(':').getOrNull(1)?.toIntOrNull() ?: ROW_WIDTH_DEFAULT
+            val color = part.split(':').getOrNull(2)?.toIntOrNull() ?: 0
+            Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX), color)
         }?.take(ROWS_MAX)
         if (!parsed.isNullOrEmpty()) return parsed
         val old = prefs.getInt(OLD_MAX_ITEMS_KEY, 6).coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX)
@@ -88,7 +89,7 @@ object DockPrefs {
 
     fun setRows(context: Context, rows: List<Row>) {
         prefs(context).edit()
-            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.widthDp}" })
+            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.widthDp}:${it.color}" })
             .apply()
     }
 

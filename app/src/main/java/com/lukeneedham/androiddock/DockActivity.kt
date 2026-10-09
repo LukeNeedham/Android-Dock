@@ -35,12 +35,39 @@ class DockActivity : AppCompatActivity() {
 
     private class OpenApp(val packageName: String, val label: String, val icon: Drawable)
 
-    /** A quarter circle centred on the bottom-right corner of its own bounds. */
-    private class QuarterCircleView(context: Context, color: Int) : View(context) {
+    /**
+     * A quarter circle centred on the bottom-right corner of its own bounds, with a ring over it
+     * for each row that has a background colour. [bands] are the rows' inner and outer radii.
+     */
+    private class SheetBackgroundView(
+        context: Context,
+        color: Int,
+        private val bands: List<Pair<Float, Float>>,
+        private val rowColors: List<Int>,
+    ) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
+        private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
 
         override fun onDraw(canvas: Canvas) {
             canvas.drawCircle(width.toFloat(), height.toFloat(), width.toFloat(), paint)
+            bands.forEachIndexed { i, (start, end) ->
+                if (rowColors[i] ushr 24 == 0) return@forEachIndexed
+                ringPaint.color = rowColors[i]
+                ringPaint.strokeWidth = end - start
+                canvas.drawCircle(width.toFloat(), height.toFloat(), (start + end) / 2, ringPaint)
+            }
+        }
+    }
+
+    /** The inner and outer radius of each row, in px, scaled so they fit a sheet of [radius]. */
+    private fun rowBands(rows: List<DockPrefs.Row>, radius: Int): List<Pair<Float, Float>> {
+        val innerPx = DockPrefs.getInnerOffset(this).dp
+        val scale = radius.toFloat() / (innerPx + rows.sumOf { it.widthDp.dp })
+        var edge = innerPx * scale
+        return rows.map { row ->
+            val start = edge
+            edge += row.widthDp.dp * scale
+            start to edge
         }
     }
 
@@ -109,7 +136,7 @@ class DockActivity : AppCompatActivity() {
 
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
-            QuarterCircleView(this, sheetColor).apply { isClickable = true },
+            SheetBackgroundView(this, sheetColor, rowBands(rows, radius), rows.map { it.color }).apply { isClickable = true },
             FrameLayout.LayoutParams(radius, radius),
         )
 
@@ -173,13 +200,11 @@ class DockActivity : AppCompatActivity() {
         // Each row spans its width along the bottom edge, scaled if the sheet was shrunk to fit
         // the screen. Its icons are as large as fit in that band and without touching along the
         // chord between neighbours, up to [MAX_ICON_SIZE].
-        val innerPx = DockPrefs.getInnerOffset(this).dp
-        val scale = radius.toFloat() / (innerPx + rows.sumOf { it.widthDp.dp })
-        var inner = innerPx * scale
-        val placed = rows.mapIndexed { i, row ->
-            val band = row.widthDp.dp * scale
-            val centreRadius = inner + band / 2
-            inner += band
+        val bands = rowBands(rows, radius)
+        val placed = rows.mapIndexed { i, _ ->
+            val (start, end) = bands[i]
+            val band = end - start
+            val centreRadius = (start + end) / 2
             val n = filled[i]
             if (n == 0) return@mapIndexed centreRadius to 0
             val step = (Math.PI / 2 / n).toFloat()

@@ -190,6 +190,7 @@ private fun SettingsScreen(resumes: Int) {
 @Composable
 private fun RowsEditor(context: Context) {
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
+    var pickerRow by remember { mutableStateOf<Int?>(null) }
     val moveUp = stringResource(R.string.row_move_up)
     val moveDown = stringResource(R.string.row_move_down)
     val delete = stringResource(R.string.row_delete)
@@ -241,7 +242,33 @@ private fun RowsEditor(context: Context) {
                     },
                     valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { pickerRow = index }
+                        .padding(vertical = 8.dp),
+                ) {
+                    Text(stringResource(R.string.row_color), modifier = Modifier.weight(1f))
+                    ColorSwatch(row.color, Modifier.width(72.dp).height(32.dp))
+                }
             }
+        }
+    }
+    pickerRow?.let { index ->
+        val row = rows.getOrNull(index)
+        if (row == null) {
+            pickerRow = null
+        } else {
+            ColorPickerSheet(
+                title = R.string.row_color,
+                argb = row.color,
+                onChange = {
+                    rows[index] = row.copy(color = it)
+                    save()
+                },
+                onDismiss = { pickerRow = null },
+            )
         }
     }
     if (rows.size < DockPrefs.ROWS_MAX) {
