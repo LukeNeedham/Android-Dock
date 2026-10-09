@@ -23,4 +23,7 @@
     <string name="log_copy">Copy</string>
     <string name="log_clear">Clear</string>
     <string name="log_copied">Log copied</string>
+    <string name="position_title">Touch target height</string>
+    <string name="position_description">With gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the touch target until a swipe up from it stays with Android Dock. 0 puts it in the very corner.</string>
+    <string name="position_value">%1$d dp above the bottom</string>
 </resources>

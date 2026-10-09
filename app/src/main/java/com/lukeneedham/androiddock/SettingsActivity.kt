@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.SeekBar
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -27,6 +28,7 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
         steps = findViewById(R.id.steps)
         allSet = findViewById(R.id.all_set)
+        setUpPositionSlider()
         findViewById<View>(R.id.view_log).setOnClickListener {
             startActivity(Intent(this, LogActivity::class.java))
         }
@@ -58,6 +60,24 @@ class SettingsActivity : AppCompatActivity() {
             isDone = { SetupState.isUsageAccessGranted(this) },
             onAction = { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
         )
+    }
+
+    private fun setUpPositionSlider() {
+        val seek = findViewById<SeekBar>(R.id.position_seek)
+        val value = findViewById<TextView>(R.id.position_value)
+        seek.max = DockPrefs.MAX_BOTTOM_OFFSET_DP
+        seek.progress = DockPrefs.bottomOffsetDp(this)
+        value.text = getString(R.string.position_value, seek.progress)
+        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                value.text = getString(R.string.position_value, progress)
+                if (fromUser) DockPrefs.setBottomOffsetDp(this@SettingsActivity, progress)
+            }
+
+            override fun onStartTrackingTouch(bar: SeekBar) = Unit
+
+            override fun onStopTrackingTouch(bar: SeekBar) = Unit
+        })
     }
 
     override fun onResume() {
