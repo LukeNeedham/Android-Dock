@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.AndroidDock" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <!-- Transparent window so only the bottom sheet is visible over the current app. -->
+    <style name="Theme.AndroidDock.Sheet">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>
