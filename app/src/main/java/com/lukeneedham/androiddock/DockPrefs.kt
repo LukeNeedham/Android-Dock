@@ -94,6 +94,17 @@ object DockPrefs {
 
     fun newRow() = Row(6, ROW_WIDTH_DEFAULT)
 
+    /** How far from the corner, in dp, the first row starts. */
+    const val INNER_MAX = 150
+    private const val INNER_KEY = "inner_offset_dp"
+
+    fun getInnerOffset(context: Context): Int =
+        prefs(context).getInt(INNER_KEY, 0).coerceIn(0, INNER_MAX)
+
+    fun setInnerOffset(context: Context, value: Int) {
+        prefs(context).edit().putInt(INNER_KEY, value).apply()
+    }
+
     /** Whether the sheet's items sit against the right edge, with the icon on the right. */
     fun isAlignRight(context: Context): Boolean =
         prefs(context).getBoolean(ALIGN_RIGHT_KEY, false)

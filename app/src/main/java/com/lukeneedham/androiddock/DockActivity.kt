@@ -85,8 +85,10 @@ class DockActivity : AppCompatActivity() {
 
         val screenWidth = resources.displayMetrics.widthPixels
         val rows = DockPrefs.getRows(this)
-        // The rows' widths add up to the sheet's radius, shrunk to fit narrow screens.
-        val radius = minOf(rows.sumOf { it.widthDp.dp }, (screenWidth * 0.9f).toInt())
+        // The gap before row 1 plus the rows' widths is the sheet's radius, shrunk to fit narrow
+        // screens.
+        val innerPx = DockPrefs.getInnerOffset(this).dp
+        val radius = minOf(innerPx + rows.sumOf { it.widthDp.dp }, (screenWidth * 0.9f).toInt())
 
         // Everything in the sheet lives in this square, so one scale animates the lot.
         val sheetView = FrameLayout(this).apply {
@@ -171,8 +173,9 @@ class DockActivity : AppCompatActivity() {
         // Each row spans its width along the bottom edge, scaled if the sheet was shrunk to fit
         // the screen. Its icons are as large as fit in that band and without touching along the
         // chord between neighbours, up to [MAX_ICON_SIZE].
-        val scale = radius.toFloat() / rows.sumOf { it.widthDp.dp }
-        var inner = 0f
+        val innerPx = DockPrefs.getInnerOffset(this).dp
+        val scale = radius.toFloat() / (innerPx + rows.sumOf { it.widthDp.dp })
+        var inner = innerPx * scale
         val placed = rows.mapIndexed { i, row ->
             val band = row.widthDp.dp * scale
             val centreRadius = inner + band / 2

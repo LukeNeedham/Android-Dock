@@ -42,6 +42,7 @@
     <string name="rows_description">Row 1 is closest to the corner. Icons fill row 1 first, then the next row out. Each row sizes its icons to its width. The sheet lists as many apps as all the rows hold. A row\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
     <string name="row_title">Row %1$d</string>
     <string name="row_count">Items: %1$d</string>
+    <string name="slider_inner_offset">Gap from the corner to row 1: %1$d dp</string>
     <string name="row_width">Width: %1$d dp</string>
     <string name="row_move_up">Move towards the corner</string>
     <string name="row_move_down">Move away from the corner</string>

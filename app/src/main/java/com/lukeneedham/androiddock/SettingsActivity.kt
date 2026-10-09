@@ -150,6 +150,16 @@ private fun SettingsScreen(resumes: Int) {
         }
 
         SectionHeader(R.string.sheet_title_section, R.string.rows_description)
+        var inner by remember { mutableIntStateOf(DockPrefs.getInnerOffset(context)) }
+        Text(stringResource(R.string.slider_inner_offset, inner), modifier = Modifier.padding(top = 16.dp))
+        Slider(
+            value = inner.toFloat(),
+            onValueChange = {
+                inner = it.toInt()
+                DockPrefs.setInnerOffset(context, inner)
+            },
+            valueRange = 0f..DockPrefs.INNER_MAX.toFloat(),
+        )
         RowsEditor(context)
         var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
         Row(verticalAlignment = Alignment.CenterVertically) {
