@@ -60,6 +60,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -443,12 +444,24 @@ private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (Stri
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
+        var query by remember { mutableStateOf("") }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            label = { Text(stringResource(R.string.blacklist_search)) },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+        )
         val list = apps
         if (list == null) {
             CircularProgressIndicator(modifier = Modifier.padding(24.dp))
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
-                items(list.filter { it.packageName !in exclude }, key = { it.packageName }) { app ->
+                items(
+                    list.filter {
+                        it.packageName !in exclude && it.label.contains(query.trim(), ignoreCase = true)
+                    },
+                    key = { it.packageName }) { app ->
                     AppRow(app, Modifier.clickable { onPick(app.packageName) })
                 }
             }
