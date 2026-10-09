@@ -29,17 +29,32 @@ object RecentApps {
         val events = usage.queryEvents(now - WINDOW_MS, now)
         val settingsOpen = SettingsActivity.isOpen
         val lastUsed = HashMap<String, Long>()
+        // The activities of each app that have been started and not yet destroyed. Swiping an
+        // app away in the system's recents finishes them all, so an app with none left is no
+        // longer open, and is left out until it is opened again.
+        val liveActivities = HashMap<String, MutableSet<String>>()
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType != UsageEvents.Event.ACTIVITY_RESUMED &&
-                event.eventType != UsageEvents.Event.ACTIVITY_PAUSED
+            val type = event.eventType
+            if (type != UsageEvents.Event.ACTIVITY_RESUMED &&
+                type != UsageEvents.Event.ACTIVITY_PAUSED &&
+                type != ACTIVITY_STOPPED &&
+                type != ACTIVITY_DESTROYED
             ) continue
             if (event.packageName == context.packageName) {
                 if (!settingsOpen || event.className != SettingsActivity::class.java.name) continue
             }
-            lastUsed[event.packageName] = event.timeStamp
+            val live = liveActivities.getOrPut(event.packageName) { HashSet() }
+            val activity = event.className.orEmpty()
+            if (type == ACTIVITY_DESTROYED) live.remove(activity) else live.add(activity)
+            if (type == UsageEvents.Event.ACTIVITY_RESUMED || type == UsageEvents.Event.ACTIVITY_PAUSED) {
+                lastUsed[event.packageName] = event.timeStamp
+            }
         }
+        val closed = lastUsed.keys.filter { liveActivities[it].isNullOrEmpty() }
+        if (closed.isNotEmpty()) DockLog.log(context, "recent apps: left out closed apps $closed")
+        lastUsed.keys.removeAll(closed.toSet())
         val launchers = packages
             .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
             .map { it.activityInfo.packageName }
@@ -72,6 +87,11 @@ object RecentApps {
         val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
+
+    // Usage event types that are not in the public API before Android 10; the system reports them
+    // either way.
+    private const val ACTIVITY_STOPPED = 23
+    private const val ACTIVITY_DESTROYED = 24
 
     private const val WINDOW_MS = 24L * 60 * 60 * 1000
 }
