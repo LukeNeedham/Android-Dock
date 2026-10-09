@@ -190,8 +190,12 @@ class DockActivity : AppCompatActivity() {
                 lastUsed[event.packageName] = event.timeStamp
             }
         }
+        val launchers = packageManager
+            .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+            .map { it.activityInfo.packageName }
+            .toSet()
         return lastUsed.entries
-            .filter { it.key != packageName }
+            .filter { it.key != packageName && it.key !in launchers }
             .sortedByDescending { it.value }
             .asSequence()
             .mapNotNull { (pkg, _) ->
