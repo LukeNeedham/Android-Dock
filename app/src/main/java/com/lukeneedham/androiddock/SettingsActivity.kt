@@ -64,6 +64,7 @@ class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        openCount++
         setContent {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 Surface(modifier = Modifier.fillMaxWidth()) {
@@ -73,9 +74,22 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        openCount--
+        super.onDestroy()
+    }
+
     override fun onResume() {
         super.onResume()
         resumes++
+    }
+
+    companion object {
+        @Volatile
+        private var openCount = 0
+
+        /** Whether the settings app is open now, so the sheet lists it like any other app. */
+        val isOpen get() = openCount > 0
     }
 }
 

@@ -1,14 +1,10 @@
 package com.lukeneedham.androiddock
 
-import android.app.usage.UsageEvents
-import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -33,8 +29,6 @@ import kotlin.math.sin
  * sheet goes away the whole task is removed, so the app never lingers in the system task switcher.
  */
 class DockActivity : AppCompatActivity() {
-
-    private class OpenApp(val packageName: String, val label: String, val icon: Drawable)
 
     /**
      * A quarter circle centred on the bottom-right corner of its own bounds, with a ring over it
@@ -156,7 +150,7 @@ class DockActivity : AppCompatActivity() {
 
         val maxItems = rows.sumOf { it.count }
         Thread {
-            val apps = loadOpenApps(maxItems)
+            val apps = loadRecentApps.Apps(maxItems)
             runOnUiThread {
                 if (isDestroyed || isFinishing) return@runOnUiThread
                 sheetView.removeView(loading)
@@ -170,7 +164,7 @@ class DockActivity : AppCompatActivity() {
      * Spreads the icons evenly along one or more arcs (rows), between the two straight edges of
      * the sheet. Each row sizes its icons to the room it has.
      */
-    private fun showApps(root: ViewGroup, apps: List<OpenApp>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
+    private fun showApps(root: ViewGroup, apps: List<RecentApps.App>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
         if (apps.isEmpty()) {
             root.addView(
                 TextView(this).apply {
@@ -261,57 +255,9 @@ class DockActivity : AppCompatActivity() {
         }
     }
 
-    private fun launch(app: OpenApp) {
-        val intent = packageManager.getLaunchIntentForPackage(app.packageName) ?: return
+    private fun launch(app: RecentApps.App) {
         closeSheet()
-        startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
-
-    /**
-     * The [limit] most recently used apps from the last day, most recent first. Android gives
-     * no list of running apps to ordinary apps, so this is built from usage events (needs usage
-     * access). Runs off the main thread.
-     */
-    private fun loadOpenApps(limit: Int): List<OpenApp> {
-        if (!SetupState.isUsageAccessGranted(this)) return emptyList()
-        val usage = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val now = System.currentTimeMillis()
-        val events = usage.queryEvents(now - WINDOW_MS, now)
-        val lastUsed = HashMap<String, Long>()
-        val event = UsageEvents.Event()
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
-                event.eventType == UsageEvents.Event.ACTIVITY_PAUSED
-            ) {
-                lastUsed[event.packageName] = event.timeStamp
-            }
-        }
-        val launchers = packageManager
-            .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
-            .map { it.activityInfo.packageName }
-            .toSet()
-        // The app the user was in when they opened the dock is the most recently used one other
-        // than the dock itself. It is already on screen behind the sheet, so it is left out.
-        val currentApp = lastUsed.entries
-            .filter { it.key != packageName }
-            .maxByOrNull { it.value }
-            ?.key
-        return lastUsed.entries
-            .filter { it.key != packageName && it.key != currentApp && it.key !in launchers }
-            .sortedByDescending { it.value }
-            .asSequence()
-            .mapNotNull { (pkg, _) ->
-                if (packageManager.getLaunchIntentForPackage(pkg) == null) return@mapNotNull null
-                try {
-                    val info = packageManager.getApplicationInfo(pkg, 0)
-                    OpenApp(pkg, packageManager.getApplicationLabel(info).toString(), packageManager.getApplicationIcon(info))
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            .take(limit)
-            .toList()
+        RecentApps.launch(this, app)
     }
 
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
@@ -333,6 +279,5 @@ class DockActivity : AppCompatActivity() {
         private const val ROW_SPACING = 1.2f
         private const val ICON_SPACING = 1.15f
         private const val COS_45 = 0.7071f
-        private const val WINDOW_MS = 24L * 60 * 60 * 1000
     }
 }

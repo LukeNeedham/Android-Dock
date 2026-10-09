@@ -5,8 +5,10 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
@@ -51,7 +53,7 @@ class DockAccessibilityService : AccessibilityService() {
         }
         fillLayout(params)
         val view = CornerTouchView(this).apply {
-            onPress = ::openSheet
+            onPress = ::onCornerPress
             onLongPress = ::openSettings
         }
         getSystemService(WindowManager::class.java).addView(view, params)
@@ -80,6 +82,37 @@ class DockAccessibilityService : AccessibilityService() {
                 "${it.name.lowercase()}=${DockPrefs.get(this, it)}dp"
             },
         )
+    }
+
+    private var lastPressAt = 0L
+
+    /**
+     * A press opens or closes the sheet. A second press within the double-tap time instead
+     * switches to the app used before the current one.
+     */
+    private fun onCornerPress() {
+        val now = SystemClock.uptimeMillis()
+        val isDouble = now - lastPressAt <= ViewConfiguration.getDoubleTapTimeout()
+        // A third press starts a new tap rather than a second double tap.
+        lastPressAt = if (isDouble) 0L else now
+        if (isDouble) switchToPreviousApp() else openSheet()
+    }
+
+    private fun switchToPreviousApp() {
+        DockActivity.current?.closeSheet()
+        Thread {
+            val app = RecentApps.load(this, 1).firstOrNull()
+            if (app == null) {
+                DockLog.log(this, "double tap: no previous app")
+                return@Thread
+            }
+            try {
+                RecentApps.launch(this, app)
+                DockLog.log(this, "double tap: switching to ${app.packageName}")
+            } catch (e: RuntimeException) {
+                DockLog.log(this, "could not switch to ${app.packageName}: $e")
+            }
+        }.start()
     }
 
     private fun openSheet() {
