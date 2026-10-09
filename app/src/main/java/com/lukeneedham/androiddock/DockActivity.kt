@@ -137,8 +137,8 @@ class DockActivity : AppCompatActivity() {
         val centreRadius = radius - margin - size / 2f
 
         apps.forEachIndexed { index, app ->
-            // The oldest app is at the top of the arc, the most recent nearest the bottom edge,
-            // where the thumb that pressed the corner button is.
+            // The most recent app is nearest the bottom edge, where the thumb that pressed the
+            // corner button is, and the oldest is at the top of the arc.
             val angle = step * (index + 0.5f)
             val cx = centreRadius * cos(angle)
             val cy = centreRadius * sin(angle)
@@ -164,9 +164,9 @@ class DockActivity : AppCompatActivity() {
     }
 
     /**
-     * The [limit] most recently used apps from the last day, oldest first so the most recent is
-     * last. Android gives no list of running apps to ordinary apps, so this is built from usage
-     * events (needs usage access). Runs off the main thread.
+     * The [limit] most recently used apps from the last day, most recent first. Android gives
+     * no list of running apps to ordinary apps, so this is built from usage events (needs usage
+     * access). Runs off the main thread.
      */
     private fun loadOpenApps(limit: Int): List<OpenApp> {
         if (!SetupState.isUsageAccessGranted(this)) return emptyList()
@@ -208,7 +208,6 @@ class DockActivity : AppCompatActivity() {
             }
             .take(limit)
             .toList()
-            .reversed()
     }
 
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
