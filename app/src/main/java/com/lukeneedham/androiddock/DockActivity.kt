@@ -141,6 +141,13 @@ class DockActivity : AppCompatActivity() {
     /** A tap to open arrived while this sheet was still closing: grow it back instead. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isFinishing) {
+            // Too late to revive this one; the tap to open must still get a sheet.
+            if (SheetState.isWanted()) {
+                startActivity(Intent(applicationContext, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            return
+        }
         val view = sheet ?: return
         if (!closing || !SheetState.isWanted()) return
         closing = false
@@ -154,8 +161,12 @@ class DockActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        // A sheet that is closing and no longer visible has nothing left to animate.
-        if (closing) finishAndRemoveTask()
+        // A sheet that is no longer visible (Home, screen off, an app launched from it) has no
+        // purpose and nothing left to animate, so it must not linger as an unseen "open" sheet.
+        if (!isChangingConfigurations) {
+            if (!closing) SheetState.want(false)
+            finishAndRemoveTask()
+        }
         super.onStop()
     }
 
@@ -348,8 +359,9 @@ class DockActivity : AppCompatActivity() {
     override fun onDestroy() {
         if (current === this) {
             current = null
-            // Gone without a tap, such as killed by the system.
-            SheetState.want(false)
+            // Gone without being closed or recreated, such as killed by the system. A sheet
+            // that closed itself already updated the state, which a newer tap may have changed.
+            if (!isFinishing && !isChangingConfigurations) SheetState.want(false)
         }
         super.onDestroy()
     }
