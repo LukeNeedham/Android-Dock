@@ -70,7 +70,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
- * dock needs, plus links to the trigger and fan layout pages and the colour settings. The setup steps are re-checked every
+ * dock needs, plus links to the trigger and fan layout pages. The setup steps are re-checked every
  * time the user comes back from system settings.
  */
 class SettingsActivity : ComponentActivity() {
@@ -202,10 +202,6 @@ private fun SettingsScreen(resumes: Int) {
                 modifier = Modifier.padding(start = 16.dp),
             )
         }
-
-        SectionHeader(R.string.colors_title, null)
-        ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner)
-        ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge)
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         BlacklistEditor(context)
@@ -417,7 +413,12 @@ internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: 
 
 /** A colour setting shown as a swatch; tapping it opens [ColorPickerSheet]. */
 @Composable
-internal fun ColorSettingRow(context: Context, setting: DockPrefs.ColorSetting, label: Int) {
+internal fun ColorSettingRow(
+    context: Context,
+    setting: DockPrefs.ColorSetting,
+    label: Int,
+    onChange: (Int) -> Unit = {},
+) {
     var argb by remember { mutableIntStateOf(DockPrefs.getColor(context, setting)) }
     var open by remember { mutableStateOf(false) }
 
@@ -438,6 +439,7 @@ internal fun ColorSettingRow(context: Context, setting: DockPrefs.ColorSetting, 
             onChange = {
                 argb = it
                 DockPrefs.setColor(context, setting, it)
+                onChange(it)
             },
             onDismiss = { open = false },
         )

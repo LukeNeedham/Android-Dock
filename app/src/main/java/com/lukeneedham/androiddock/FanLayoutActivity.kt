@@ -85,8 +85,8 @@ private fun FanLayoutScreen() {
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
     // The row whose count or width is being dragged, tinted in the preview until the drag ends.
     var editingRow by remember { mutableStateOf<Int?>(null) }
-    val sheetColor = DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)
-    val edgeColor = DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)
+    var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
+    var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
     Column(modifier = Modifier.systemBarsPadding()) {
         FanPreview(inner, bottomPad, sidePad, rows.toList(), editingRow, sheetColor, edgeColor)
@@ -129,6 +129,8 @@ private fun FanLayoutScreen() {
                 },
                 valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
             )
+            ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
+            ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
             RowsEditor(context, rows) { editingRow = it }
         }
     }

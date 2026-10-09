@@ -32,7 +32,6 @@
     <string name="slider_width">Width: %1$d dp</string>
     <string name="slider_height">Height: %1$d dp</string>
     <string name="sheet_empty">No recently used apps.</string>
-    <string name="colors_title">Colours</string>
     <string name="color_button">Trigger colour</string>
     <string name="color_sheet_corner">Sheet colour at the corner</string>
     <string name="color_sheet_edge">Sheet colour at the edge</string>
