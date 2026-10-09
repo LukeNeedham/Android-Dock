@@ -167,6 +167,17 @@ private fun SettingsScreen(resumes: Int) {
             },
             valueRange = DockPrefs.RADIUS_MIN.toFloat()..DockPrefs.RADIUS_MAX.toFloat(),
         )
+        var rows by remember { mutableIntStateOf(DockPrefs.getRows(context)) }
+        Text(stringResource(R.string.slider_rows, rows), modifier = Modifier.padding(top = 16.dp))
+        Slider(
+            value = rows.toFloat(),
+            onValueChange = {
+                rows = it.toInt()
+                DockPrefs.setRows(context, rows)
+            },
+            valueRange = DockPrefs.ROWS_MIN.toFloat()..DockPrefs.ROWS_MAX.toFloat(),
+            steps = DockPrefs.ROWS_MAX - DockPrefs.ROWS_MIN - 1,
+        )
         var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.align_right), modifier = Modifier.weight(1f))

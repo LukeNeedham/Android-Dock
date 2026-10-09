@@ -135,7 +135,7 @@ class DockActivity : AppCompatActivity() {
     }
 
     /**
-     * Spreads the icons evenly along the arc, between the two straight edges of the sheet. The
+     * Spreads the icons evenly along one or more arcs (rows), between the two straight edges of the sheet. The
      * icons are as large as will fit without touching, up to [MAX_ICON_SIZE].
      */
     private fun showApps(root: ViewGroup, apps: List<OpenApp>, radius: Int, textColor: Int) {
@@ -158,39 +158,71 @@ class DockActivity : AppCompatActivity() {
             return
         }
 
-        val count = apps.size
-        val step = (Math.PI / 2 / count).toFloat()
         val margin = EDGE_MARGIN.dp
         val maxSize = MAX_ICON_SIZE.dp
         val minSize = MIN_ICON_SIZE.dp
-        // Largest icon whose neighbours are a gap apart along the chord between their centres.
+        val rowCounts = rowCounts(apps.size, DockPrefs.getRows(this))
+        val rows = rowCounts.size
+        // Largest icon for which every row fits: neighbours in a row are a gap apart along the
+        // chord between their centres, and the innermost row stays clear of the corner.
         var size = maxSize
         while (size > minSize) {
-            val centreRadius = radius - margin - size / 2f
-            if (2 * centreRadius * sin(step / 2) >= size * ICON_SPACING) break
+            val outer = radius - margin - size / 2f
+            val fits = rowCounts.indices.all { row ->
+                val centreRadius = outer - (rows - 1 - row) * size * ROW_SPACING
+                val step = (Math.PI / 2 / rowCounts[row]).toFloat()
+                centreRadius >= size && 2 * centreRadius * sin(step / 2) >= size * ICON_SPACING
+            }
+            if (fits) break
             size--
         }
-        val centreRadius = radius - margin - size / 2f
+        val outerRadius = radius - margin - size / 2f
 
-        apps.forEachIndexed { index, app ->
-            // The most recent app is nearest the bottom edge, where the thumb that pressed the
-            // corner button is, and the oldest is at the top of the arc.
-            val angle = step * (index + 0.5f)
-            val cx = centreRadius * cos(angle)
-            val cy = centreRadius * sin(angle)
-            root.addView(
-                ImageView(this).apply {
-                    setImageDrawable(app.icon)
-                    contentDescription = app.label
-                    isClickable = true
-                    setOnClickListener { launch(app) }
-                },
-                FrameLayout.LayoutParams(size, size, Gravity.BOTTOM or Gravity.END).apply {
-                    rightMargin = (cx - size / 2f).toInt()
-                    bottomMargin = (cy - size / 2f).toInt()
-                },
-            )
+        var next = 0
+        rowCounts.forEachIndexed { row, rowCount ->
+            // Row 0 is the innermost; rows further out hold more icons.
+            val centreRadius = outerRadius - (rows - 1 - row) * size * ROW_SPACING
+            val step = (Math.PI / 2 / rowCount).toFloat()
+            repeat(rowCount) { slot ->
+                val app = apps[next++]
+                // The most recent app is nearest the bottom edge, where the thumb that pressed the
+                // corner button is, and the oldest is at the top of the arc.
+                val angle = step * (slot + 0.5f)
+                val cx = centreRadius * cos(angle)
+                val cy = centreRadius * sin(angle)
+                root.addView(
+                    ImageView(this).apply {
+                        setImageDrawable(app.icon)
+                        contentDescription = app.label
+                        isClickable = true
+                        setOnClickListener { launch(app) }
+                    },
+                    FrameLayout.LayoutParams(size, size, Gravity.BOTTOM or Gravity.END).apply {
+                        rightMargin = (cx - size / 2f).toInt()
+                        bottomMargin = (cy - size / 2f).toInt()
+                    },
+                )
+            }
         }
+    }
+
+    /**
+     * How many icons go in each row, innermost first. Each row has room for one more icon than
+     * the one inside it, and the innermost is sized so the rows can hold [total]. Rows fill from
+     * the inside; rows left empty are dropped.
+     */
+    private fun rowCounts(total: Int, rows: Int): List<Int> {
+        val extra = rows * (rows - 1) / 2
+        val innermost = maxOf(1, (total - extra + rows - 1) / rows)
+        var left = total
+        val counts = ArrayList<Int>()
+        for (row in 0 until rows) {
+            val n = minOf(left, innermost + row)
+            if (n <= 0) break
+            counts.add(n)
+            left -= n
+        }
+        return counts
     }
 
     private fun launch(app: OpenApp) {
@@ -263,6 +295,7 @@ class DockActivity : AppCompatActivity() {
         private const val MAX_ICON_SIZE = 56
         private const val MIN_ICON_SIZE = 24
         private const val EDGE_MARGIN = 12
+        private const val ROW_SPACING = 1.2f
         private const val ICON_SPACING = 1.15f
         private const val COS_45 = 0.7071f
         private const val WINDOW_MS = 24L * 60 * 60 * 1000
