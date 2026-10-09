@@ -70,7 +70,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
- * dock needs, plus the touch target and colour settings. The setup steps are re-checked every
+ * dock needs, plus links to the trigger and fan layout pages and the colour settings. The setup steps are re-checked every
  * time the user comes back from system settings.
  */
 class SettingsActivity : ComponentActivity() {
@@ -173,16 +173,13 @@ private fun SettingsScreen(resumes: Int) {
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.onboarding_try_it)) }
 
-        SectionHeader(R.string.position_title, R.string.position_description)
-        DockPrefs.Setting.entries.forEach { setting ->
-            val label = when (setting) {
-                DockPrefs.Setting.RIGHT_OFFSET -> R.string.slider_right
-                DockPrefs.Setting.BOTTOM_OFFSET -> R.string.slider_bottom
-                DockPrefs.Setting.WIDTH -> R.string.slider_width
-                DockPrefs.Setting.HEIGHT -> R.string.slider_height
-            }
-            SettingSlider(context, setting, label)
-        }
+        SectionHeader(R.string.position_title, R.string.trigger_summary)
+        FilledTonalButton(
+            onClick = { context.startActivity(Intent(context, TriggerActivity::class.java)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        ) { Text(stringResource(R.string.trigger_open)) }
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
@@ -207,7 +204,6 @@ private fun SettingsScreen(resumes: Int) {
         }
 
         SectionHeader(R.string.colors_title, null)
-        ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)
         ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner)
         ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge)
 
@@ -403,7 +399,7 @@ private fun StepCard(
 
 /** A labelled slider that saves its value as it moves; the running service applies it live. */
 @Composable
-private fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: Int) {
+internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: Int) {
     var value by remember { mutableIntStateOf(DockPrefs.get(context, setting)) }
     Text(
         stringResource(label, value),
@@ -421,7 +417,7 @@ private fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: I
 
 /** A colour setting shown as a swatch; tapping it opens [ColorPickerSheet]. */
 @Composable
-private fun ColorSettingRow(context: Context, setting: DockPrefs.ColorSetting, label: Int) {
+internal fun ColorSettingRow(context: Context, setting: DockPrefs.ColorSetting, label: Int) {
     var argb by remember { mutableIntStateOf(DockPrefs.getColor(context, setting)) }
     var open by remember { mutableStateOf(false) }
 

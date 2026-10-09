@@ -9,7 +9,7 @@ object DockPrefs {
     private const val FILE = "dock_prefs"
 
     /**
-     * The numbers that place the touch target, all in dp. In gesture navigation the system
+     * The numbers that place the trigger, all in dp. In gesture navigation the system
      * claims a strip along the bottom edge for its swipe-up gesture, so a target inside that
      * strip loses the touch as soon as the finger moves up. Raising it with [BOTTOM_OFFSET]
      * gets it clear.
@@ -41,7 +41,7 @@ object DockPrefs {
 
     /** The colours the user can change, stored as ARGB ints. */
     enum class ColorSetting(val key: String, val default: Int) {
-        /** The touch target over the navigation bar. Translucent red by default. */
+        /** The trigger over the navigation bar. Translucent red by default. */
         BUTTON("button_color", 0x29FFFFFF),
         /** The sheet's colour at the corner; it fades to [SHEET_EDGE] at the outer edge. */
         SHEET("sheet_color", 0xFF000000.toInt()),

@@ -3,7 +3,7 @@
 An Android overlay that gives you a task switcher from anywhere, in one tap. It is not an app you
 launch and use. It stays out of the way until you call it.
 
-> **Status:** early prototype. The corner touch target opens a corner sheet of recent apps, and a
+> **Status:** early prototype. The corner trigger opens a corner sheet of recent apps, and a
 > long press opens the settings. Touches are recorded in the in-app debug log.
 
 ## The idea

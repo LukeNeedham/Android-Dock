@@ -11,7 +11,7 @@ import android.view.ViewConfiguration
 import kotlin.math.abs
 
 /**
- * The touch target over the bottom-right corner of the navigation bar.
+ * The trigger over the bottom-right corner of the navigation bar.
  *
  * The window that receives ACTION_DOWN also receives every later event of that gesture, so this
  * view is where the whole press-drag-release gesture is observed, in raw screen coordinates.
@@ -40,7 +40,7 @@ class CornerTouchView(context: Context) : View(context) {
         applyColor()
     }
 
-    /** Paints the touch target in the colour the user picked. */
+    /** Paints the trigger in the colour the user picked. */
     fun applyColor() {
         setBackgroundColor(DockPrefs.getColor(context, DockPrefs.ColorSetting.BUTTON))
     }

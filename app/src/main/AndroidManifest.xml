@@ -38,6 +38,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Edits the trigger's position, size and colour. -->
+        <activity
+            android:name=".TriggerActivity"
+            android:exported="false" />
+
         <!-- Edits the fan's rows, with a live preview. -->
         <activity
             android:name=".FanLayoutActivity"
