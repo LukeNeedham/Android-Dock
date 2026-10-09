@@ -150,7 +150,11 @@ class DockActivity : AppCompatActivity() {
         if (isFinishing) {
             // Too late to revive this one; the tap to open must still get a sheet.
             starting = true
-            startActivity(Intent(applicationContext, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            try {
+                startActivity(Intent(applicationContext, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: RuntimeException) {
+                starting = false
+            }
             return
         }
         val view = sheet ?: return
@@ -202,6 +206,8 @@ class DockActivity : AppCompatActivity() {
         sheet = sheetView
         root.addView(sheetView, FrameLayout.LayoutParams(radius, radius, Gravity.BOTTOM or Gravity.END))
         sheetView.post {
+            // A tap to close can land before this first frame; do not grow what is closing.
+            if (closing) return@post
             sheetView.animate()
                 .scaleX(1f).scaleY(1f)
                 .setDuration(ENTER_MS)
