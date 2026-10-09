@@ -194,8 +194,14 @@ class DockActivity : AppCompatActivity() {
             .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
             .map { it.activityInfo.packageName }
             .toSet()
+        // The app the user was in when they opened the dock is the most recently used one other
+        // than the dock itself. It is already on screen behind the sheet, so it is left out.
+        val currentApp = lastUsed.entries
+            .filter { it.key != packageName }
+            .maxByOrNull { it.value }
+            ?.key
         return lastUsed.entries
-            .filter { it.key != packageName && it.key !in launchers }
+            .filter { it.key != packageName && it.key != currentApp && it.key !in launchers }
             .sortedByDescending { it.value }
             .asSequence()
             .mapNotNull { (pkg, _) ->
