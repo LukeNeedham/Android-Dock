@@ -232,15 +232,6 @@ private fun RowsEditor(context: Context) {
                     valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
                     steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
                 )
-                Text(stringResource(R.string.row_icon_size, row.iconSizeDp))
-                Slider(
-                    value = row.iconSizeDp.toFloat(),
-                    onValueChange = {
-                        rows[index] = row.copy(iconSizeDp = it.toInt())
-                        save()
-                    },
-                    valueRange = DockPrefs.ROW_SIZE_MIN.toFloat()..DockPrefs.ROW_SIZE_MAX.toFloat(),
-                )
             }
         }
     }

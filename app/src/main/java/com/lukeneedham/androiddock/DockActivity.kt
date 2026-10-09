@@ -137,7 +137,7 @@ class DockActivity : AppCompatActivity() {
 
     /**
      * Spreads the icons evenly along one or more arcs (rows), between the two straight edges of
-     * the sheet. Each row has its own icon size, shrunk only if its icons would otherwise touch.
+     * the sheet. Each row sizes its icons to the room it has.
      */
     private fun showApps(root: ViewGroup, apps: List<OpenApp>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
         if (apps.isEmpty()) {
@@ -169,26 +169,23 @@ class DockActivity : AppCompatActivity() {
             left -= n
         }
 
-        // Rows are laid from the outer edge inwards, each as large as asked for unless that would
-        // make neighbours touch along the chord between their centres.
-        var edge = radius - EDGE_MARGIN.dp.toFloat()
-        val placed = arrayOfNulls<Pair<Float, Int>>(filled.size) // centre radius, size
-        for (i in filled.indices.reversed()) {
-            val (row, n) = filled[i]
+        // The ring between the corner and the outer edge is shared equally by the rows. Each
+        // row's icons are as large as fit in its band and without touching along the chord
+        // between neighbours, up to [MAX_ICON_SIZE].
+        val band = (radius - EDGE_MARGIN.dp).toFloat() / filled.size
+        val placed = filled.mapIndexed { i, (_, n) ->
+            val centreRadius = band * (i + 0.5f)
             val step = (Math.PI / 2 / n).toFloat()
-            var size = row.iconSizeDp.dp
-            while (size > MIN_ICON_SIZE.dp) {
-                val centreRadius = edge - size / 2f
-                if (centreRadius >= size && 2 * centreRadius * sin(step / 2) >= size * ICON_SPACING) break
-                size--
-            }
-            placed[i] = (edge - size / 2f) to size
-            edge -= size * ROW_SPACING
+            val chord = 2 * centreRadius * sin(step / 2)
+            val size = minOf(MAX_ICON_SIZE.dp.toFloat(), band / ROW_SPACING, chord / ICON_SPACING)
+                .toInt()
+                .coerceAtLeast(MIN_ICON_SIZE.dp)
+            centreRadius to size
         }
 
         var next = 0
         filled.forEachIndexed { i, (_, n) ->
-            val (centreRadius, size) = placed[i]!!
+            val (centreRadius, size) = placed[i]
             val step = (Math.PI / 2 / n).toFloat()
             repeat(n) { slot ->
                 val app = apps[next++]
@@ -280,7 +277,8 @@ class DockActivity : AppCompatActivity() {
 
         private const val ENTER_MS = 280L
         private const val EXIT_MS = 200L
-        private const val MIN_ICON_SIZE = 24
+        private const val MAX_ICON_SIZE = 64
+        private const val MIN_ICON_SIZE = 16
         private const val EDGE_MARGIN = 12
         private const val ROW_SPACING = 1.2f
         private const val ICON_SPACING = 1.15f
