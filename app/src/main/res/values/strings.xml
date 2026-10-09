@@ -3,4 +3,17 @@
     <string name="accessibility_service_label">Android Dock</string>
     <string name="accessibility_service_description">Lets Android Dock detect a tap on the bottom-right corner of the navigation bar, and open the app switcher sheet.</string>
     <string name="sheet_title">Open apps</string>
+
+    <string name="onboarding_title">Set up Android Dock</string>
+    <string name="onboarding_intro">Android Dock is not an app you open. After setup, tap the bottom-right corner of the navigation bar to switch apps. It needs a couple of permissions first.</string>
+    <string name="onboarding_all_set">All set. Tap the bottom-right corner of the navigation bar from any app.</string>
+    <string name="onboarding_try_it">Try the sheet</string>
+    <string name="step_accessibility_title">1. Turn on the accessibility service</string>
+    <string name="step_accessibility_description">Lets Android Dock notice a tap on the corner of the navigation bar. Find Android Dock in the list and switch it on.</string>
+    <string name="step_accessibility_hint">If the switch is greyed out: open the app info page, tap the ⋮ menu and choose Allow restricted settings, then try again.</string>
+    <string name="step_accessibility_action">Open accessibility settings</string>
+    <string name="step_app_info_action">Open app info</string>
+    <string name="step_usage_title">2. Allow usage access</string>
+    <string name="step_usage_description">Lets Android Dock see which apps you have used recently, to build the list of open apps.</string>
+    <string name="step_usage_action">Open usage access settings</string>
 </resources>
