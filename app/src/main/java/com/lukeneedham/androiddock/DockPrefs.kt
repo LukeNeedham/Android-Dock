@@ -128,6 +128,27 @@ object DockPrefs {
         prefs(context).edit().putInt(padding.key, value).apply()
     }
 
+    /**
+     * Apps the user has dismissed from the sheet, with the time they did. A dismissed app stays
+     * off the sheet until it has been used again after that time.
+     */
+    private const val DISMISSED_KEY = "dismissed_apps"
+    private const val DISMISS_KEEP_MS = 24L * 60 * 60 * 1000
+
+    fun getDismissed(context: Context): Map<String, Long> =
+        prefs(context).getStringSet(DISMISSED_KEY, null).orEmpty().mapNotNull { entry ->
+            val time = entry.substringAfterLast('|').toLongOrNull() ?: return@mapNotNull null
+            entry.substringBeforeLast('|') to time
+        }.toMap()
+
+    fun dismissApp(context: Context, packageName: String) {
+        val now = System.currentTimeMillis()
+        // The sheet only looks a day back, so older dismissals can no longer matter.
+        val kept = getDismissed(context).filter { it.value > now - DISMISS_KEEP_MS && it.key != packageName }
+        val entries = kept.map { "${it.key}|${it.value}" }.toSet() + "$packageName|$now"
+        prefs(context).edit().putStringSet(DISMISSED_KEY, entries).apply()
+    }
+
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }
 
     fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }

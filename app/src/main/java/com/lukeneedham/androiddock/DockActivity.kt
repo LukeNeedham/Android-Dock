@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateInterpolator
@@ -164,15 +165,38 @@ class DockActivity : AppCompatActivity() {
         )
 
         val maxItems = rows.sumOf { it.count }
-        Thread {
-            val apps = RecentApps.load(this, maxItems)
-            runOnUiThread {
-                if (isDestroyed || isFinishing) return@runOnUiThread
-                sheetView.removeView(loading)
-                showApps(sheetView, apps, rows, radius, textColor)
-            }
-        }.start()
+        reload = {
+            val generation = ++loadGeneration
+            Thread {
+                val apps = RecentApps.load(this, maxItems)
+                runOnUiThread {
+                    // A newer load has started since, so this one is out of date.
+                    if (isDestroyed || isFinishing || generation != loadGeneration) return@runOnUiThread
+                    sheetView.removeView(loading)
+                    appViews.forEach { sheetView.removeView(it) }
+                    appViews.clear()
+                    showApps(sheetView, apps, rows, radius, textColor)
+                }
+            }.start()
+        }
+        reload?.invoke()
         return root
+    }
+
+    /** The views showApps added, so they can be cleared when the list is reloaded. */
+    private val appViews = ArrayList<View>()
+    private var loadGeneration = 0
+    private var reload: (() -> Unit)? = null
+
+    private fun addAppView(root: ViewGroup, view: View, params: ViewGroup.LayoutParams) {
+        appViews.add(view)
+        root.addView(view, params)
+    }
+
+    /** Takes [app] off the sheet until the user opens it again, and fills its place. */
+    private fun dismiss(app: RecentApps.App) {
+        DockPrefs.dismissApp(this, app.packageName)
+        reload?.invoke()
     }
 
     /**
@@ -181,7 +205,8 @@ class DockActivity : AppCompatActivity() {
      */
     private fun showApps(root: ViewGroup, apps: List<RecentApps.App>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
         if (apps.isEmpty()) {
-            root.addView(
+            addAppView(
+                root,
                 TextView(this).apply {
                     setText(R.string.sheet_empty)
                     setTextColor(textColor)
@@ -254,12 +279,18 @@ class DockActivity : AppCompatActivity() {
                 val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
                 val cx = centreRadius * cos(angle)
                 val cy = centreRadius * sin(angle)
-                root.addView(
+                addAppView(
+                    root,
                     ImageView(this).apply {
                         setImageDrawable(app.icon)
                         contentDescription = app.label
                         isClickable = true
                         setOnClickListener { launch(app) }
+                        setOnLongClickListener {
+                            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            dismiss(app)
+                            true
+                        }
                     },
                     FrameLayout.LayoutParams(size, size, Gravity.BOTTOM or Gravity.END).apply {
                         rightMargin = (cx - size / 2f).toInt()

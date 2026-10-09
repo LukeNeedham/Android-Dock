@@ -16,6 +16,8 @@ object RecentApps {
      * counting the app on screen now. Android gives no list of running apps to ordinary apps, so
      * this is built from usage events (needs usage access). Runs off the main thread.
      *
+     * Apps the user dismissed from the sheet stay out until they have been used again.
+     *
      * The dock's own screens are left out, except the settings app, which counts as an app like
      * any other while it is open. The sheet and the accessibility service never count.
      */
@@ -45,8 +47,11 @@ object RecentApps {
         // The app on screen is the most recently used one. It is already on screen behind the
         // sheet, so it is left out.
         val currentApp = lastUsed.entries.maxByOrNull { it.value }?.key
+        val dismissed = DockPrefs.getDismissed(context)
         return lastUsed.entries
             .filter { it.key != currentApp && it.key !in launchers }
+            // Dismissed by the user, and not used since.
+            .filter { it.value > (dismissed[it.key] ?: 0L) }
             .sortedByDescending { it.value }
             .asSequence()
             .mapNotNull { (pkg, _) ->
