@@ -92,8 +92,11 @@ class DockActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // A tap to close can arrive before this activity has been created.
-        if (!SheetState.isWanted()) {
+        // A tap to close can arrive before this activity has been created. A recreation (such as
+        // a rotation) was not asked for by a tap, but is still a sheet to keep.
+        val wanted = starting
+        starting = false
+        if (!wanted && savedInstanceState == null) {
             finishAndRemoveTask()
             return
         }
@@ -107,15 +110,14 @@ class DockActivity : AppCompatActivity() {
 
     /** The square holding the whole sheet; it scales about the screen corner. */
     private var sheet: View? = null
-    private var closing = false
+    var closing = false
+        private set
 
     /**
      * Shrinks the sheet back into the corner, then closes this activity. Gives a tick, unless
      * the caller has already given its own feedback for the touch that closed it.
      */
     fun closeSheet(haptic: Boolean = true) {
-        // However the sheet is closed, a tap on the corner should next open it.
-        SheetState.want(false)
         if (closing) return
         closing = true
         val view = sheet
@@ -141,15 +143,18 @@ class DockActivity : AppCompatActivity() {
     /** A tap to open arrived while this sheet was still closing: grow it back instead. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // Not a new activity, so nothing else consumes the tap's request to open.
+        val wanted = starting
+        starting = false
+        if (!wanted) return
         if (isFinishing) {
             // Too late to revive this one; the tap to open must still get a sheet.
-            if (SheetState.isWanted()) {
-                startActivity(Intent(applicationContext, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
+            starting = true
+            startActivity(Intent(applicationContext, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         }
         val view = sheet ?: return
-        if (!closing || !SheetState.isWanted()) return
+        if (!closing) return
         closing = false
         view.removeCallbacks(forceFinish)
         view.animate().cancel()
@@ -164,7 +169,7 @@ class DockActivity : AppCompatActivity() {
         // A sheet that is no longer visible (Home, screen off, an app launched from it) has no
         // purpose and nothing left to animate, so it must not linger as an unseen "open" sheet.
         if (!isChangingConfigurations) {
-            if (!closing) SheetState.want(false)
+            closing = true
             finishAndRemoveTask()
         }
         super.onStop()
@@ -357,12 +362,7 @@ class DockActivity : AppCompatActivity() {
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
-        if (current === this) {
-            current = null
-            // Gone without being closed or recreated, such as killed by the system. A sheet
-            // that closed itself already updated the state, which a newer tap may have changed.
-            if (!isFinishing && !isChangingConfigurations) SheetState.want(false)
-        }
+        if (current === this) current = null
         super.onDestroy()
     }
 
@@ -370,6 +370,23 @@ class DockActivity : AppCompatActivity() {
         /** The sheet currently on screen, so the corner button can close it. */
         var current: DockActivity? = null
             private set
+
+        /**
+         * A tap has asked for the sheet to open, and no activity has yet taken up the request.
+         * Taps in that gap have no activity to act on, so this stands in for the sheet.
+         */
+        @Volatile
+        var starting = false
+
+        /** Whether a tap on the corner should close the sheet, rather than open it. */
+        val isOpen: Boolean
+            get() = starting || current?.let { !it.closing && !it.isFinishing } == true
+
+        /** Cancels a pending open, and closes the sheet if it is up. */
+        fun close(haptic: Boolean = true) {
+            starting = false
+            current?.closeSheet(haptic)
+        }
 
         private const val ENTER_MS = 280L
         private const val EXIT_MS = 200L

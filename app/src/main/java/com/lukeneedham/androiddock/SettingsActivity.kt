@@ -165,7 +165,7 @@ private fun SettingsScreen(resumes: Int) {
         Button(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                SheetState.want(true)
+                DockActivity.starting = true
                 context.startActivity(Intent(context, DockActivity::class.java))
             },
             modifier = Modifier

@@ -96,7 +96,7 @@ class DockAccessibilityService : AccessibilityService() {
         // The press itself gives the feedback, so the sheet closing from it does not.
         when {
             isDouble -> Haptics.confirm(cornerView)
-            SheetState.isWanted() -> Haptics.tick(cornerView)
+            DockActivity.isOpen -> Haptics.tick(cornerView)
             else -> Haptics.tap(cornerView)
         }
         // A third press starts a new tap rather than a second double tap.
@@ -105,8 +105,7 @@ class DockAccessibilityService : AccessibilityService() {
     }
 
     private fun switchToPreviousApp() {
-        SheetState.want(false)
-        DockActivity.current?.closeSheet(haptic = false)
+        DockActivity.close(haptic = false)
         Thread {
             val app = RecentApps.load(this, 1).firstOrNull()
             if (app == null) {
@@ -124,16 +123,17 @@ class DockAccessibilityService : AccessibilityService() {
 
     /** Every press does the opposite of the one before, so none is dropped. */
     private fun openSheet() {
-        if (!SheetState.toggle()) {
-            DockActivity.current?.closeSheet(haptic = false)
+        if (DockActivity.isOpen) {
+            DockActivity.close(haptic = false)
             DockLog.log(this, "closing sheet")
             return
         }
+        DockActivity.starting = true
         try {
             startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             DockLog.log(this, "opening sheet")
         } catch (e: RuntimeException) {
-            SheetState.want(false)
+            DockActivity.starting = false
             DockLog.log(this, "could not open sheet: $e")
         }
     }
@@ -141,8 +141,7 @@ class DockAccessibilityService : AccessibilityService() {
     /** A long press on the button opens the dock's settings, and closes the sheet it also opened. */
     private fun openSettings() {
         Haptics.longPress(cornerView)
-        SheetState.want(false)
-        DockActivity.current?.closeSheet(haptic = false)
+        DockActivity.close(haptic = false)
         try {
             startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             DockLog.log(this, "long press: opening settings")
