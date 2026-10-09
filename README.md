@@ -3,14 +3,15 @@
 An Android overlay that gives you a task switcher from anywhere, in one tap. It is not an app you
 launch and use. It stays out of the way until you call it.
 
-> **Status:** early prototype. The corner touch target opens the placeholder sheet and records touches
-> (viewable in the in-app debug log); the sheet and app switching are not built yet.
+> **Status:** early prototype. The corner touch target opens a corner sheet of recent apps, and a
+> long press opens the settings. Touches are recorded in the in-app debug log.
 
 ## The idea
 
 1. You tap the **bottom-right corner of the screen, in the navigation bar**.
-2. A **bottom sheet** slides up over whatever you were doing, listing your **currently open apps**,
-   like the system task switcher.
+2. A **corner sheet**, a quarter circle in the bottom-right corner of the screen, opens over
+   whatever you were doing. The icons of your **recently used apps** run along its arc, the most
+   recent nearest the bottom edge.
 3. Pick an app to switch to it, or dismiss the sheet.
 4. Dismissing the sheet **also kills Android Dock's own task**, so it never appears as an entry
    in the system task switcher.
@@ -20,7 +21,7 @@ the setup steps, which is where a new user starts.
 
 ## Main points
 
-- **Overlay, not an app.** No main screen. The only UI is the bottom sheet over the current app.
+- **Overlay, not an app.** No main screen. The only UI is the corner sheet over the current app.
 - **Triggered from the navigation bar.** A tap on the bottom-right corner of the nav bar is
   intercepted by an accessibility service and opens the sheet.
 - **Open apps list.** The sheet shows the apps currently open, as the system task switcher does.
@@ -36,7 +37,22 @@ the setup steps, which is where a new user starts.
 |---|---|
 | `DockAccessibilityService` | Watches for a tap on the nav bar's bottom-right corner and launches the sheet. |
 | `SettingsActivity` | The launcher entry. Onboarding checklist for the accessibility service and usage access, re-checked each time the user returns from system settings. |
-| `DockActivity` | Transparent, `excludeFromRecents` activity that shows the bottom sheet and removes its own task when the sheet is dismissed. |
+| `DockActivity` | Transparent, `excludeFromRecents` activity that shows the corner sheet and removes its own task when the sheet is dismissed. |
+
+## Known limitation: updating turns accessibility off
+
+Every time the app is updated, Android turns the accessibility service off, and it has to be
+switched back on by hand: **Settings > Accessibility > Android Dock**. Usage access is not affected.
+
+This was investigated and cannot be fixed from inside the app. With `WRITE_SECURE_SETTINGS`
+granted over adb, the app can write the enabled-services setting after an update, and the write
+returns success. The system then reverts it within milliseconds (the setting reads back empty
+and the service never binds), however many times it is retried. Toggling it in the Settings app
+works. The cause was not found, on a Pixel 5 running Android 14. That approach, with the adb grant,
+the update receiver and the rechecks, was removed again. It is in the history of PR #4 if it is
+worth another look on a different Android version.
+
+So an update means re-enabling accessibility; this is accepted behaviour, not a bug to fix.
 
 ## Open questions
 
