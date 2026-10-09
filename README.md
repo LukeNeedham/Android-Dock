@@ -1,4 +1,4 @@
-# Android Dock
+# Fan: Fast App Nav
 
 An Android overlay that gives you a task switcher from anywhere, in one tap. It is not an app you
 launch and use. It stays out of the way until you call it.
@@ -13,10 +13,10 @@ launch and use. It stays out of the way until you call it.
    whatever you were doing. The icons of your **recently used apps** run along its arc, the most
    recent nearest the bottom edge.
 3. Pick an app to switch to it, or dismiss the sheet.
-4. Dismissing the sheet **also kills Android Dock's own task**, so it never appears as an entry
+4. Dismissing the sheet **also kills Fan's own task**, so it never appears as an entry
    in the system task switcher.
 
-Opening Android Dock from the launcher does not show the sheet. It shows a settings screen with
+Opening Fan from the launcher does not show the sheet. It shows a settings screen with
 the setup steps, which is where a new user starts.
 
 ## Main points
@@ -29,7 +29,7 @@ the setup steps, which is where a new user starts.
   activity is excluded from recents, so the dock never shows up as a task itself.
 - **Onboarding on first open.** Opening the app shows a settings screen that walks the user
   through enabling the accessibility service and usage access, with each step ticked off as it
-  is done. Android Dock can't work until both are on.
+  is done. Fan can't work until both are on.
 
 ## How it will work
 
@@ -42,7 +42,7 @@ the setup steps, which is where a new user starts.
 ## Known limitation: updating turns accessibility off
 
 Every time the app is updated, Android turns the accessibility service off, and it has to be
-switched back on by hand: **Settings > Accessibility > Android Dock**. Usage access is not affected.
+switched back on by hand: **Settings > Accessibility > Fan**. Usage access is not affected.
 
 This was investigated and cannot be fixed from inside the app. With `WRITE_SECURE_SETTINGS`
 granted over adb, the app can write the enabled-services setting after an update, and the write
@@ -75,7 +75,7 @@ These need working out when the features are built:
 
 ## Project setup
 
-- Kotlin, single `app` module, package `com.lukeneedham.androiddock`
+- Kotlin, single `app` module, package `com.lukeneedham.androiddock` (kept from the old name, "Android Dock", so installs update in place)
 - `minSdk` 26, `targetSdk` / `compileSdk` 35
 - Gradle Kotlin DSL with a version catalog (`gradle/libs.versions.toml`)
 
