@@ -53,6 +53,27 @@ object DockPrefs {
         prefs(context).edit().putInt(setting.key, value).apply()
     }
 
+    /** How many apps the sheet lists at most. The sheet's height is fixed from this. */
+    const val MAX_ITEMS_MIN = 1
+    const val MAX_ITEMS_MAX = 12
+    private const val MAX_ITEMS_KEY = "max_items"
+    private const val ALIGN_RIGHT_KEY = "align_right"
+
+    fun getMaxItems(context: Context): Int =
+        prefs(context).getInt(MAX_ITEMS_KEY, 6).coerceIn(MAX_ITEMS_MIN, MAX_ITEMS_MAX)
+
+    fun setMaxItems(context: Context, value: Int) {
+        prefs(context).edit().putInt(MAX_ITEMS_KEY, value).apply()
+    }
+
+    /** Whether the sheet's items sit against the right edge, with the icon on the right. */
+    fun isAlignRight(context: Context): Boolean =
+        prefs(context).getBoolean(ALIGN_RIGHT_KEY, false)
+
+    fun setAlignRight(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(ALIGN_RIGHT_KEY, value).apply()
+    }
+
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }
 
     fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }

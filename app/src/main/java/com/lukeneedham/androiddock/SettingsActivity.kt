@@ -11,6 +11,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -135,6 +138,30 @@ private fun SettingsScreen(resumes: Int) {
                 DockPrefs.Setting.HEIGHT -> R.string.slider_height
             }
             SettingSlider(context, setting, label)
+        }
+
+        SectionHeader(R.string.sheet_title_section, null)
+        var maxItems by remember { mutableIntStateOf(DockPrefs.getMaxItems(context)) }
+        Text(stringResource(R.string.slider_max_items, maxItems), modifier = Modifier.padding(top = 16.dp))
+        Slider(
+            value = maxItems.toFloat(),
+            onValueChange = {
+                maxItems = it.toInt()
+                DockPrefs.setMaxItems(context, maxItems)
+            },
+            valueRange = DockPrefs.MAX_ITEMS_MIN.toFloat()..DockPrefs.MAX_ITEMS_MAX.toFloat(),
+            steps = DockPrefs.MAX_ITEMS_MAX - DockPrefs.MAX_ITEMS_MIN - 1,
+        )
+        var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.align_right), modifier = Modifier.weight(1f))
+            Switch(
+                checked = alignRight,
+                onCheckedChange = {
+                    alignRight = it
+                    DockPrefs.setAlignRight(context, it)
+                },
+            )
         }
 
         SectionHeader(R.string.colors_title, null)
