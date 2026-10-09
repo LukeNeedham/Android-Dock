@@ -157,6 +157,16 @@ private fun SettingsScreen(resumes: Int) {
             valueRange = DockPrefs.MAX_ITEMS_MIN.toFloat()..DockPrefs.MAX_ITEMS_MAX.toFloat(),
             steps = DockPrefs.MAX_ITEMS_MAX - DockPrefs.MAX_ITEMS_MIN - 1,
         )
+        var radius by remember { mutableIntStateOf(DockPrefs.getRadius(context)) }
+        Text(stringResource(R.string.slider_radius, radius), modifier = Modifier.padding(top = 16.dp))
+        Slider(
+            value = radius.toFloat(),
+            onValueChange = {
+                radius = it.toInt()
+                DockPrefs.setRadius(context, radius)
+            },
+            valueRange = DockPrefs.RADIUS_MIN.toFloat()..DockPrefs.RADIUS_MAX.toFloat(),
+        )
         var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.align_right), modifier = Modifier.weight(1f))

@@ -12,6 +12,8 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -52,9 +54,26 @@ class DockActivity : AppCompatActivity() {
         setContentView(buildContent())
     }
 
-    /** Closes the sheet, and with it this activity. */
+    /** The square holding the whole sheet; it scales about the screen corner. */
+    private var sheet: View? = null
+    private var closing = false
+
+    /** Shrinks the sheet back into the corner, then closes this activity. */
     fun closeSheet() {
-        finishAndRemoveTask()
+        if (closing) return
+        closing = true
+        val view = sheet
+        if (view == null) {
+            finishAndRemoveTask()
+            return
+        }
+        view.animate().cancel()
+        view.animate()
+            .scaleX(0f).scaleY(0f)
+            .setDuration(EXIT_MS)
+            .setInterpolator(AccelerateInterpolator())
+            .withEndAction { finishAndRemoveTask() }
+            .start()
     }
 
     private fun buildContent(): View {
@@ -65,18 +84,35 @@ class DockActivity : AppCompatActivity() {
         val root = FrameLayout(this).apply { setOnClickListener { closeSheet() } }
 
         val screenWidth = resources.displayMetrics.widthPixels
-        val radius = minOf(MAX_RADIUS.dp, (screenWidth * 0.9f).toInt())
+        val radius = minOf(DockPrefs.getRadius(this).dp, (screenWidth * 0.9f).toInt())
+
+        // Everything in the sheet lives in this square, so one scale animates the lot.
+        val sheetView = FrameLayout(this).apply {
+            pivotX = radius.toFloat()
+            pivotY = radius.toFloat()
+            scaleX = 0f
+            scaleY = 0f
+        }
+        sheet = sheetView
+        root.addView(sheetView, FrameLayout.LayoutParams(radius, radius, Gravity.BOTTOM or Gravity.END))
+        sheetView.post {
+            sheetView.animate()
+                .scaleX(1f).scaleY(1f)
+                .setDuration(ENTER_MS)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        }
 
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
-        root.addView(
+        sheetView.addView(
             QuarterCircleView(this, sheetColor).apply { isClickable = true },
-            FrameLayout.LayoutParams(radius, radius, Gravity.BOTTOM or Gravity.END),
+            FrameLayout.LayoutParams(radius, radius),
         )
 
         val loading = ProgressBar(this).apply { indeterminateTintList = ColorStateList.valueOf(textColor) }
         val spinnerSize = 40.dp
         val spinnerCentre = (radius * 0.6f).toInt()
-        root.addView(
+        sheetView.addView(
             loading,
             FrameLayout.LayoutParams(spinnerSize, spinnerSize, Gravity.BOTTOM or Gravity.END).apply {
                 // On the diagonal of the quarter circle.
@@ -91,8 +127,8 @@ class DockActivity : AppCompatActivity() {
             val apps = loadOpenApps(maxItems)
             runOnUiThread {
                 if (isDestroyed || isFinishing) return@runOnUiThread
-                root.removeView(loading)
-                showApps(root, apps, radius, textColor)
+                sheetView.removeView(loading)
+                showApps(sheetView, apps, radius, textColor)
             }
         }.start()
         return root
@@ -102,7 +138,7 @@ class DockActivity : AppCompatActivity() {
      * Spreads the icons evenly along the arc, between the two straight edges of the sheet. The
      * icons are as large as will fit without touching, up to [MAX_ICON_SIZE].
      */
-    private fun showApps(root: FrameLayout, apps: List<OpenApp>, radius: Int, textColor: Int) {
+    private fun showApps(root: ViewGroup, apps: List<OpenApp>, radius: Int, textColor: Int) {
         if (apps.isEmpty()) {
             root.addView(
                 TextView(this).apply {
@@ -222,7 +258,8 @@ class DockActivity : AppCompatActivity() {
         var current: DockActivity? = null
             private set
 
-        private const val MAX_RADIUS = 300
+        private const val ENTER_MS = 280L
+        private const val EXIT_MS = 200L
         private const val MAX_ICON_SIZE = 56
         private const val MIN_ICON_SIZE = 24
         private const val EDGE_MARGIN = 12

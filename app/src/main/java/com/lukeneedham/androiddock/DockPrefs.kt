@@ -57,6 +57,7 @@ object DockPrefs {
     const val MAX_ITEMS_MIN = 1
     const val MAX_ITEMS_MAX = 12
     private const val MAX_ITEMS_KEY = "max_items"
+    private const val RADIUS_KEY = "sheet_radius_dp"
     private const val ALIGN_RIGHT_KEY = "align_right"
 
     fun getMaxItems(context: Context): Int =
@@ -64,6 +65,18 @@ object DockPrefs {
 
     fun setMaxItems(context: Context, value: Int) {
         prefs(context).edit().putInt(MAX_ITEMS_KEY, value).apply()
+    }
+
+    /** The radius of the sheet's quarter circle, in dp. */
+    const val RADIUS_MIN = 120
+    const val RADIUS_MAX = 500
+    const val RADIUS_DEFAULT = 300
+
+    fun getRadius(context: Context): Int =
+        prefs(context).getInt(RADIUS_KEY, RADIUS_DEFAULT).coerceIn(RADIUS_MIN, RADIUS_MAX)
+
+    fun setRadius(context: Context, value: Int) {
+        prefs(context).edit().putInt(RADIUS_KEY, value).apply()
     }
 
     /** Whether the sheet's items sit against the right edge, with the icon on the right. */
