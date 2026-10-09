@@ -45,5 +45,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/onboarding_try_it" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/view_log"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/onboarding_view_log" />
     </LinearLayout>
 </ScrollView>

@@ -3,6 +3,8 @@ package com.lukeneedham.androiddock
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.os.Build
+import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
@@ -17,6 +19,12 @@ class DockAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        val navMode = Settings.Secure.getInt(contentResolver, "navigation_mode", -1)
+        DockLog.log(
+            this,
+            "service connected sdk=${Build.VERSION.SDK_INT} device=${Build.MANUFACTURER} ${Build.MODEL} " +
+                "navigationMode=$navMode (0=3-button 1=2-button 2=gesture)",
+        )
         addCornerView()
     }
 
@@ -50,6 +58,7 @@ class DockAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onUnbind(intent: Intent?): Boolean {
+        DockLog.log(this, "service unbound")
         removeCornerView()
         return super.onUnbind(intent)
     }

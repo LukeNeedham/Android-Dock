@@ -27,6 +27,9 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
         steps = findViewById(R.id.steps)
         allSet = findViewById(R.id.all_set)
+        findViewById<View>(R.id.view_log).setOnClickListener {
+            startActivity(Intent(this, LogActivity::class.java))
+        }
         findViewById<View>(R.id.try_it).setOnClickListener {
             startActivity(Intent(this, DockActivity::class.java))
         }

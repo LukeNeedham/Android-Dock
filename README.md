@@ -4,7 +4,7 @@ An Android overlay that gives you a task switcher from anywhere, in one tap. It 
 launch and use. It stays out of the way until you call it.
 
 > **Status:** early prototype. The corner touch target exists and only logs touches
-> (`adb logcat -s DockCorner`); the sheet and app switching are not built yet.
+> (viewable in the in-app debug log); the sheet and app switching are not built yet.
 
 ## The idea
 
