@@ -12,7 +12,7 @@ import android.view.accessibility.AccessibilityEvent
 
 /**
  * Places a [CornerTouchView] over the bottom-right corner of the screen, on top of the
- * navigation bar. Its position and size come from [DockPrefs]. Touching it opens the sheet.
+ * navigation bar. Its position and size come from [DockPrefs]. Touching it opens the sheet, and a long press opens the settings.
  */
 class DockAccessibilityService : AccessibilityService() {
 
@@ -50,7 +50,10 @@ class DockAccessibilityService : AccessibilityService() {
             gravity = Gravity.BOTTOM or Gravity.END
         }
         fillLayout(params)
-        val view = CornerTouchView(this).apply { onPress = ::openSheet }
+        val view = CornerTouchView(this).apply {
+            onPress = ::openSheet
+            onLongPress = ::openSettings
+        }
         getSystemService(WindowManager::class.java).addView(view, params)
         cornerView = view
         cornerParams = params
@@ -91,6 +94,17 @@ class DockAccessibilityService : AccessibilityService() {
             DockLog.log(this, "opening sheet")
         } catch (e: RuntimeException) {
             DockLog.log(this, "could not open sheet: $e")
+        }
+    }
+
+    /** A long press on the button opens the dock's settings, and closes the sheet it also opened. */
+    private fun openSettings() {
+        DockActivity.current?.closeSheet()
+        try {
+            startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            DockLog.log(this, "long press: opening settings")
+        } catch (e: RuntimeException) {
+            DockLog.log(this, "could not open settings: $e")
         }
     }
 

@@ -1,25 +1,14 @@
 <resources>
     <style name="Theme.AndroidDock" parent="Theme.Material3.DayNight.NoActionBar" />
 
-    <!-- Transparent window so only the bottom sheet is visible over the current app. -->
+    <!-- Transparent, edge-to-edge window so only the corner sheet is visible over the current app. -->
     <style name="Theme.AndroidDock.Sheet">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowAnimationStyle">@null</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.AndroidDock.BottomSheetDialog</item>
-    </style>
-
-    <!--
-        The sheet's own window: edge to edge with transparent system bars and no dim, so the
-        only thing drawn over the current app is the sheet itself.
-    -->
-    <style name="ThemeOverlay.AndroidDock.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">false</item>
-        <item name="enableEdgeToEdge">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>
