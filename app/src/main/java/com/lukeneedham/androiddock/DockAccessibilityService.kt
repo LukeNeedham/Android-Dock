@@ -21,6 +21,7 @@ class DockAccessibilityService : AccessibilityService() {
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (DockPrefs.isSettingKey(key)) applyLayout()
+        if (DockPrefs.isColorKey(key)) cornerView?.applyColor()
     }
 
     override fun onServiceConnected() {
@@ -79,6 +80,12 @@ class DockAccessibilityService : AccessibilityService() {
     }
 
     private fun openSheet() {
+        // A press on the button while the sheet is up closes it.
+        DockActivity.current?.let {
+            it.closeSheet()
+            DockLog.log(this, "closing sheet")
+            return
+        }
         try {
             startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             DockLog.log(this, "opening sheet")

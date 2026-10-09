@@ -2,7 +2,6 @@ package com.lukeneedham.androiddock
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
 import android.graphics.Rect
 import android.os.Build
 import android.os.SystemClock
@@ -30,8 +29,12 @@ class CornerTouchView(context: Context) : View(context) {
     private var downY = 0f
 
     init {
-        // Faintly visible while prototyping, so the touch target can be seen.
-        setBackgroundColor(Color.argb(60, 255, 0, 0))
+        applyColor()
+    }
+
+    /** Paints the touch target in the colour the user picked. */
+    fun applyColor() {
+        setBackgroundColor(DockPrefs.getColor(context, DockPrefs.ColorSetting.BUTTON))
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {

@@ -29,4 +29,17 @@
     <string name="slider_bottom">Distance from the bottom: %1$d dp</string>
     <string name="slider_width">Width: %1$d dp</string>
     <string name="slider_height">Height: %1$d dp</string>
+    <string name="sheet_empty">No recently used apps.</string>
+    <string name="sheet_settings">Settings</string>
+    <string name="colors_title">Colours</string>
+    <string name="color_button">Button colour</string>
+    <string name="color_sheet">Sheet colour</string>
+    <string name="color_red">Red: %1$d</string>
+    <string name="color_green">Green: %1$d</string>
+    <string name="color_blue">Blue: %1$d</string>
+    <string name="color_alpha">Opacity: %1$d</string>
+    <string name="sheet_title_loading">Loading apps…</string>
+    <string name="sheet_title_section">Sheet</string>
+    <string name="slider_max_items">Maximum apps listed: %1$d</string>
+    <string name="align_right">Align items to the right</string>
 </resources>
