@@ -30,6 +30,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -213,7 +214,23 @@ private fun SettingsScreen(resumes: Int) {
 
         SectionHeader(R.string.colors_title, null)
         ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)
-        ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet)
+        var gradient by remember { mutableStateOf(DockPrefs.isGradient(context)) }
+        ColorSettingRow(
+            context,
+            DockPrefs.ColorSetting.SHEET,
+            if (gradient) R.string.color_sheet_corner else R.string.color_sheet,
+        )
+        if (gradient) ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            Text(stringResource(R.string.sheet_gradient), modifier = Modifier.weight(1f))
+            Switch(
+                checked = gradient,
+                onCheckedChange = {
+                    gradient = it
+                    DockPrefs.setGradient(context, it)
+                },
+            )
+        }
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         BlacklistEditor(context)
