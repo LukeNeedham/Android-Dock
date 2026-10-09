@@ -10,6 +10,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Switch
@@ -165,8 +170,8 @@ private fun SettingsScreen(resumes: Int) {
         }
 
         SectionHeader(R.string.colors_title, null)
-        ColorPicker(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button, showAlpha = true)
-        ColorPicker(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet, showAlpha = false)
+        ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)
+        ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet)
 
         TextButton(
             onClick = { context.startActivity(Intent(context, LogActivity::class.java)) },
@@ -249,39 +254,65 @@ private fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: I
     )
 }
 
-/** Red, green, blue (and optionally opacity) sliders with a swatch; saves as they move. */
+/** A colour setting shown as a swatch; tapping it opens [ColorPickerSheet]. */
 @Composable
-private fun ColorPicker(context: Context, setting: DockPrefs.ColorSetting, label: Int, showAlpha: Boolean) {
+private fun ColorSettingRow(context: Context, setting: DockPrefs.ColorSetting, label: Int) {
     var argb by remember { mutableIntStateOf(DockPrefs.getColor(context, setting)) }
-    fun update(newArgb: Int) {
-        argb = newArgb
-        DockPrefs.setColor(context, setting, newArgb)
-    }
+    var open by remember { mutableStateOf(false) }
 
-    Text(
-        stringResource(label),
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(top = 16.dp),
-    )
-    // Drawn over a mid-grey so a translucent colour can be judged.
-    Box(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().height(40.dp).background(Color.Gray)) {
-        Box(modifier = Modifier.fillMaxWidth().height(40.dp).background(Color(argb)))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { open = true }
+            .padding(top = 16.dp),
+    ) {
+        Text(stringResource(label), modifier = Modifier.weight(1f))
+        ColorSwatch(argb, Modifier.width(72.dp).height(32.dp))
     }
-    fun channel(shift: Int) = (argb ushr shift) and 0xFF
-    fun with(shift: Int, v: Int) = (argb and (0xFF shl shift).inv()) or (v shl shift)
-
-    val channels = buildList {
-        if (showAlpha) add(Triple(R.string.color_alpha, 24, 0))
-        add(Triple(R.string.color_red, 16, 0))
-        add(Triple(R.string.color_green, 8, 0))
-        add(Triple(R.string.color_blue, 0, 0))
-    }
-    channels.forEach { (name, shift, _) ->
-        Text(stringResource(name, channel(shift)))
-        Slider(
-            value = channel(shift).toFloat(),
-            onValueChange = { update(with(shift, it.toInt())) },
-            valueRange = 0f..255f,
+    if (open) {
+        ColorPickerSheet(
+            title = label,
+            argb = argb,
+            onChange = {
+                argb = it
+                DockPrefs.setColor(context, setting, it)
+            },
+            onDismiss = { open = false },
         )
+    }
+}
+
+/** Drawn over a mid-grey so a translucent colour can be judged. */
+@Composable
+private fun ColorSwatch(argb: Int, modifier: Modifier) {
+    Box(modifier.background(Color.Gray)) {
+        Box(Modifier.fillMaxSize().background(Color(argb)))
+    }
+}
+
+/** The bottom sheet shared by every colour setting: opacity, red, green and blue sliders. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ColorPickerSheet(title: Int, argb: Int, onChange: (Int) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
+            Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
+            ColorSwatch(argb, Modifier.padding(top = 8.dp).fillMaxWidth().height(40.dp))
+            listOf(
+                R.string.color_alpha to 24,
+                R.string.color_red to 16,
+                R.string.color_green to 8,
+                R.string.color_blue to 0,
+            ).forEach { (name, shift) ->
+                val value = (argb ushr shift) and 0xFF
+                Text(stringResource(name, value), modifier = Modifier.padding(top = 8.dp))
+                Slider(
+                    value = value.toFloat(),
+                    onValueChange = { onChange((argb and (0xFF shl shift).inv()) or (it.toInt() shl shift)) },
+                    valueRange = 0f..255f,
+                )
+            }
+        }
     }
 }

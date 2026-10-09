@@ -45,7 +45,7 @@ class DockActivity : AppCompatActivity() {
     }
 
     private fun showSheet() {
-        val sheetColor = DockPrefs.getColor(this, DockPrefs.ColorSetting.SHEET) or OPAQUE
+        val sheetColor = DockPrefs.getColor(this, DockPrefs.ColorSetting.SHEET)
         val textColor = if (ColorUtils.calculateLuminance(sheetColor) > 0.5) Color.BLACK else Color.WHITE
 
         val dialog = BottomSheetDialog(this)
@@ -228,7 +228,6 @@ class DockActivity : AppCompatActivity() {
 
         private const val PADDING = 24
         private const val ROW_HEIGHT = 56
-        private const val OPAQUE = 0xFF000000.toInt()
         private const val WINDOW_MS = 24L * 60 * 60 * 1000
     }
 }
