@@ -84,7 +84,9 @@ class DockActivity : AppCompatActivity() {
         val root = FrameLayout(this).apply { setOnClickListener { closeSheet() } }
 
         val screenWidth = resources.displayMetrics.widthPixels
-        val radius = minOf(DockPrefs.getRadius(this).dp, (screenWidth * 0.9f).toInt())
+        val rows = DockPrefs.getRows(this)
+        // The rows' widths add up to the sheet's radius, shrunk to fit narrow screens.
+        val radius = minOf(rows.sumOf { it.widthDp.dp }, (screenWidth * 0.9f).toInt())
 
         // Everything in the sheet lives in this square, so one scale animates the lot.
         val sheetView = FrameLayout(this).apply {
@@ -122,7 +124,6 @@ class DockActivity : AppCompatActivity() {
             },
         )
 
-        val rows = DockPrefs.getRows(this)
         val maxItems = rows.sumOf { it.count }
         Thread {
             val apps = loadOpenApps(maxItems)
@@ -159,22 +160,25 @@ class DockActivity : AppCompatActivity() {
             return
         }
 
-        // Row 0 is the innermost. Rows fill from the inside; rows with no app left are dropped.
+        // Row 0 is the innermost. Rows fill from the inside; a row with no app left stays empty.
         var left = apps.size
-        val filled = ArrayList<Pair<DockPrefs.Row, Int>>()
-        for (row in rows) {
+        val filled = rows.map { row ->
             val n = minOf(left, row.count)
-            if (n <= 0) break
-            filled.add(row to n)
             left -= n
+            n
         }
 
-        // The ring between the corner and the outer edge is shared equally by the rows. Each
-        // row's icons are as large as fit in its band and without touching along the chord
-        // between neighbours, up to [MAX_ICON_SIZE].
-        val band = (radius - EDGE_MARGIN.dp).toFloat() / filled.size
-        val placed = filled.mapIndexed { i, (_, n) ->
-            val centreRadius = band * (i + 0.5f)
+        // Each row spans its width along the bottom edge, scaled if the sheet was shrunk to fit
+        // the screen. Its icons are as large as fit in that band and without touching along the
+        // chord between neighbours, up to [MAX_ICON_SIZE].
+        val scale = radius.toFloat() / rows.sumOf { it.widthDp.dp }
+        var inner = 0f
+        val placed = rows.mapIndexed { i, row ->
+            val band = row.widthDp.dp * scale
+            val centreRadius = inner + band / 2
+            inner += band
+            val n = filled[i]
+            if (n == 0) return@mapIndexed centreRadius to 0
             val step = (Math.PI / 2 / n).toFloat()
             val chord = 2 * centreRadius * sin(step / 2)
             val size = minOf(MAX_ICON_SIZE.dp.toFloat(), band / ROW_SPACING, chord / ICON_SPACING)
@@ -184,7 +188,7 @@ class DockActivity : AppCompatActivity() {
         }
 
         var next = 0
-        filled.forEachIndexed { i, (_, n) ->
+        filled.forEachIndexed { i, n ->
             val (centreRadius, size) = placed[i]
             val step = (Math.PI / 2 / n).toFloat()
             repeat(n) { slot ->
@@ -279,7 +283,6 @@ class DockActivity : AppCompatActivity() {
         private const val EXIT_MS = 200L
         private const val MAX_ICON_SIZE = 64
         private const val MIN_ICON_SIZE = 16
-        private const val EDGE_MARGIN = 12
         private const val ROW_SPACING = 1.2f
         private const val ICON_SPACING = 1.15f
         private const val COS_45 = 0.7071f

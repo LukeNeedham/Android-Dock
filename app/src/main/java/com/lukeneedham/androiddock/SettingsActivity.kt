@@ -151,16 +151,6 @@ private fun SettingsScreen(resumes: Int) {
 
         SectionHeader(R.string.sheet_title_section, R.string.rows_description)
         RowsEditor(context)
-        var radius by remember { mutableIntStateOf(DockPrefs.getRadius(context)) }
-        Text(stringResource(R.string.slider_radius, radius), modifier = Modifier.padding(top = 16.dp))
-        Slider(
-            value = radius.toFloat(),
-            onValueChange = {
-                radius = it.toInt()
-                DockPrefs.setRadius(context, radius)
-            },
-            valueRange = DockPrefs.RADIUS_MIN.toFloat()..DockPrefs.RADIUS_MAX.toFloat(),
-        )
         var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.align_right), modifier = Modifier.weight(1f))
@@ -231,6 +221,15 @@ private fun RowsEditor(context: Context) {
                     },
                     valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
                     steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
+                )
+                Text(stringResource(R.string.row_width, row.widthDp))
+                Slider(
+                    value = row.widthDp.toFloat(),
+                    onValueChange = {
+                        rows[index] = row.copy(widthDp = it.toInt())
+                        save()
+                    },
+                    valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
                 )
             }
         }
