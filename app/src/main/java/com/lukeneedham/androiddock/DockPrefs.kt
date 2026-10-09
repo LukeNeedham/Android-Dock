@@ -43,9 +43,8 @@ object DockPrefs {
     enum class ColorSetting(val key: String, val default: Int) {
         /** The touch target over the navigation bar. Translucent red by default. */
         BUTTON("button_color", 0x3CFF0000),
+        /** The sheet's colour at the corner; it fades to [SHEET_EDGE] at the outer edge. */
         SHEET("sheet_color", 0xFF2B2B2B.toInt()),
-
-        /** The sheet's colour at its outer edge, when it is a gradient. */
         SHEET_EDGE("sheet_edge_color", 0xFF0A0A0A.toInt()),
     }
 
@@ -160,15 +159,6 @@ object DockPrefs {
 
     fun setBlacklist(context: Context, packages: Collection<String>) {
         prefs(context).edit().putStringSet(BLACKLIST_KEY, packages.toSet()).apply()
-    }
-
-    /** Whether the sheet fades from [ColorSetting.SHEET] at the corner to [ColorSetting.SHEET_EDGE]. */
-    private const val GRADIENT_KEY = "sheet_gradient"
-
-    fun isGradient(context: Context): Boolean = prefs(context).getBoolean(GRADIENT_KEY, false)
-
-    fun setGradient(context: Context, value: Boolean) {
-        prefs(context).edit().putBoolean(GRADIENT_KEY, value).apply()
     }
 
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }

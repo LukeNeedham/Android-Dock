@@ -32,10 +32,8 @@
     <string name="sheet_empty">No recently used apps.</string>
     <string name="colors_title">Colours</string>
     <string name="color_button">Button colour</string>
-    <string name="color_sheet">Sheet colour</string>
     <string name="color_sheet_corner">Sheet colour at the corner</string>
     <string name="color_sheet_edge">Sheet colour at the edge</string>
-    <string name="sheet_gradient">Fade between two colours</string>
     <string name="color_red">Red: %1$d</string>
     <string name="color_green">Green: %1$d</string>
     <string name="color_blue">Blue: %1$d</string>

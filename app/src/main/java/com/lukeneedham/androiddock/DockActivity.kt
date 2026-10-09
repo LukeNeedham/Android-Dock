@@ -40,7 +40,7 @@ class DockActivity : AppCompatActivity() {
     private class SheetBackgroundView(
         context: Context,
         private val cornerColor: Int,
-        private val edgeColor: Int?,
+        private val edgeColor: Int,
         private val bands: List<Pair<Float, Float>>,
         private val rowColors: List<Int>,
     ) : View(context) {
@@ -50,9 +50,8 @@ class DockActivity : AppCompatActivity() {
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             super.onSizeChanged(w, h, oldw, oldh)
             // Fades from the corner to the sheet's outer edge.
-            paint.shader = edgeColor?.let {
-                RadialGradient(w.toFloat(), h.toFloat(), w.toFloat(), cornerColor, it, Shader.TileMode.CLAMP)
-            }
+            paint.shader =
+                RadialGradient(w.toFloat(), h.toFloat(), w.toFloat(), cornerColor, edgeColor, Shader.TileMode.CLAMP)
         }
 
         /**
@@ -128,9 +127,9 @@ class DockActivity : AppCompatActivity() {
 
     private fun buildContent(): View {
         val sheetColor = DockPrefs.getColor(this, DockPrefs.ColorSetting.SHEET)
-        val edgeColor = if (DockPrefs.isGradient(this)) DockPrefs.getColor(this, DockPrefs.ColorSetting.SHEET_EDGE) else null
+        val edgeColor = DockPrefs.getColor(this, DockPrefs.ColorSetting.SHEET_EDGE)
         // Text sits across the sheet, so it is judged against the middle of the fade.
-        val backdrop = if (edgeColor == null) sheetColor else ColorUtils.blendARGB(sheetColor, edgeColor, 0.5f)
+        val backdrop = ColorUtils.blendARGB(sheetColor, edgeColor, 0.5f)
         val textColor = if (ColorUtils.calculateLuminance(backdrop) > 0.5) Color.BLACK else Color.WHITE
 
         // Tapping outside the quarter circle closes the sheet.
