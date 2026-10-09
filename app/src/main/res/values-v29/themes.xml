@@ -1,0 +1,11 @@
+<resources>
+    <!-- From Android 10 the system adds a contrast scrim behind the bars unless told not to. -->
+    <style name="ThemeOverlay.AndroidDock.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="enableEdgeToEdge">true</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+    </style>
+</resources>

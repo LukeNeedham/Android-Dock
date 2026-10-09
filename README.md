@@ -3,7 +3,8 @@
 An Android overlay that gives you a task switcher from anywhere, in one tap. It is not an app you
 launch and use. It stays out of the way until you call it.
 
-> **Status:** project skeleton only. The features below are the plan; none are built yet.
+> **Status:** early prototype. The corner touch target opens the placeholder sheet and records touches
+> (viewable in the in-app debug log); the sheet and app switching are not built yet.
 
 ## The idea
 
@@ -14,8 +15,8 @@ launch and use. It stays out of the way until you call it.
 4. Dismissing the sheet **also kills Android Dock's own task**, so it never appears as an entry
    in the system task switcher.
 
-You can also open Android Dock from the launcher. It shows the same bottom sheet, but that is a
-fallback and not the intended way to use it.
+Opening Android Dock from the launcher does not show the sheet. It shows a settings screen with
+the setup steps, which is where a new user starts.
 
 ## Main points
 
@@ -25,13 +26,16 @@ fallback and not the intended way to use it.
 - **Open apps list.** The sheet shows the apps currently open, as the system task switcher does.
 - **Leaves no trace.** Closing the sheet removes the task (`finishAndRemoveTask()`), and the
   activity is excluded from recents, so the dock never shows up as a task itself.
-- **Launcher entry as a fallback.** Opening the app by hand shows the same sheet.
+- **Onboarding on first open.** Opening the app shows a settings screen that walks the user
+  through enabling the accessibility service and usage access, with each step ticked off as it
+  is done. Android Dock can't work until both are on.
 
 ## How it will work
 
 | Piece | Responsibility |
 |---|---|
 | `DockAccessibilityService` | Watches for a tap on the nav bar's bottom-right corner and launches the sheet. |
+| `SettingsActivity` | The launcher entry. Onboarding checklist for the accessibility service and usage access, re-checked each time the user returns from system settings. |
 | `DockActivity` | Transparent, `excludeFromRecents` activity that shows the bottom sheet and removes its own task when the sheet is dismissed. |
 
 ## Open questions
@@ -47,8 +51,9 @@ These need working out when the features are built:
   accessibility window information, or a combination. Thumbnails are likely not available.
 - **Switching to an app.** Launch it from its launcher intent, or ask the system to bring its task
   forward, depending on what the list can offer.
-- **Permissions and onboarding.** The user has to enable the accessibility service, and possibly
-  usage access, in system settings. The launcher fallback is a natural place to guide that.
+- **Restricted settings.** On Android 13+, a sideloaded app's accessibility service can be greyed
+  out until the user allows restricted settings in app info. The onboarding hints at this; it may
+  need a clearer, detected step.
 - **Distribution.** Google Play restricts use of the accessibility API. Plan on sideloading unless
   that changes.
 

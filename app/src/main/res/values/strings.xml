@@ -3,4 +3,30 @@
     <string name="accessibility_service_label">Android Dock</string>
     <string name="accessibility_service_description">Lets Android Dock detect a tap on the bottom-right corner of the navigation bar, and open the app switcher sheet.</string>
     <string name="sheet_title">Open apps</string>
+
+    <string name="onboarding_title">Set up Android Dock</string>
+    <string name="onboarding_intro">Android Dock is not an app you open. After setup, tap the bottom-right corner of the navigation bar to switch apps. It needs a couple of permissions first.</string>
+    <string name="onboarding_all_set">All set. Tap the bottom-right corner of the navigation bar from any app.</string>
+    <string name="onboarding_try_it">Try the sheet</string>
+    <string name="step_accessibility_title">1. Turn on the accessibility service</string>
+    <string name="step_accessibility_description">Lets Android Dock notice a tap on the corner of the navigation bar. Find Android Dock in the list and switch it on.</string>
+    <string name="step_accessibility_hint">If the switch is greyed out: open the app info page, tap the ⋮ menu and choose Allow restricted settings, then try again.</string>
+    <string name="step_accessibility_action">Open accessibility settings</string>
+    <string name="step_app_info_action">Open app info</string>
+    <string name="step_usage_title">2. Allow usage access</string>
+    <string name="step_usage_description">Lets Android Dock see which apps you have used recently, to build the list of open apps.</string>
+    <string name="step_usage_action">Open usage access settings</string>
+    <string name="onboarding_view_log">View debug log</string>
+    <string name="log_title">Debug log</string>
+    <string name="log_empty">Nothing recorded yet. Enable the accessibility service, then touch the bottom-right corner.</string>
+    <string name="log_refresh">Refresh</string>
+    <string name="log_copy">Copy</string>
+    <string name="log_clear">Clear</string>
+    <string name="log_copied">Log copied</string>
+    <string name="position_title">Touch target</string>
+    <string name="position_description">With gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the touch target until a swipe up from it stays with Android Dock. Touching it opens the sheet.</string>
+    <string name="slider_right">Distance from the right edge: %1$d dp</string>
+    <string name="slider_bottom">Distance from the bottom: %1$d dp</string>
+    <string name="slider_width">Width: %1$d dp</string>
+    <string name="slider_height">Height: %1$d dp</string>
 </resources>

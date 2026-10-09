@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Granted by the user in system settings (usage access), used to list recent apps. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:allowBackup="false"
@@ -7,22 +13,32 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AndroidDock">
 
-        <!--
-            The bottom sheet. Translucent, and excluded from recents so it never shows up as
-            a task of its own. Launched from the launcher, or by the accessibility service.
-        -->
+        <!-- Settings and onboarding. The only launcher entry. -->
         <activity
-            android:name=".DockActivity"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:launchMode="singleInstance"
-            android:taskAffinity=""
-            android:theme="@style/Theme.AndroidDock.Sheet">
+            android:name=".SettingsActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Shows the persisted debug log. -->
+        <activity
+            android:name=".LogActivity"
+            android:exported="false" />
+
+        <!--
+            The bottom sheet. Translucent, and excluded from recents so it never shows up as
+            a task of its own. Launched by the accessibility service, or from the settings screen.
+        -->
+        <activity
+            android:name=".DockActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:theme="@style/Theme.AndroidDock.Sheet" />
 
         <!-- Catches taps on the bottom-right corner of the navigation bar. -->
         <service

@@ -15,6 +15,18 @@ android {
         versionName = "0.1.0"
     }
 
+    // A fixed debug key, committed to the repo. CI builds on a fresh machine each time, which would
+    // otherwise sign every APK with a different key, and Android refuses to update an installed app
+    // with an APK signed by another key. This key is public and only for debug builds.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
