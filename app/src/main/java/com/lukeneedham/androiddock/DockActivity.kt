@@ -2,7 +2,6 @@ package com.lukeneedham.androiddock
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -17,7 +16,6 @@ import android.view.animation.DecelerateInterpolator
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -168,19 +166,6 @@ class DockActivity : AppCompatActivity() {
             FrameLayout.LayoutParams(radius, radius),
         )
 
-        val loading = ProgressBar(this).apply { indeterminateTintList = ColorStateList.valueOf(textColor) }
-        val spinnerSize = 40.dp
-        val spinnerCentre = (radius * 0.6f).toInt()
-        sheetView.addView(
-            loading,
-            FrameLayout.LayoutParams(spinnerSize, spinnerSize, Gravity.BOTTOM or Gravity.END).apply {
-                // On the diagonal of the quarter circle.
-                val offset = (spinnerCentre * COS_45 - spinnerSize / 2).toInt()
-                rightMargin = offset
-                bottomMargin = offset
-            },
-        )
-
         val maxItems = rows.sumOf { it.count }
         reload = {
             val generation = ++loadGeneration
@@ -189,7 +174,6 @@ class DockActivity : AppCompatActivity() {
                 runOnUiThread {
                     // A newer load has started since, so this one is out of date.
                     if (isDestroyed || isFinishing || generation != loadGeneration) return@runOnUiThread
-                    sheetView.removeView(loading)
                     appViews.forEach { sheetView.removeView(it) }
                     appViews.clear()
                     showApps(sheetView, apps, rows, radius, textColor)
@@ -344,6 +328,5 @@ class DockActivity : AppCompatActivity() {
         private const val MIN_ICON_SIZE = 16
         private const val ROW_SPACING = 1.2f
         private const val ICON_SPACING = 1.15f
-        private const val COS_45 = 0.7071f
     }
 }
