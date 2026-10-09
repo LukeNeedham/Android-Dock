@@ -1,11 +1,14 @@
 package com.lukeneedham.androiddock
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.Executors
 
 /**
@@ -23,6 +26,8 @@ object DockLog {
     private const val KEEP_CHARS = 128_000
 
     private val executor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val listeners = CopyOnWriteArraySet<() -> Unit>()
     private val timeFormat = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
 
     fun log(context: Context, message: String) {
@@ -32,7 +37,17 @@ object DockLog {
         executor.execute {
             file.appendText(line)
             if (file.length() > MAX_BYTES) trim(file)
+            mainHandler.post { listeners.forEach { it() } }
         }
+    }
+
+    /** Calls [listener] on the main thread after each line is written. Remove it when done. */
+    fun addListener(listener: () -> Unit) {
+        listeners += listener
+    }
+
+    fun removeListener(listener: () -> Unit) {
+        listeners -= listener
     }
 
     /** The whole log, oldest line first. Waits for pending writes, so call it sparingly. */
