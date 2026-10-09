@@ -42,7 +42,7 @@
             android:exported="false" />
 
         <!--
-            The bottom sheet. Translucent, and excluded from recents so it never shows up as
+            The corner sheet. Translucent, and excluded from recents so it never shows up as
             a task of its own. Launched by the accessibility service, or from the settings screen.
         -->
         <activity
