@@ -66,13 +66,6 @@ object DockPrefs {
     private const val DEFAULT_ICON_SIZE = 56
     private const val ALIGN_RIGHT_KEY = "align_right"
 
-    fun getMaxItems(context: Context): Int =
-        prefs(context).getInt(MAX_ITEMS_KEY, 6).coerceIn(MAX_ITEMS_MIN, MAX_ITEMS_MAX)
-
-    fun setMaxItems(context: Context, value: Int) {
-        prefs(context).edit().putInt(MAX_ITEMS_KEY, value).apply()
-    }
-
     /**
      * The rows of the sheet, innermost (closest to the corner) first; never empty. Stored as
      * "count:size,count:size". Falls back to one row sized from the old "maximum apps" setting.
