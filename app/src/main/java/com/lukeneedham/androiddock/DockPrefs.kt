@@ -58,7 +58,7 @@ object DockPrefs {
      * bottom edge. The rows' widths add up to the sheet's radius, and the icons in a row are
      * sized to the room it has.
      */
-    data class Row(val count: Int, val widthDp: Int, val color: Int = 0)
+    data class Row(val count: Int, val widthDp: Int, val color: Int = ROW_COLOR_DEFAULT, val showColor: Boolean = false)
 
     const val ROW_COUNT_MIN = 1
     const val ROW_COUNT_MAX = 12
@@ -68,19 +68,22 @@ object DockPrefs {
     const val ROWS_MAX = 6
     private const val ROWS_KEY = "rows"
     private const val OLD_MAX_ITEMS_KEY = "max_items"
-    private const val ALIGN_RIGHT_KEY = "align_right"
+    /** The background colour a row starts with, and gets when it is switched on while clear. */
+    const val ROW_COLOR_DEFAULT = 0xFF3A3A3A.toInt()
 
     /**
      * The rows of the sheet, innermost (closest to the corner) first; never empty. Stored as
-     * "count:width:color,count:width:color"; the colour is ARGB, transparent by default. Falls back to one row sized from the old "maximum apps" setting.
+     * "count:width:color:show,..."; the colour is ARGB, and only drawn when show is set. Falls back to one row sized from the old "maximum apps" setting.
      */
     fun getRows(context: Context): List<Row> {
         val prefs = prefs(context)
         val parsed = prefs.getString(ROWS_KEY, null)?.split(',')?.mapNotNull { part ->
             val count = part.substringBefore(':').toIntOrNull() ?: return@mapNotNull null
             val width = part.split(':').getOrNull(1)?.toIntOrNull() ?: ROW_WIDTH_DEFAULT
-            val color = part.split(':').getOrNull(2)?.toIntOrNull() ?: 0
-            Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX), color)
+            val color = part.split(':').getOrNull(2)?.toIntOrNull() ?: ROW_COLOR_DEFAULT
+            // Rows saved before the switch existed showed their colour unless it was clear.
+            val show = part.split(':').getOrNull(3)?.let { it == "1" } ?: (color ushr 24 != 0)
+            Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX), color, show)
         }?.take(ROWS_MAX)
         if (!parsed.isNullOrEmpty()) return parsed
         val old = prefs.getInt(OLD_MAX_ITEMS_KEY, 6).coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX)
@@ -89,7 +92,7 @@ object DockPrefs {
 
     fun setRows(context: Context, rows: List<Row>) {
         prefs(context).edit()
-            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.widthDp}:${it.color}" })
+            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.widthDp}:${it.color}:${if (it.showColor) 1 else 0}" })
             .apply()
     }
 
@@ -123,14 +126,6 @@ object DockPrefs {
 
     fun setPadding(context: Context, padding: Padding, value: Int) {
         prefs(context).edit().putInt(padding.key, value).apply()
-    }
-
-    /** Whether the sheet's items sit against the right edge, with the icon on the right. */
-    fun isAlignRight(context: Context): Boolean =
-        prefs(context).getBoolean(ALIGN_RIGHT_KEY, false)
-
-    fun setAlignRight(context: Context, value: Boolean) {
-        prefs(context).edit().putBoolean(ALIGN_RIGHT_KEY, value).apply()
     }
 
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }

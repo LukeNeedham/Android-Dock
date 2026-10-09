@@ -1,5 +1,6 @@
 package com.lukeneedham.androiddock
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Canvas
@@ -7,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
@@ -21,6 +23,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import kotlin.math.asin
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
@@ -42,6 +45,18 @@ class DockActivity : AppCompatActivity() {
     ) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
         private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+
+        /**
+         * Only the quarter circle takes touches. A touch in the square's empty corner is left
+         * unhandled, so it falls through to the root and closes the sheet.
+         */
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+                hypot(width - event.x, height - event.y) > width
+            ) return false
+            return super.onTouchEvent(event)
+        }
 
         override fun onDraw(canvas: Canvas) {
             canvas.drawCircle(width.toFloat(), height.toFloat(), width.toFloat(), paint)
@@ -131,7 +146,7 @@ class DockActivity : AppCompatActivity() {
 
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
-            SheetBackgroundView(this, sheetColor, rowBands(rows, radius), rows.map { it.color }).apply { isClickable = true },
+            SheetBackgroundView(this, sheetColor, rowBands(rows, radius), rows.map { if (it.showColor) it.color else 0 }).apply { isClickable = true },
             FrameLayout.LayoutParams(radius, radius),
         )
 

@@ -51,5 +51,4 @@
     <string name="row_move_down">Move away from the corner</string>
     <string name="row_delete">Delete row</string>
     <string name="row_add">Add row</string>
-    <string name="align_right">Align items to the right</string>
 </resources>

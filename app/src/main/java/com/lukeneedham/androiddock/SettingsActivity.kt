@@ -17,7 +17,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Switch
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -191,17 +191,6 @@ private fun SettingsScreen(resumes: Int) {
             )
         }
         RowsEditor(context)
-        var alignRight by remember { mutableStateOf(DockPrefs.isAlignRight(context)) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.align_right), modifier = Modifier.weight(1f))
-            Switch(
-                checked = alignRight,
-                onCheckedChange = {
-                    alignRight = it
-                    DockPrefs.setAlignRight(context, it)
-                },
-            )
-        }
 
         SectionHeader(R.string.colors_title, null)
         ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)
@@ -272,15 +261,26 @@ private fun RowsEditor(context: Context) {
                     },
                     valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { pickerRow = index }
-                        .padding(vertical = 8.dp),
-                ) {
-                    Text(stringResource(R.string.row_color), modifier = Modifier.weight(1f))
-                    ColorSwatch(row.color, Modifier.width(72.dp).height(32.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Checkbox(
+                        checked = row.showColor,
+                        onCheckedChange = { show ->
+                            // Switching on a clear colour would show nothing, so give it one.
+                            val color = if (show && row.color ushr 24 == 0) DockPrefs.ROW_COLOR_DEFAULT else row.color
+                            rows[index] = row.copy(showColor = show, color = color)
+                            save()
+                        },
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { pickerRow = index }
+                            .padding(vertical = 8.dp),
+                    ) {
+                        Text(stringResource(R.string.row_color), modifier = Modifier.weight(1f))
+                        ColorSwatch(row.color, Modifier.width(72.dp).height(32.dp))
+                    }
                 }
             }
         }
@@ -294,7 +294,7 @@ private fun RowsEditor(context: Context) {
                 title = R.string.row_color,
                 argb = row.color,
                 onChange = {
-                    rows[index] = row.copy(color = it)
+                    rows[index] = row.copy(color = it, showColor = true)
                     save()
                 },
                 onDismiss = { pickerRow = null },
