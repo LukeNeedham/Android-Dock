@@ -7,5 +7,19 @@
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.AndroidDock.BottomSheetDialog</item>
+    </style>
+
+    <!--
+        The sheet's own window: edge to edge with transparent system bars and no dim, so the
+        only thing drawn over the current app is the sheet itself.
+    -->
+    <style name="ThemeOverlay.AndroidDock.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="enableEdgeToEdge">true</item>
     </style>
 </resources>
