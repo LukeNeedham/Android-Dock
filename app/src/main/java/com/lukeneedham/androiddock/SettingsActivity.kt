@@ -184,34 +184,13 @@ private fun SettingsScreen(resumes: Int) {
             SettingSlider(context, setting, label)
         }
 
-        SectionHeader(R.string.sheet_title_section, R.string.rows_description)
-        var inner by remember { mutableIntStateOf(DockPrefs.getInnerOffset(context)) }
-        Text(stringResource(R.string.slider_inner_offset, inner), modifier = Modifier.padding(top = 16.dp))
-        Slider(
-            value = inner.toFloat(),
-            onValueChange = {
-                inner = it.toInt()
-                DockPrefs.setInnerOffset(context, inner)
-            },
-            valueRange = 0f..DockPrefs.INNER_MAX.toFloat(),
-        )
-        DockPrefs.Padding.entries.forEach { padding ->
-            var value by remember { mutableIntStateOf(DockPrefs.getPadding(context, padding)) }
-            val label = when (padding) {
-                DockPrefs.Padding.BOTTOM -> R.string.slider_padding_bottom
-                DockPrefs.Padding.SIDE -> R.string.slider_padding_side
-            }
-            Text(stringResource(label, value), modifier = Modifier.padding(top = 16.dp))
-            Slider(
-                value = value.toFloat(),
-                onValueChange = {
-                    value = it.toInt()
-                    DockPrefs.setPadding(context, padding, value)
-                },
-                valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
-            )
-        }
-        RowsEditor(context)
+        SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
+        FilledTonalButton(
+            onClick = { context.startActivity(Intent(context, FanLayoutActivity::class.java)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        ) { Text(stringResource(R.string.fan_layout_open)) }
 
         SectionHeader(R.string.colors_title, null)
         ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)
@@ -227,122 +206,6 @@ private fun SettingsScreen(resumes: Int) {
                 .fillMaxWidth()
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.onboarding_view_log)) }
-    }
-}
-
-/** Edits the sheet's rows: add, delete, reorder, and each row's item count and icon size. */
-@Composable
-private fun RowsEditor(context: Context) {
-    val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
-    val haptic = LocalHapticFeedback.current
-    var pickerRow by remember { mutableStateOf<Int?>(null) }
-    val moveUp = stringResource(R.string.row_move_up)
-    val moveDown = stringResource(R.string.row_move_down)
-    val delete = stringResource(R.string.row_delete)
-    fun save() = DockPrefs.setRows(context, rows.toList())
-    fun move(from: Int, to: Int) {
-        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        rows.add(to, rows.removeAt(from))
-        save()
-    }
-
-    rows.forEachIndexed { index, row ->
-        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.row_title, index + 1),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { move(index, index - 1) }, enabled = index > 0) {
-                        Text("↑", modifier = Modifier.semantics { contentDescription = moveUp })
-                    }
-                    IconButton(onClick = { move(index, index + 1) }, enabled = index < rows.lastIndex) {
-                        Text("↓", modifier = Modifier.semantics { contentDescription = moveDown })
-                    }
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            rows.removeAt(index)
-                            save()
-                        },
-                        enabled = rows.size > 1,
-                    ) { Text("✕", modifier = Modifier.semantics { contentDescription = delete }) }
-                }
-                Text(stringResource(R.string.row_count, row.count))
-                Slider(
-                    value = row.count.toFloat(),
-                    onValueChange = {
-                        if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        rows[index] = row.copy(count = it.toInt())
-                        save()
-                    },
-                    valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
-                    steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
-                )
-                Text(stringResource(R.string.row_width, row.widthDp))
-                Slider(
-                    value = row.widthDp.toFloat(),
-                    onValueChange = {
-                        rows[index] = row.copy(widthDp = it.toInt())
-                        save()
-                    },
-                    valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
-                )
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Checkbox(
-                        checked = row.showColor,
-                        onCheckedChange = { show ->
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            // Switching on a clear colour would show nothing, so give it one.
-                            val color = if (show && row.color ushr 24 == 0) DockPrefs.ROW_COLOR_DEFAULT else row.color
-                            rows[index] = row.copy(showColor = show, color = color)
-                            save()
-                        },
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                pickerRow = index
-                            }
-                            .padding(vertical = 8.dp),
-                    ) {
-                        Text(stringResource(R.string.row_color), modifier = Modifier.weight(1f))
-                        ColorSwatch(row.color, Modifier.width(72.dp).height(32.dp))
-                    }
-                }
-            }
-        }
-    }
-    pickerRow?.let { index ->
-        val row = rows.getOrNull(index)
-        if (row == null) {
-            pickerRow = null
-        } else {
-            ColorPickerSheet(
-                title = R.string.row_color,
-                argb = row.color,
-                onChange = {
-                    rows[index] = row.copy(color = it, showColor = true)
-                    save()
-                },
-                onDismiss = { pickerRow = null },
-            )
-        }
-    }
-    if (rows.size < DockPrefs.ROWS_MAX) {
-        FilledTonalButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                rows.add(DockPrefs.newRow())
-                save()
-            },
-            modifier = Modifier.padding(top = 12.dp),
-        ) { Text(stringResource(R.string.row_add)) }
     }
 }
 
@@ -471,7 +334,7 @@ private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (Stri
 }
 
 @Composable
-private fun SectionHeader(title: Int, description: Int?) {
+internal fun SectionHeader(title: Int, description: Int?) {
     Text(
         stringResource(title),
         style = MaterialTheme.typography.titleMedium,
@@ -573,7 +436,7 @@ private fun ColorSettingRow(context: Context, setting: DockPrefs.ColorSetting, l
 
 /** Drawn over a mid-grey so a translucent colour can be judged. */
 @Composable
-private fun ColorSwatch(argb: Int, modifier: Modifier) {
+internal fun ColorSwatch(argb: Int, modifier: Modifier) {
     Box(modifier.background(Color.Gray)) {
         Box(Modifier.fillMaxSize().background(Color(argb)))
     }
@@ -582,7 +445,7 @@ private fun ColorSwatch(argb: Int, modifier: Modifier) {
 /** The bottom sheet shared by every colour setting: opacity, red, green and blue sliders. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ColorPickerSheet(title: Int, argb: Int, onChange: (Int) -> Unit, onDismiss: () -> Unit) {
+internal fun ColorPickerSheet(title: Int, argb: Int, onChange: (Int) -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
             Text(stringResource(title), style = MaterialTheme.typography.titleMedium)

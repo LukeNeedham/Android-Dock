@@ -58,5 +58,9 @@
     <string name="row_move_up">Move towards the corner</string>
     <string name="row_move_down">Move away from the corner</string>
     <string name="row_delete">Delete row</string>
+    <string name="fan_layout_title">Fan layout</string>
+    <string name="fan_layout_summary">The rows of apps in the fan: how many, how big, and how they are coloured.</string>
+    <string name="fan_layout_open">Customise fan layout</string>
+    <string name="fan_layout_preview_note">Preview with placeholder apps</string>
     <string name="row_add">Add row</string>
 </resources>
