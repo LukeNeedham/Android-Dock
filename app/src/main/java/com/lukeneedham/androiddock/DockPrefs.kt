@@ -60,7 +60,7 @@ object DockPrefs {
      * bottom edge. The rows' widths add up to the sheet's radius, and the icons in a row are
      * sized to the room it has.
      */
-    data class Row(val count: Int, val widthDp: Int, val color: Int = ROW_COLOR_DEFAULT, val showColor: Boolean = false)
+    data class Row(val count: Int, val widthDp: Int)
 
     const val ROW_COUNT_MIN = 1
     const val ROW_COUNT_MAX = 12
@@ -69,29 +69,20 @@ object DockPrefs {
     private const val ROW_WIDTH_DEFAULT = 64
     const val ROWS_MAX = 6
     private const val ROWS_KEY = "rows"
-    /** The background colour a row starts with, and gets when it is switched on while clear. */
-    const val ROW_COLOR_DEFAULT = 0xFF3A3A3A.toInt()
 
-    /** The rows a fresh install has. Their colours are set but switched off. */
-    val DEFAULT_ROWS = listOf(
-        Row(3, 58, 0xFF962C2C.toInt()),
-        Row(5, 59, 0xFF457A45.toInt()),
-        Row(8, 39),
-    )
+    /** The rows a fresh install has. */
+    val DEFAULT_ROWS = listOf(Row(3, 58), Row(5, 59), Row(8, 39))
 
     /**
      * The rows of the sheet, innermost (closest to the corner) first; never empty. Stored as
-     * "count:width:color:show,..."; the colour is ARGB, and only drawn when show is set. Starts with [DEFAULT_ROWS].
+     * "count:width,..." (older versions stored a colour after the width, which is ignored). Starts with [DEFAULT_ROWS].
      */
     fun getRows(context: Context): List<Row> {
         val prefs = prefs(context)
         val parsed = prefs.getString(ROWS_KEY, null)?.split(',')?.mapNotNull { part ->
             val count = part.substringBefore(':').toIntOrNull() ?: return@mapNotNull null
             val width = part.split(':').getOrNull(1)?.toIntOrNull() ?: ROW_WIDTH_DEFAULT
-            val color = part.split(':').getOrNull(2)?.toIntOrNull() ?: ROW_COLOR_DEFAULT
-            // Rows saved before the switch existed showed their colour unless it was clear.
-            val show = part.split(':').getOrNull(3)?.let { it == "1" } ?: (color ushr 24 != 0)
-            Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX), color, show)
+            Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX))
         }?.take(ROWS_MAX)
         if (!parsed.isNullOrEmpty()) return parsed
         return DEFAULT_ROWS
@@ -99,7 +90,7 @@ object DockPrefs {
 
     fun setRows(context: Context, rows: List<Row>) {
         prefs(context).edit()
-            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.widthDp}:${it.color}:${if (it.showColor) 1 else 0}" })
+            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.widthDp}" })
             .apply()
     }
 

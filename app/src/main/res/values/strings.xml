@@ -54,7 +54,6 @@
     <string name="blacklist_pick_title">Choose an app to hide</string>
     <string name="blacklist_search">Search apps</string>
     <string name="row_width">Width: %1$d dp</string>
-    <string name="row_color">Background colour</string>
     <string name="row_move_up">Move towards the corner</string>
     <string name="row_move_down">Move away from the corner</string>
     <string name="row_delete">Delete row</string>

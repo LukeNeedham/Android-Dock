@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -81,11 +79,13 @@ private fun FanLayoutScreen() {
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
     var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
+    // The row whose count or width is being dragged, tinted in the preview until the drag ends.
+    var editingRow by remember { mutableStateOf<Int?>(null) }
     val sheetColor = DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)
     val edgeColor = DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)
 
     Column(modifier = Modifier.systemBarsPadding()) {
-        FanPreview(inner, bottomPad, sidePad, rows.toList(), sheetColor, edgeColor)
+        FanPreview(inner, bottomPad, sidePad, rows.toList(), editingRow, sheetColor, edgeColor)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -125,7 +125,7 @@ private fun FanLayoutScreen() {
                 },
                 valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
             )
-            RowsEditor(context, rows)
+            RowsEditor(context, rows) { editingRow = it }
         }
     }
 }
@@ -143,7 +143,7 @@ private val PLACEHOLDER_COLORS = listOf(
 
 /**
  * The fan as the sheet would draw it with every row full: the same geometry as [DockActivity],
- * but with a coloured circle for each app. Sits in the bottom-right of a box, like the screen
+ * but with a coloured circle for each app. The row being edited is tinted white. Sits in the bottom-right of a box, like the screen
  * corner.
  */
 @Composable
@@ -152,6 +152,7 @@ private fun FanPreview(
     bottomPad: Int,
     sidePad: Int,
     rows: List<DockPrefs.Row>,
+    editingRow: Int?,
     sheetColor: Int,
     edgeColor: Int,
 ) {
@@ -189,14 +190,14 @@ private fun FanPreview(
 
             var edge = inner * dp * scale
             var colorIndex = 0
-            rows.forEach { row ->
+            rows.forEachIndexed { rowIndex, row ->
                 val start = edge
                 edge += row.widthDp * dp * scale
                 val end = edge
                 val centreRadius = (start + end) / 2
-                if (row.showColor && row.color ushr 24 != 0) {
+                if (rowIndex == editingRow) {
                     drawCircle(
-                        color = Color(row.color),
+                        color = Color.White.copy(alpha = 0.2f),
                         radius = centreRadius,
                         center = corner,
                         style = Stroke(width = end - start),
@@ -239,9 +240,8 @@ private fun FanPreview(
 
 /** Edits the sheet's rows: add, delete, reorder, and each row's item count, width and colour. */
 @Composable
-private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>) {
+private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, onEditing: (Int?) -> Unit) {
     val haptic = LocalHapticFeedback.current
-    var pickerRow by remember { mutableStateOf<Int?>(null) }
     val moveUp = stringResource(R.string.row_move_up)
     val moveDown = stringResource(R.string.row_move_down)
     val delete = stringResource(R.string.row_delete)
@@ -280,10 +280,12 @@ private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>) {
                 Slider(
                     value = row.count.toFloat(),
                     onValueChange = {
+                        onEditing(index)
                         if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         rows[index] = row.copy(count = it.toInt())
                         save()
                     },
+                    onValueChangeFinished = { onEditing(null) },
                     valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
                     steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
                 )
@@ -291,53 +293,14 @@ private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>) {
                 Slider(
                     value = row.widthDp.toFloat(),
                     onValueChange = {
+                        onEditing(index)
                         rows[index] = row.copy(widthDp = it.toInt())
                         save()
                     },
+                    onValueChangeFinished = { onEditing(null) },
                     valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Checkbox(
-                        checked = row.showColor,
-                        onCheckedChange = { show ->
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            // Switching on a clear colour would show nothing, so give it one.
-                            val color = if (show && row.color ushr 24 == 0) DockPrefs.ROW_COLOR_DEFAULT else row.color
-                            rows[index] = row.copy(showColor = show, color = color)
-                            save()
-                        },
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                pickerRow = index
-                            }
-                            .padding(vertical = 8.dp),
-                    ) {
-                        Text(stringResource(R.string.row_color), modifier = Modifier.weight(1f))
-                        ColorSwatch(row.color, Modifier.width(72.dp).height(32.dp))
-                    }
-                }
             }
-        }
-    }
-    pickerRow?.let { index ->
-        val row = rows.getOrNull(index)
-        if (row == null) {
-            pickerRow = null
-        } else {
-            ColorPickerSheet(
-                title = R.string.row_color,
-                argb = row.color,
-                onChange = {
-                    rows[index] = row.copy(color = it, showColor = true)
-                    save()
-                },
-                onDismiss = { pickerRow = null },
-            )
         }
     }
     if (rows.size < DockPrefs.ROWS_MAX) {
