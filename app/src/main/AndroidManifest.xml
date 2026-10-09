@@ -7,14 +7,6 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
-    <!--
-        Granted once over adb. Lets the app switch its accessibility service back on after an
-        update, which the system can turn off.
-    -->
-    <uses-permission
-        android:name="android.permission.WRITE_SECURE_SETTINGS"
-        tools:ignore="ProtectedPermissions" />
-
     <!-- Lets the sheet look up the name, icon and launch intent of other apps. -->
     <queries>
         <intent>
@@ -60,15 +52,6 @@
             android:launchMode="singleInstance"
             android:taskAffinity=""
             android:theme="@style/Theme.AndroidDock.Sheet" />
-
-        <!-- Switches the accessibility service back on after an update. -->
-        <receiver
-            android:name=".UpdateReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
 
         <!-- Catches taps on the bottom-right corner of the navigation bar. -->
         <service
