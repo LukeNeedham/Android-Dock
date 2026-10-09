@@ -17,8 +17,8 @@ object DockPrefs {
     enum class Setting(val key: String, val default: Int, val min: Int) {
         RIGHT_OFFSET("right_offset_dp", 0, 0),
         BOTTOM_OFFSET("bottom_offset_dp", 0, 0),
-        WIDTH("width_dp", 64, 16),
-        HEIGHT("height_dp", 64, 16),
+        WIDTH("width_dp", 31, 16),
+        HEIGHT("height_dp", 24, 16),
         ;
 
         fun max(context: Context): Int = when (this) {
@@ -42,8 +42,10 @@ object DockPrefs {
     /** The colours the user can change, stored as ARGB ints. */
     enum class ColorSetting(val key: String, val default: Int) {
         /** The touch target over the navigation bar. Translucent red by default. */
-        BUTTON("button_color", 0x3CFF0000),
-        SHEET("sheet_color", 0xFF2B2B2B.toInt()),
+        BUTTON("button_color", 0x29FFFFFF),
+        /** The sheet's colour at the corner; it fades to [SHEET_EDGE] at the outer edge. */
+        SHEET("sheet_color", 0xFF000000.toInt()),
+        SHEET_EDGE("sheet_edge_color", 0x00000000),
     }
 
     fun getColor(context: Context, setting: ColorSetting): Int =
@@ -53,25 +55,115 @@ object DockPrefs {
         prefs(context).edit().putInt(setting.key, value).apply()
     }
 
-    /** How many apps the sheet lists at most. The sheet's height is fixed from this. */
-    const val MAX_ITEMS_MIN = 1
-    const val MAX_ITEMS_MAX = 12
-    private const val MAX_ITEMS_KEY = "max_items"
-    private const val ALIGN_RIGHT_KEY = "align_right"
+    /**
+     * One circular row of icons: how many it holds, and its width in dp, measured along the
+     * bottom edge. The rows' widths add up to the sheet's radius, and the icons in a row are
+     * sized to the room it has.
+     */
+    data class Row(val count: Int, val widthDp: Int, val color: Int = ROW_COLOR_DEFAULT, val showColor: Boolean = false)
 
-    fun getMaxItems(context: Context): Int =
-        prefs(context).getInt(MAX_ITEMS_KEY, 6).coerceIn(MAX_ITEMS_MIN, MAX_ITEMS_MAX)
+    const val ROW_COUNT_MIN = 1
+    const val ROW_COUNT_MAX = 12
+    const val ROW_WIDTH_MIN = 32
+    const val ROW_WIDTH_MAX = 150
+    private const val ROW_WIDTH_DEFAULT = 64
+    const val ROWS_MAX = 6
+    private const val ROWS_KEY = "rows"
+    /** The background colour a row starts with, and gets when it is switched on while clear. */
+    const val ROW_COLOR_DEFAULT = 0xFF3A3A3A.toInt()
 
-    fun setMaxItems(context: Context, value: Int) {
-        prefs(context).edit().putInt(MAX_ITEMS_KEY, value).apply()
+    /** The rows a fresh install has. Their colours are set but switched off. */
+    val DEFAULT_ROWS = listOf(
+        Row(3, 58, 0xFF962C2C.toInt()),
+        Row(5, 59, 0xFF457A45.toInt()),
+        Row(8, 39),
+    )
+
+    /**
+     * The rows of the sheet, innermost (closest to the corner) first; never empty. Stored as
+     * "count:width:color:show,..."; the colour is ARGB, and only drawn when show is set. Starts with [DEFAULT_ROWS].
+     */
+    fun getRows(context: Context): List<Row> {
+        val prefs = prefs(context)
+        val parsed = prefs.getString(ROWS_KEY, null)?.split(',')?.mapNotNull { part ->
+            val count = part.substringBefore(':').toIntOrNull() ?: return@mapNotNull null
+            val width = part.split(':').getOrNull(1)?.toIntOrNull() ?: ROW_WIDTH_DEFAULT
+            val color = part.split(':').getOrNull(2)?.toIntOrNull() ?: ROW_COLOR_DEFAULT
+            // Rows saved before the switch existed showed their colour unless it was clear.
+            val show = part.split(':').getOrNull(3)?.let { it == "1" } ?: (color ushr 24 != 0)
+            Row(count.coerceIn(ROW_COUNT_MIN, ROW_COUNT_MAX), width.coerceIn(ROW_WIDTH_MIN, ROW_WIDTH_MAX), color, show)
+        }?.take(ROWS_MAX)
+        if (!parsed.isNullOrEmpty()) return parsed
+        return DEFAULT_ROWS
     }
 
-    /** Whether the sheet's items sit against the right edge, with the icon on the right. */
-    fun isAlignRight(context: Context): Boolean =
-        prefs(context).getBoolean(ALIGN_RIGHT_KEY, false)
+    fun setRows(context: Context, rows: List<Row>) {
+        prefs(context).edit()
+            .putString(ROWS_KEY, rows.joinToString(",") { "${it.count}:${it.widthDp}:${it.color}:${if (it.showColor) 1 else 0}" })
+            .apply()
+    }
 
-    fun setAlignRight(context: Context, value: Boolean) {
-        prefs(context).edit().putBoolean(ALIGN_RIGHT_KEY, value).apply()
+    fun newRow() = Row(6, ROW_WIDTH_DEFAULT)
+
+    /** How far from the corner, in dp, the first row starts. */
+    const val INNER_MAX = 150
+    private const val INNER_DEFAULT = 70
+    private const val INNER_KEY = "inner_offset_dp"
+
+    fun getInnerOffset(context: Context): Int =
+        prefs(context).getInt(INNER_KEY, INNER_DEFAULT).coerceIn(0, INNER_MAX)
+
+    fun setInnerOffset(context: Context, value: Int) {
+        prefs(context).edit().putInt(INNER_KEY, value).apply()
+    }
+
+    /**
+     * The clear space, in dp, between the first or last icon of a row and the screen edge it is
+     * nearest: the bottom edge for the first, the side edge for the last.
+     */
+    enum class Padding(val key: String, val default: Int) {
+        BOTTOM("padding_bottom_dp", 20),
+        SIDE("padding_side_dp", 4),
+    }
+
+    const val PADDING_MAX = 80
+
+    fun getPadding(context: Context, padding: Padding): Int =
+        prefs(context).getInt(padding.key, padding.default).coerceIn(0, PADDING_MAX)
+
+    fun setPadding(context: Context, padding: Padding, value: Int) {
+        prefs(context).edit().putInt(padding.key, value).apply()
+    }
+
+    /**
+     * Apps the user has dismissed from the sheet, with the time they did. A dismissed app stays
+     * off the sheet until it has been used again after that time.
+     */
+    private const val DISMISSED_KEY = "dismissed_apps"
+    private const val DISMISS_KEEP_MS = 24L * 60 * 60 * 1000
+
+    fun getDismissed(context: Context): Map<String, Long> =
+        prefs(context).getStringSet(DISMISSED_KEY, null).orEmpty().mapNotNull { entry ->
+            val time = entry.substringAfterLast('|').toLongOrNull() ?: return@mapNotNull null
+            entry.substringBeforeLast('|') to time
+        }.toMap()
+
+    fun dismissApp(context: Context, packageName: String) {
+        val now = System.currentTimeMillis()
+        // The sheet only looks a day back, so older dismissals can no longer matter.
+        val kept = getDismissed(context).filter { it.value > now - DISMISS_KEEP_MS && it.key != packageName }
+        val entries = kept.map { "${it.key}|${it.value}" }.toSet() + "$packageName|$now"
+        prefs(context).edit().putStringSet(DISMISSED_KEY, entries).apply()
+    }
+
+    /** Apps that never show on the sheet, or as the previous app of a double tap. */
+    private const val BLACKLIST_KEY = "blacklist"
+
+    fun getBlacklist(context: Context): Set<String> =
+        prefs(context).getStringSet(BLACKLIST_KEY, null).orEmpty().toSet()
+
+    fun setBlacklist(context: Context, packages: Collection<String>) {
+        prefs(context).edit().putStringSet(BLACKLIST_KEY, packages.toSet()).apply()
     }
 
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }
