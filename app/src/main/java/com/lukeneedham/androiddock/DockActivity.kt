@@ -2,6 +2,7 @@ package com.lukeneedham.androiddock
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -91,6 +92,11 @@ class DockActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A tap to close can arrive before this activity has been created.
+        if (!SheetState.isWanted()) {
+            finishAndRemoveTask()
+            return
+        }
         current = this
         WindowCompat.setDecorFitsSystemWindows(window, false)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -108,6 +114,8 @@ class DockActivity : AppCompatActivity() {
      * the caller has already given its own feedback for the touch that closed it.
      */
     fun closeSheet(haptic: Boolean = true) {
+        // However the sheet is closed, a tap on the corner should next open it.
+        SheetState.want(false)
         if (closing) return
         closing = true
         val view = sheet
@@ -121,11 +129,28 @@ class DockActivity : AppCompatActivity() {
             .scaleX(0f).scaleY(0f)
             .setDuration(EXIT_MS)
             .setInterpolator(AccelerateInterpolator())
-            .withEndAction { finishAndRemoveTask() }
+            .withEndAction { if (closing) finishAndRemoveTask() }
             .start()
         // The animation does not run while the sheet is not visible (for example once it has
         // launched an app), which would leave a closing sheet registered as current forever.
-        view.postDelayed({ finishAndRemoveTask() }, EXIT_MS * 2)
+        view.postDelayed(forceFinish, EXIT_MS * 2)
+    }
+
+    private val forceFinish = Runnable { if (closing) finishAndRemoveTask() }
+
+    /** A tap to open arrived while this sheet was still closing: grow it back instead. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val view = sheet ?: return
+        if (!closing || !SheetState.isWanted()) return
+        closing = false
+        view.removeCallbacks(forceFinish)
+        view.animate().cancel()
+        view.animate()
+            .scaleX(1f).scaleY(1f)
+            .setDuration(ENTER_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
     }
 
     override fun onStop() {
@@ -321,7 +346,11 @@ class DockActivity : AppCompatActivity() {
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
-        if (current === this) current = null
+        if (current === this) {
+            current = null
+            // Gone without a tap, such as killed by the system.
+            SheetState.want(false)
+        }
         super.onDestroy()
     }
 
