@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The fan with the app dots cut out, for themed icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#000000"
+        android:fillType="evenOdd"
+        android:pathData="M74.54,32.02A44,44 0 0 0 60.52,34.81L73.36,68.98A7.5,7.5 0 0 1 75.75,68.50ZM57.82,35.93A44,44 0 0 0 45.94,43.87L70.88,70.52A7.5,7.5 0 0 1 72.90,69.17ZM43.87,45.94A44,44 0 0 0 35.93,57.82L69.17,72.90A7.5,7.5 0 0 1 70.52,70.88ZM34.81,60.52A44,44 0 0 0 32.02,74.54L68.50,75.75A7.5,7.5 0 0 1 68.98,73.36ZM65.07,42.65a4.3,4.3 0 1 0 8.6,0a4.3,4.3 0 1 0 -8.6,0ZM52.81,47.73a4.3,4.3 0 1 0 8.6,0a4.3,4.3 0 1 0 -8.6,0ZM43.43,57.11a4.3,4.3 0 1 0 8.6,0a4.3,4.3 0 1 0 -8.6,0ZM38.35,69.37a4.3,4.3 0 1 0 8.6,0a4.3,4.3 0 1 0 -8.6,0Z" />
+</vector>
