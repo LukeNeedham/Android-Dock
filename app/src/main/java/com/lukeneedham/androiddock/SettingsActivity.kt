@@ -73,6 +73,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** The pages of the settings app. */
@@ -164,6 +165,13 @@ private fun AppNavigation(resumes: Int) {
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    // The fan opens over this page, so its state is polled; nothing else announces it.
+    val fanOpen by produceState(DockActivity.isOpen) {
+        while (true) {
+            value = DockActivity.isOpen
+            delay(150)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -192,13 +200,17 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         Button(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                DockActivity.starting = true
-                context.startActivity(Intent(context, DockActivity::class.java))
+                if (fanOpen) {
+                    DockActivity.close(haptic = false)
+                } else {
+                    DockActivity.starting = true
+                    context.startActivity(Intent(context, DockActivity::class.java))
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
-        ) { Text(stringResource(R.string.onboarding_try_it)) }
+        ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
