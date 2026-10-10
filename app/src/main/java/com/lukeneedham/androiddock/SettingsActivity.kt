@@ -234,7 +234,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
                 sidePad = DockPrefs.getPadding(context, DockPrefs.Padding.SIDE),
                 rows = if (resumes >= 0) DockPrefs.getRows(context) else emptyList(),
-                editingRow = null,
+                selectedRow = null,
                 sheetColor = sheetColor,
                 edgeColor = edgeColor,
                 thumbnailDp = 96,
