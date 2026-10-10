@@ -2,6 +2,9 @@ package com.lukeneedham.androiddock
 
 import android.content.Context
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
@@ -53,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -68,13 +72,13 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
     var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
-    // The row whose count or width is being dragged, tinted in the preview until the drag ends.
-    var editingRow by remember { mutableStateOf<Int?>(null) }
+    // The row the sliders edit, chosen by tapping it in the preview and tinted there.
+    var selectedRow by remember { mutableIntStateOf(0) }
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
     SubPage(R.string.fan_layout_title, onBack) {
-        FanPreview(inner, bottomPad, sidePad, rows.toList(), editingRow, sheetColor, edgeColor)
+        FanPreview(inner, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -115,7 +119,7 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
             )
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
-            RowsEditor(context, rows) { editingRow = it }
+            RowsEditor(context, rows, selectedRow) { selectedRow = it }
         }
     }
 }
@@ -133,7 +137,7 @@ private val PLACEHOLDER_COLORS = listOf(
 
 /**
  * The fan as the sheet would draw it with every row full: the same geometry as [DockActivity],
- * but with a coloured circle for each app. The row being edited is tinted white. Sits in the bottom-right of a box, like the screen
+ * but with a coloured circle for each app. The selected ring is tinted white, and tapping a ring selects it. Sits in the bottom-right of a box, like the screen
  * corner.
  */
 @Composable
@@ -142,10 +146,11 @@ internal fun FanPreview(
     bottomPad: Int,
     sidePad: Int,
     rows: List<DockPrefs.Row>,
-    editingRow: Int?,
+    selectedRow: Int?,
     sheetColor: Int,
     edgeColor: Int,
     thumbnailDp: Int? = null,
+    onRowTap: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -160,7 +165,25 @@ internal fun FanPreview(
         else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
         Canvas(
             modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(radiusDp.dp))
-                .align(Alignment.BottomEnd),
+                .align(Alignment.BottomEnd)
+                // The circles are centred on the corner, so without this they spill out of the quarter.
+                .clipToBounds()
+                .pointerInput(onRowTap != null, inner, rows, radiusDp) {
+                    if (onRowTap == null) return@pointerInput
+                    detectTapGestures { tap ->
+                        val distance = hypot(size.width - tap.x, size.height - tap.y)
+                        val scale = radiusDp * density / (total * density)
+                        var edge = inner * density * scale
+                        rows.forEachIndexed { index, row ->
+                            edge += row.widthDp * density * scale
+                            if (distance <= edge) {
+                                // A tap in the gap before row 1 selects row 1.
+                                onRowTap(index)
+                                return@detectTapGestures
+                            }
+                        }
+                    }
+                },
         ) {
             val dp = density
             val fit = if (thumbnailDp != null) thumbnailDp * dp / (radiusDp * dp) else 1f
@@ -189,7 +212,7 @@ internal fun FanPreview(
                 edge += row.widthDp * dp * scale
                 val end = edge
                 val centreRadius = (start + end) / 2
-                if (rowIndex == editingRow) {
+                if (rowIndex == selectedRow) {
                     drawCircle(
                         color = Color.White.copy(alpha = 0.2f),
                         radius = centreRadius,
@@ -233,69 +256,56 @@ internal fun FanPreview(
     }
 }
 
-/** Edits the sheet's rows: add, delete, reorder, and each row's item count, width and colour. */
+/**
+ * Edits the sheet's rings: one set of controls for the [selected] ring, which is chosen by tapping it
+ * in the preview. Delete acts on the selected ring too.
+ */
 @Composable
-private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, onEditing: (Int?) -> Unit) {
+private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selected: Int, onSelect: (Int) -> Unit) {
     val haptic = LocalHapticFeedback.current
-    val moveUp = stringResource(R.string.row_move_up)
-    val moveDown = stringResource(R.string.row_move_down)
     val delete = stringResource(R.string.row_delete)
     fun save() = DockPrefs.setRows(context, rows.toList())
-    fun move(from: Int, to: Int) {
-        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        rows.add(to, rows.removeAt(from))
-        save()
-    }
 
-    rows.forEachIndexed { index, row ->
-        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.row_title, index + 1),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { move(index, index - 1) }, enabled = index > 0) {
-                        Text("↑", modifier = Modifier.semantics { contentDescription = moveUp })
-                    }
-                    IconButton(onClick = { move(index, index + 1) }, enabled = index < rows.lastIndex) {
-                        Text("↓", modifier = Modifier.semantics { contentDescription = moveDown })
-                    }
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            rows.removeAt(index)
-                            save()
-                        },
-                        enabled = rows.size > 1,
-                    ) { Text("✕", modifier = Modifier.semantics { contentDescription = delete }) }
-                }
-                Text(stringResource(R.string.row_count, row.count))
-                Slider(
-                    value = row.count.toFloat(),
-                    onValueChange = {
-                        onEditing(index)
-                        if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        rows[index] = row.copy(count = it.toInt())
+    val index = selected.coerceIn(0, rows.lastIndex)
+    val row = rows[index]
+    Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.row_title, index + 1),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        rows.removeAt(index)
+                        onSelect(index.coerceAtMost(rows.lastIndex))
                         save()
                     },
-                    onValueChangeFinished = { onEditing(null) },
-                    valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
-                    steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
-                )
-                Text(stringResource(R.string.row_width, row.widthDp))
-                Slider(
-                    value = row.widthDp.toFloat(),
-                    onValueChange = {
-                        onEditing(index)
-                        rows[index] = row.copy(widthDp = it.toInt())
-                        save()
-                    },
-                    onValueChangeFinished = { onEditing(null) },
-                    valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
-                )
+                    enabled = rows.size > 1,
+                ) { Text("✕", modifier = Modifier.semantics { contentDescription = delete }) }
             }
+            Text(stringResource(R.string.row_count, row.count))
+            Slider(
+                value = row.count.toFloat(),
+                onValueChange = {
+                    if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    rows[index] = row.copy(count = it.toInt())
+                    save()
+                },
+                valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
+                steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
+            )
+            Text(stringResource(R.string.row_width, row.widthDp))
+            Slider(
+                value = row.widthDp.toFloat(),
+                onValueChange = {
+                    rows[index] = row.copy(widthDp = it.toInt())
+                    save()
+                },
+                valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
+            )
         }
     }
     if (rows.size < DockPrefs.ROWS_MAX) {
@@ -303,6 +313,7 @@ private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, onEdi
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 rows.add(DockPrefs.newRow())
+                onSelect(rows.lastIndex)
                 save()
             },
             modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
