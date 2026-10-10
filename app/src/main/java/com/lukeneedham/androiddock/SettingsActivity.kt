@@ -131,6 +131,18 @@ private fun AppNavigation(resumes: Int) {
     ) { mutableStateListOf(Route.Settings) }
     val back: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
 
+    // Until setup is done the app is only the onboarding flow, one page per step.
+    val context = LocalContext.current
+    var optionalDone by remember { mutableIntStateOf(DockPrefs.getOptionalStepsDone(context)) }
+    val step = if (resumes >= 0) OnboardingStep.current(context, optionalDone) else null
+    if (step != null) {
+        OnboardingFlow(step) {
+            optionalDone = step.ordinal - OnboardingStep.FanLayout.ordinal + 1
+            DockPrefs.setOptionalStepsDone(context, optionalDone)
+        }
+        return
+    }
+
     NavDisplay(
         backStack = backStack,
         onBack = back,
@@ -152,9 +164,6 @@ private fun AppNavigation(resumes: Int) {
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    // Reading [resumes] here makes the checks below re-run after returning from system settings.
-    val accessibilityDone = resumes >= 0 && SetupState.isAccessibilityEnabled(context)
-    val usageDone = resumes >= 0 && SetupState.isUsageAccessGranted(context)
 
     Column(
         modifier = Modifier
@@ -164,43 +173,10 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     ) {
         Text(stringResource(R.string.onboarding_title), style = MaterialTheme.typography.headlineMedium)
         Text(
-            stringResource(R.string.onboarding_intro),
+            stringResource(R.string.onboarding_all_set),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 8.dp),
         )
-        Column(modifier = Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            StepCard(
-                title = R.string.step_accessibility_title,
-                description = R.string.step_accessibility_description,
-                hint = R.string.step_accessibility_hint,
-                done = accessibilityDone,
-                action = R.string.step_accessibility_action,
-                onAction = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
-                secondaryAction = R.string.step_app_info_action,
-                onSecondaryAction = {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null),
-                        ),
-                    )
-                },
-            )
-            StepCard(
-                title = R.string.step_usage_title,
-                description = R.string.step_usage_description,
-                done = usageDone,
-                action = R.string.step_usage_action,
-                onAction = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
-            )
-        }
-        if (accessibilityDone && usageDone) {
-            Text(
-                stringResource(R.string.onboarding_all_set),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-        }
         Button(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -272,44 +248,6 @@ internal fun SectionHeader(title: Int, description: Int?) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 4.dp),
         )
-    }
-}
-
-@Composable
-private fun StepCard(
-    title: Int,
-    description: Int,
-    done: Boolean,
-    action: Int,
-    onAction: () -> Unit,
-    hint: Int? = null,
-    secondaryAction: Int? = null,
-    onSecondaryAction: (() -> Unit)? = null,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            val text = stringResource(title)
-            Text(if (done) "$text  ✓" else text, style = MaterialTheme.typography.titleMedium)
-            Text(
-                stringResource(description),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            if (done) return@Column
-            if (hint != null) {
-                Text(
-                    stringResource(hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            FilledTonalButton(onClick = onAction, modifier = Modifier.padding(top = 12.dp)) {
-                Text(stringResource(action))
-            }
-            if (secondaryAction != null && onSecondaryAction != null) {
-                TextButton(onClick = onSecondaryAction) { Text(stringResource(secondaryAction)) }
-            }
-        }
     }
 }
 

@@ -19,9 +19,9 @@ import androidx.compose.ui.unit.dp
 
 /** The trigger on a page of its own: where it sits, how big it is, and its colour. */
 @Composable
-internal fun TriggerScreen(onBack: () -> Unit) {
+internal fun TriggerScreen(onBack: (() -> Unit)?, footer: @Composable () -> Unit = {}) {
     val context = LocalContext.current
-    SubPage(R.string.position_title, onBack) {
+    SubPage(R.string.position_title, onBack, footer) {
         Column(
             modifier = Modifier
                 .weight(1f)

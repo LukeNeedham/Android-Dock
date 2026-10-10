@@ -14,19 +14,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 
-/** The frame of every settings sub page: a toolbar with a back button and [title], then [content]. */
+/**
+ * The frame of every settings sub page: a toolbar with a back button (none if [onBack] is null,
+ * as in onboarding) and [title], then [content], then [footer] pinned to the bottom.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SubPage(title: Int, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+internal fun SubPage(
+    title: Int,
+    onBack: (() -> Unit)?,
+    footer: @Composable () -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
         TopAppBar(
             title = { Text(stringResource(title)) },
             navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                    }
                 }
             },
         )
         content()
+        footer()
     }
 }
