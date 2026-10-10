@@ -239,8 +239,12 @@ class DockActivity : AppCompatActivity() {
         root.addView(view, params)
     }
 
-    /** Takes [app] off the sheet until the user opens it again, and fills its place. */
-    private fun dismiss(app: RecentApps.App) {
+    /**
+     * Ends [app]'s background processes, and takes it off the sheet until the user opens it again,
+     * filling its place.
+     */
+    private fun kill(app: RecentApps.App) {
+        RecentApps.kill(this, app)
         DockPrefs.dismissApp(this, app.packageName)
         reload?.invoke()
     }
@@ -337,7 +341,7 @@ class DockActivity : AppCompatActivity() {
                         }
                         setOnLongClickListener {
                             Haptics.longPress(this)
-                            dismiss(app)
+                            kill(app)
                             true
                         }
                     },

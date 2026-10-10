@@ -12,7 +12,10 @@ launch and use. It stays out of the way until you call it.
 2. A **corner sheet**, a quarter circle in the bottom-right corner of the screen, opens over
    whatever you were doing. The icons of your **recently used apps** run along its arc, the most
    recent nearest the bottom edge.
-3. Pick an app to switch to it, or dismiss the sheet.
+3. Pick an app to switch to it, or dismiss the sheet. **Long press** an app to kill it: Fan asks
+   the system to end its background processes (`killBackgroundProcesses`) and takes it off the
+   sheet. This is best effort: it does nothing to the app on screen or one running a foreground
+   service.
 4. Dismissing the sheet **also kills Fan's own task**, so it never appears as an entry
    in the system task switcher.
 

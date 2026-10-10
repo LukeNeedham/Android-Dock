@@ -1,5 +1,6 @@
 package com.lukeneedham.androiddock
 
+import android.app.ActivityManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -89,6 +90,16 @@ object RecentApps {
     fun launch(context: Context, app: App) {
         val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /**
+     * Asks the system to end [app]'s background processes. Best effort: it does nothing to an app
+     * that is on screen or running a foreground service, and gives no result.
+     */
+    fun kill(context: Context, app: App) {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        manager.killBackgroundProcesses(app.packageName)
+        DockLog.log(context, "long press: killed background processes of ${app.packageName}")
     }
 
     // Usage event types that are not in the public API before Android 10; the system reports them
