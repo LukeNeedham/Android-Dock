@@ -4,16 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -130,16 +127,8 @@ private fun OptionalFooter(step: OnboardingStep, onStepDone: () -> Unit) {
             stepCount(step) + " · " + stringResource(R.string.onboarding_optional),
             style = MaterialTheme.typography.labelLarge,
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        ) {
-            FilledTonalButton(onClick = onStepDone, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.onboarding_skip))
-            }
-            Button(onClick = onStepDone, modifier = Modifier.weight(1f)) {
-                Text(stringResource(if (last) R.string.onboarding_finish else R.string.onboarding_next))
-            }
+        Button(onClick = onStepDone, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text(stringResource(if (last) R.string.onboarding_finish else R.string.onboarding_next))
         }
     }
 }

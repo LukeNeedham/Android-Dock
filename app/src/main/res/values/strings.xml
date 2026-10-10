@@ -18,10 +18,14 @@
     <string name="onboarding_step_count">Step %1$d of %2$d</string>
     <string name="onboarding_optional">Optional</string>
     <string name="onboarding_next">Next</string>
-    <string name="onboarding_skip">Skip</string>
     <string name="onboarding_finish">Finish</string>
     <string name="onboarding_required_note">Required. This page moves on once it is done.</string>
     <string name="onboarding_welcome">Fan is not an app you open. After setup, tap the bottom-right corner of the navigation bar to switch apps.</string>
+    <string name="status_accessibility_ok">Accessibility service is on</string>
+    <string name="status_accessibility_off">Accessibility service is off</string>
+    <string name="status_usage_ok">App usage access is granted</string>
+    <string name="status_usage_off">App usage access is not granted</string>
+    <string name="status_open">Open settings</string>
     <string name="onboarding_view_log">View debug log</string>
     <string name="log_title">Debug log</string>
     <string name="log_empty">Nothing recorded yet. Enable the accessibility service, then touch the bottom-right corner.</string>
@@ -46,7 +50,7 @@
     <string name="color_blue">Blue: %1$d</string>
     <string name="color_alpha">Opacity: %1$d</string>
     <string name="sheet_title_loading">Loading apps…</string>
-    <string name="sheet_title_section">Sheet</string>
+    <string name="sheet_title_section">Fan layout</string>
     <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. Ring 1 is closest to the corner. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>

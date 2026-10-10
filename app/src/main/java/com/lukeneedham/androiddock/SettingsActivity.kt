@@ -177,6 +177,18 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 8.dp),
         )
+        PermissionStatus(
+            ok = SetupState.isAccessibilityEnabled(context),
+            okText = R.string.status_accessibility_ok,
+            offText = R.string.status_accessibility_off,
+            onOpen = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+        )
+        PermissionStatus(
+            ok = SetupState.isUsageAccessGranted(context),
+            okText = R.string.status_usage_ok,
+            offText = R.string.status_usage_off,
+            onOpen = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
+        )
         Button(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -232,6 +244,18 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .fillMaxWidth()
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.onboarding_view_log)) }
+    }
+}
+
+/** One row on the home page: whether a permission is set up, with a link to its system page. */
+@Composable
+private fun PermissionStatus(ok: Boolean, okText: Int, offText: Int, onOpen: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Text(
+            (if (ok) "✓  " else "✗  ") + stringResource(if (ok) okText else offText),
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onOpen) { Text(stringResource(R.string.status_open)) }
     }
 }
 
