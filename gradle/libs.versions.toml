@@ -1,11 +1,12 @@
 [versions]
-agp = "8.7.3"
+agp = "8.9.3"
 kotlin = "2.0.21"
 coreKtx = "1.15.0"
 appcompat = "1.7.0"
 material = "1.12.0"
-composeBom = "2024.12.01"
-activityCompose = "1.9.3"
+composeBom = "2025.11.01"
+activityCompose = "1.12.0"
+navigation3 = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -14,6 +15,8 @@ material = { module = "com.google.android.material:material", version.ref = "mat
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
+androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 
 [plugins]

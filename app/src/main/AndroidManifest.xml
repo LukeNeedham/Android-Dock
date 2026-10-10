@@ -21,6 +21,7 @@
     </queries>
 
     <application
+        android:name=".DockApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -37,11 +38,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Shows the persisted debug log. -->
-        <activity
-            android:name=".LogActivity"
-            android:exported="false" />
 
         <!--
             The corner sheet. Translucent, and excluded from recents so it never shows up as

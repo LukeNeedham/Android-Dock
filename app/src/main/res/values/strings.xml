@@ -23,15 +23,16 @@
     <string name="log_copy">Copy</string>
     <string name="log_clear">Clear</string>
     <string name="log_copied">Log copied</string>
-    <string name="position_title">Touch target</string>
-    <string name="position_description">With gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the touch target until a swipe up from it stays with Fan. Touching it opens the sheet, and a long press opens these settings.</string>
+    <string name="position_title">Trigger</string>
+    <string name="position_description">With gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the trigger until a swipe up from it stays with Fan. Touching it opens the sheet, and a long press opens these settings.</string>
+    <string name="trigger_summary">The strip over the corner of the navigation bar that opens the sheet: where it sits, how big it is, and its colour.</string>
+    <string name="trigger_open">Customise trigger</string>
     <string name="slider_right">Distance from the right edge: %1$d dp</string>
     <string name="slider_bottom">Distance from the bottom: %1$d dp</string>
     <string name="slider_width">Width: %1$d dp</string>
     <string name="slider_height">Height: %1$d dp</string>
     <string name="sheet_empty">No recently used apps.</string>
-    <string name="colors_title">Colours</string>
-    <string name="color_button">Button colour</string>
+    <string name="color_button">Trigger colour</string>
     <string name="color_sheet_corner">Sheet colour at the corner</string>
     <string name="color_sheet_edge">Sheet colour at the edge</string>
     <string name="color_red">Red: %1$d</string>
@@ -54,9 +55,14 @@
     <string name="blacklist_pick_title">Choose an app to hide</string>
     <string name="blacklist_search">Search apps</string>
     <string name="row_width">Width: %1$d dp</string>
-    <string name="row_color">Background colour</string>
     <string name="row_move_up">Move towards the corner</string>
     <string name="row_move_down">Move away from the corner</string>
     <string name="row_delete">Delete row</string>
+    <string name="fan_layout_title">Fan layout</string>
+    <string name="fan_layout_summary">The rows of apps in the fan: how many, how big, and how they are coloured.</string>
+    <string name="fan_layout_open">Customise fan layout</string>
+    <string name="fan_layout_preview_note">Preview with placeholder apps</string>
+    <string name="back">Back</string>
+    <string name="blacklist_open">Edit hidden apps</string>
     <string name="row_add">Add row</string>
 </resources>

@@ -78,7 +78,7 @@ class DockAccessibilityService : AccessibilityService() {
         getSystemService(WindowManager::class.java).updateViewLayout(view, params)
         DockLog.log(
             this,
-            "touch target set to " + DockPrefs.Setting.entries.joinToString(" ") {
+            "trigger set to " + DockPrefs.Setting.entries.joinToString(" ") {
                 "${it.name.lowercase()}=${DockPrefs.get(this, it)}dp"
             },
         )

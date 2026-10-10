@@ -41,6 +41,22 @@ object DockLog {
         }
     }
 
+    /**
+     * Records an uncaught exception with its stack trace. Waits for the write (briefly), because
+     * the process is about to die and a queued write would be lost.
+     */
+    fun logCrash(context: Context, thread: Thread, error: Throwable) {
+        val file = file(context)
+        val text = "${timeFormat.format(Date())}  CRASH on thread ${thread.name}\n" +
+            Log.getStackTraceString(error) + "\n"
+        Log.e(TAG, "CRASH on thread ${thread.name}", error)
+        try {
+            executor.submit { file.appendText(text) }.get(2, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (_: Exception) {
+            // Timed out or interrupted: give up rather than delay the crash.
+        }
+    }
+
     /** Calls [listener] on the main thread after each line is written. Remove it when done. */
     fun addListener(listener: () -> Unit) {
         listeners += listener

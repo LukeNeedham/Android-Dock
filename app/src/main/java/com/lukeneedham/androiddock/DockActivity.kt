@@ -35,18 +35,14 @@ import kotlin.math.sin
 class DockActivity : AppCompatActivity() {
 
     /**
-     * A quarter circle centred on the bottom-right corner of its own bounds, with a ring over it
-     * for each row that has a background colour. [bands] are the rows' inner and outer radii.
+     * A quarter circle centred on the bottom-right corner of its own bounds.
      */
     private class SheetBackgroundView(
         context: Context,
         private val cornerColor: Int,
         private val edgeColor: Int,
-        private val bands: List<Pair<Float, Float>>,
-        private val rowColors: List<Int>,
     ) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = cornerColor }
-        private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
 
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             super.onSizeChanged(w, h, oldw, oldh)
@@ -69,12 +65,6 @@ class DockActivity : AppCompatActivity() {
 
         override fun onDraw(canvas: Canvas) {
             canvas.drawCircle(width.toFloat(), height.toFloat(), width.toFloat(), paint)
-            bands.forEachIndexed { i, (start, end) ->
-                if (rowColors[i] ushr 24 == 0) return@forEachIndexed
-                ringPaint.color = rowColors[i]
-                ringPaint.strokeWidth = end - start
-                canvas.drawCircle(width.toFloat(), height.toFloat(), (start + end) / 2, ringPaint)
-            }
         }
     }
 
@@ -217,7 +207,7 @@ class DockActivity : AppCompatActivity() {
 
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
-            SheetBackgroundView(this, sheetColor, edgeColor, rowBands(rows, radius), rows.map { if (it.showColor) it.color else 0 }).apply { isClickable = true },
+            SheetBackgroundView(this, sheetColor, edgeColor).apply { isClickable = true },
             FrameLayout.LayoutParams(radius, radius),
         )
 
