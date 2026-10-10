@@ -137,7 +137,7 @@ private val PLACEHOLDER_COLORS = listOf(
 
 /**
  * The fan as the sheet would draw it with every row full: the same geometry as [DockActivity],
- * but with a coloured circle for each app. The selected row is tinted white, and tapping a row selects it. Sits in the bottom-right of a box, like the screen
+ * but with a coloured circle for each app. The selected ring is tinted white, and tapping a ring selects it. Sits in the bottom-right of a box, like the screen
  * corner.
  */
 @Composable
@@ -257,22 +257,14 @@ internal fun FanPreview(
 }
 
 /**
- * Edits the sheet's rows: one set of controls for the [selected] row, which is chosen by tapping it
- * in the preview. Add, delete and reorder act on the selected row too.
+ * Edits the sheet's rings: one set of controls for the [selected] ring, which is chosen by tapping it
+ * in the preview. Delete acts on the selected ring too.
  */
 @Composable
 private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selected: Int, onSelect: (Int) -> Unit) {
     val haptic = LocalHapticFeedback.current
-    val moveUp = stringResource(R.string.row_move_up)
-    val moveDown = stringResource(R.string.row_move_down)
     val delete = stringResource(R.string.row_delete)
     fun save() = DockPrefs.setRows(context, rows.toList())
-    fun move(from: Int, to: Int) {
-        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        rows.add(to, rows.removeAt(from))
-        onSelect(to)
-        save()
-    }
 
     val index = selected.coerceIn(0, rows.lastIndex)
     val row = rows[index]
@@ -284,12 +276,6 @@ private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selec
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = { move(index, index - 1) }, enabled = index > 0) {
-                    Text("↑", modifier = Modifier.semantics { contentDescription = moveUp })
-                }
-                IconButton(onClick = { move(index, index + 1) }, enabled = index < rows.lastIndex) {
-                    Text("↓", modifier = Modifier.semantics { contentDescription = moveDown })
-                }
                 IconButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
