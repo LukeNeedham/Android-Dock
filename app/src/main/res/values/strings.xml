@@ -41,7 +41,7 @@
     <string name="color_alpha">Opacity: %1$d</string>
     <string name="sheet_title_loading">Loading apps…</string>
     <string name="sheet_title_section">Sheet</string>
-    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. Ring 1 is closest to the corner. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
+    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. Ring 1 is closest to the corner. Icons fill ring 1 first, then the next ring out. A ring is as wide as its icons plus a margin, so the icon size sets how far the ring reaches; the rings add up to the sheet\'s size. The sheet lists as many apps as all the rings hold.</string>
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>
     <string name="slider_inner_offset">Gap from the corner to ring 1: %1$d dp</string>
@@ -54,7 +54,8 @@
     <string name="blacklist_remove">Show again</string>
     <string name="blacklist_pick_title">Choose an app to hide</string>
     <string name="blacklist_search">Search apps</string>
-    <string name="row_width">Width: %1$d dp</string>
+    <string name="row_icon_size">Icon size: %1$d dp</string>
+    <string name="row_fit_warning">Only %1$d icons fit at this size, so they are shrunk to %2$d dp. Use fewer items or a smaller icon size.</string>
     <string name="row_delete">Delete ring</string>
     <string name="fan_layout_title">Fan layout</string>
     <string name="fan_layout_summary">The rings of apps in the fan: how many, how big, and how they are coloured.</string>

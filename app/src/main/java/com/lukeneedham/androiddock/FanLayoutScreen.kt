@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -58,6 +59,7 @@ import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -119,15 +121,42 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
             )
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
-            RowsEditor(context, rows, selectedRow) { selectedRow = it }
+            RowsEditor(context, rows, inner, bottomPad, sidePad, selectedRow) { selectedRow = it }
         }
     }
 }
 
 private const val MAX_ICON_SIZE = 64
 private const val MIN_ICON_SIZE = 16
+/** The smallest icon size the slider offers, which keeps the ring's width above [DockPrefs.ROW_WIDTH_MIN]. */
+private const val SLIDER_ICON_MIN = 28
 private const val ROW_SPACING = 1.2f
 private const val ICON_SPACING = 1.15f
+
+/** The angles, from the bottom edge, between which a ring's icons of [size] can be centred. */
+private fun arcAngles(size: Float, centreRadius: Float, bottom: Float, side: Float): Pair<Float, Float> {
+    val from = asin(((bottom + size / 2f) / centreRadius).coerceAtMost(1f))
+    val to = (PI / 2).toFloat() - asin(((side + size / 2f) / centreRadius).coerceAtMost(1f))
+    return if (to >= from) from to to else (PI / 4).toFloat().let { it to it }
+}
+
+private fun slotsFit(n: Int, size: Float, centreRadius: Float, bottom: Float, side: Float): Boolean {
+    val (from, to) = arcAngles(size, centreRadius, bottom, side)
+    if (n == 1) return to >= from
+    val step = (to - from) / (n - 1)
+    return to > from && 2 * centreRadius * sin(step / 2) >= size * ICON_SPACING
+}
+
+/**
+ * The icon size the sheet gives a ring: its width allows [thickness] / [ROW_SPACING], at most
+ * [MAX_ICON_SIZE], shrunk until [n] icons fit along the arc, but never below [MIN_ICON_SIZE].
+ * All lengths are in pixels at [density].
+ */
+private fun fitIconSize(n: Int, centreRadius: Float, thickness: Float, bottom: Float, side: Float, density: Float): Float {
+    var size = min(MAX_ICON_SIZE * density, thickness / ROW_SPACING)
+    while (size > MIN_ICON_SIZE * density && !slotsFit(n, size, centreRadius, bottom, side)) size -= 1f
+    return size.coerceAtLeast(MIN_ICON_SIZE * density)
+}
 
 /** Distinct, fixed colours for the placeholder apps. */
 private val PLACEHOLDER_COLORS = listOf(
@@ -223,25 +252,9 @@ internal fun FanPreview(
 
                 val bottom = bottomPad * dp
                 val side = sidePad * dp
-                fun arc(size: Float): Pair<Float, Float> {
-                    val from = asin(((bottom + size / 2f) / centreRadius).coerceAtMost(1f))
-                    val to = (PI / 2).toFloat() - asin(((side + size / 2f) / centreRadius).coerceAtMost(1f))
-                    return if (to >= from) from to to else (PI / 4).toFloat().let { it to it }
-                }
-
                 val n = row.count
-                var size = min(MAX_ICON_SIZE * dp, (end - start) / ROW_SPACING)
-                while (size > MIN_ICON_SIZE * dp) {
-                    val (from, to) = arc(size)
-                    val fits = if (n == 1) to >= from else {
-                        val step = (to - from) / (n - 1)
-                        to > from && 2 * centreRadius * sin(step / 2) >= size * ICON_SPACING
-                    }
-                    if (fits) break
-                    size -= 1f
-                }
-                size = size.coerceAtLeast(MIN_ICON_SIZE * dp)
-                val (from, to) = arc(size)
+                val size = fitIconSize(n, centreRadius, end - start, bottom, side, dp)
+                val (from, to) = arcAngles(size, centreRadius, bottom, side)
                 repeat(n) { slot ->
                     val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
                     drawCircle(
@@ -261,7 +274,15 @@ internal fun FanPreview(
  * in the preview. Delete acts on the selected ring too.
  */
 @Composable
-private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selected: Int, onSelect: (Int) -> Unit) {
+private fun RowsEditor(
+    context: Context,
+    rows: MutableList<DockPrefs.Row>,
+    inner: Int,
+    bottomPad: Int,
+    sidePad: Int,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
     val haptic = LocalHapticFeedback.current
     val delete = stringResource(R.string.row_delete)
     fun save() = DockPrefs.setRows(context, rows.toList())
@@ -297,15 +318,40 @@ private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selec
                 valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
                 steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
             )
-            Text(stringResource(R.string.row_width, row.widthDp))
+            // A ring's width is its icon size plus margin; the size is what the user sets.
+            val iconSize = (row.widthDp / ROW_SPACING).toInt().coerceIn(SLIDER_ICON_MIN, MAX_ICON_SIZE)
+            Text(stringResource(R.string.row_icon_size, iconSize))
             Slider(
-                value = row.widthDp.toFloat(),
+                value = iconSize.toFloat(),
                 onValueChange = {
-                    rows[index] = row.copy(widthDp = it.toInt())
+                    rows[index] = row.copy(
+                        widthDp = (it.toInt() * ROW_SPACING).roundToInt()
+                            .coerceIn(DockPrefs.ROW_WIDTH_MIN, DockPrefs.ROW_WIDTH_MAX),
+                    )
                     save()
                 },
-                valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
+                valueRange = SLIDER_ICON_MIN.toFloat()..MAX_ICON_SIZE.toFloat(),
+                steps = MAX_ICON_SIZE - SLIDER_ICON_MIN - 1,
             )
+            // Mirror the sheet's geometry in dp (density 1) to tell when the icons are squeezed.
+            val screenWidth = LocalConfiguration.current.screenWidthDp
+            val total = inner + rows.sumOf { it.widthDp }
+            val scale = min(total.toFloat(), screenWidth * 0.9f) / total
+            val start = (inner + rows.take(index).sumOf { it.widthDp }) * scale
+            val thickness = row.widthDp * scale
+            val centre = start + thickness / 2
+            val shown = fitIconSize(row.count, centre, thickness, bottomPad.toFloat(), sidePad.toFloat(), 1f)
+            val wanted = min(MAX_ICON_SIZE.toFloat(), thickness / ROW_SPACING)
+            if (shown < wanted - 0.5f) {
+                val fitting = (1..row.count).lastOrNull {
+                    slotsFit(it, wanted, centre, bottomPad.toFloat(), sidePad.toFloat())
+                } ?: 0
+                Text(
+                    stringResource(R.string.row_fit_warning, fitting, shown.roundToInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
     if (rows.size < DockPrefs.ROWS_MAX) {
