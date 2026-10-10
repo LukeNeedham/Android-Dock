@@ -96,16 +96,21 @@ object DockPrefs {
 
     fun newRow() = Row(6, ROW_WIDTH_DEFAULT)
 
-    /** How far from the corner, in dp, the first row starts. */
-    const val INNER_MAX = 150
-    private const val INNER_DEFAULT = 70
-    private const val INNER_KEY = "inner_offset_dp"
+    /**
+     * The width, in dp, of the space in the corner that holds the app on screen, before the
+     * first row. It is not a row: it only ever holds that one app. The key is the one the
+     * gap before the first row used to be stored under, so a user's setting carries over.
+     */
+    const val CURRENT_WIDTH_MIN = 32
+    const val CURRENT_WIDTH_MAX = 150
+    private const val CURRENT_WIDTH_DEFAULT = 70
+    private const val CURRENT_WIDTH_KEY = "inner_offset_dp"
 
-    fun getInnerOffset(context: Context): Int =
-        prefs(context).getInt(INNER_KEY, INNER_DEFAULT).coerceIn(0, INNER_MAX)
+    fun getCurrentWidth(context: Context): Int =
+        prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT).coerceIn(CURRENT_WIDTH_MIN, CURRENT_WIDTH_MAX)
 
-    fun setInnerOffset(context: Context, value: Int) {
-        prefs(context).edit().putInt(INNER_KEY, value).apply()
+    fun setCurrentWidth(context: Context, value: Int) {
+        prefs(context).edit().putInt(CURRENT_WIDTH_KEY, value).apply()
     }
 
     /**

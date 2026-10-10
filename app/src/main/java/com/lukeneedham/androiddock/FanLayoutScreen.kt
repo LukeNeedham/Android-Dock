@@ -68,7 +68,7 @@ import kotlin.math.sin
 @Composable
 internal fun FanLayoutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var inner by remember { mutableIntStateOf(DockPrefs.getInnerOffset(context)) }
+    var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
     var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
@@ -90,14 +90,14 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Text(stringResource(R.string.slider_inner_offset, inner), modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.slider_current_width, inner), modifier = Modifier.padding(top = 16.dp))
             Slider(
                 value = inner.toFloat(),
                 onValueChange = {
                     inner = it.toInt()
-                    DockPrefs.setInnerOffset(context, inner)
+                    DockPrefs.setCurrentWidth(context, inner)
                 },
-                valueRange = 0f..DockPrefs.INNER_MAX.toFloat(),
+                valueRange = DockPrefs.CURRENT_WIDTH_MIN.toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
             )
             Text(stringResource(R.string.slider_padding_bottom, bottomPad), modifier = Modifier.padding(top = 16.dp))
             Slider(
@@ -158,7 +158,7 @@ internal fun FanPreview(
             .then(if (thumbnailDp != null) Modifier.size(thumbnailDp.dp).clip(RoundedCornerShape(8.dp)) else Modifier.fillMaxWidth())
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // As in the sheet: the gap plus the rows' widths is the radius, shrunk to fit the width.
+        // As in the sheet: the corner space plus the rows' widths is the radius, shrunk to fit the width.
         val total = inner + rows.sumOf { it.widthDp }
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
@@ -177,7 +177,7 @@ internal fun FanPreview(
                         rows.forEachIndexed { index, row ->
                             edge += row.widthDp * density * scale
                             if (distance <= edge) {
-                                // A tap in the gap before row 1 selects row 1.
+                                // A tap in the corner space selects row 1.
                                 onRowTap(index)
                                 return@detectTapGestures
                             }
@@ -207,6 +207,17 @@ internal fun FanPreview(
 
             var edge = inner * dp * scale
             var colorIndex = 0
+            if (inner > 0) {
+                // The corner space holds the app on screen, on the diagonal.
+                val centreRadius = edge / 2
+                val currentSize = min(MAX_ICON_SIZE * dp, edge / ROW_SPACING).coerceAtLeast(MIN_ICON_SIZE * dp)
+                val offset = centreRadius * cos(PI.toFloat() / 4)
+                drawCircle(
+                    color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
+                    radius = currentSize / 2,
+                    center = Offset(corner.x - offset, corner.y - offset),
+                )
+            }
             rows.forEachIndexed { rowIndex, row ->
                 val start = edge
                 edge += row.widthDp * dp * scale
