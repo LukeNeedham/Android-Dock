@@ -96,21 +96,34 @@ object DockPrefs {
 
     fun newRow() = Row(6, ROW_WIDTH_DEFAULT)
 
-    /** How far from the corner, in dp, the first row starts. */
-    const val INNER_MAX = 150
-    private const val INNER_DEFAULT = 70
-    private const val INNER_KEY = "inner_offset_dp"
+    /**
+     * The width, in dp, of row 0: the ring against the corner that holds just the app on screen.
+     * It is drawn like any other row, but the user can only change its width. The key is the
+     * one the gap before the first row used to be stored under, so a user's setting carries over.
+     */
+    const val CURRENT_WIDTH_MAX = 150
 
-    fun getInnerOffset(context: Context): Int =
-        prefs(context).getInt(INNER_KEY, INNER_DEFAULT).coerceIn(0, INNER_MAX)
+    /** The smallest an app icon is drawn, in dp. */
+    const val ICON_SIZE_MIN = 16
 
-    fun setInnerOffset(context: Context, value: Int) {
-        prefs(context).edit().putInt(INNER_KEY, value).apply()
+    /**
+     * The narrowest row 0 can be, in dp: its icon sits flush in the corner, so its far corner is
+     * the icon's diagonal from the centre, and the smallest icon must fit wholly inside the ring.
+     */
+    val CURRENT_WIDTH_MIN = kotlin.math.ceil(ICON_SIZE_MIN * kotlin.math.sqrt(2.0)).toInt()
+    private const val CURRENT_WIDTH_DEFAULT = 100
+    private const val CURRENT_WIDTH_KEY = "inner_offset_dp"
+
+    fun getCurrentWidth(context: Context): Int =
+        prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT).coerceIn(CURRENT_WIDTH_MIN, CURRENT_WIDTH_MAX)
+
+    fun setCurrentWidth(context: Context, value: Int) {
+        prefs(context).edit().putInt(CURRENT_WIDTH_KEY, value).apply()
     }
 
     /**
-     * The clear space, in dp, between the first or last icon of a row and the screen edge it is
-     * nearest: the bottom edge for the first, the side edge for the last.
+     * The clear space, in dp, between the screen edge and where the fan starts: the quarter circle
+     * is centred on the corner moved in by these, so its curves only start after them.
      */
     enum class Padding(val key: String, val default: Int) {
         BOTTOM("padding_bottom_dp", 20),

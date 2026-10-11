@@ -230,7 +230,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             val sheetColor = if (resumes >= 0) DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET) else 0
             val edgeColor = if (resumes >= 0) DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE) else 0
             FanPreview(
-                inner = if (resumes >= 0) DockPrefs.getInnerOffset(context) else 0,
+                inner = if (resumes >= 0) DockPrefs.getCurrentWidth(context) else 0,
                 bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
                 sidePad = DockPrefs.getPadding(context, DockPrefs.Padding.SIDE),
                 rows = if (resumes >= 0) DockPrefs.getRows(context) else emptyList(),

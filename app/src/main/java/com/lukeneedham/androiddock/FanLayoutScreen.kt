@@ -57,6 +57,7 @@ import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -68,7 +69,7 @@ import kotlin.math.sin
 @Composable
 internal fun FanLayoutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var inner by remember { mutableIntStateOf(DockPrefs.getInnerOffset(context)) }
+    var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
     var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
@@ -90,14 +91,14 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Text(stringResource(R.string.slider_inner_offset, inner), modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.slider_current_width, inner), modifier = Modifier.padding(top = 16.dp))
             Slider(
                 value = inner.toFloat(),
                 onValueChange = {
                     inner = it.toInt()
-                    DockPrefs.setInnerOffset(context, inner)
+                    DockPrefs.setCurrentWidth(context, inner)
                 },
-                valueRange = 0f..DockPrefs.INNER_MAX.toFloat(),
+                valueRange = DockPrefs.CURRENT_WIDTH_MIN.toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
             )
             Text(stringResource(R.string.slider_padding_bottom, bottomPad), modifier = Modifier.padding(top = 16.dp))
             Slider(
@@ -125,7 +126,7 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
 }
 
 private const val MAX_ICON_SIZE = 64
-private const val MIN_ICON_SIZE = 16
+private const val MIN_ICON_SIZE = DockPrefs.ICON_SIZE_MIN
 private const val ROW_SPACING = 1.2f
 private const val ICON_SPACING = 1.15f
 
@@ -158,26 +159,26 @@ internal fun FanPreview(
             .then(if (thumbnailDp != null) Modifier.size(thumbnailDp.dp).clip(RoundedCornerShape(8.dp)) else Modifier.fillMaxWidth())
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // As in the sheet: the gap plus the rows' widths is the radius, shrunk to fit the width.
+        // As in the sheet: the corner space plus the rows' widths is the radius, shrunk to fit the width.
         val total = inner + rows.sumOf { it.widthDp }
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
         else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
         Canvas(
-            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(radiusDp.dp))
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height((radiusDp + bottomPad).dp))
                 .align(Alignment.BottomEnd)
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
-                .pointerInput(onRowTap != null, inner, rows, radiusDp) {
+                .pointerInput(onRowTap != null, inner, rows, radiusDp, bottomPad, sidePad) {
                     if (onRowTap == null) return@pointerInput
                     detectTapGestures { tap ->
-                        val distance = hypot(size.width - tap.x, size.height - tap.y)
+                        val distance = hypot(size.width - sidePad * density - tap.x, size.height - bottomPad * density - tap.y)
                         val scale = radiusDp * density / (total * density)
                         var edge = inner * density * scale
                         rows.forEachIndexed { index, row ->
                             edge += row.widthDp * density * scale
                             if (distance <= edge) {
-                                // A tap in the gap before row 1 selects row 1.
+                                // A tap in the corner space selects row 1.
                                 onRowTap(index)
                                 return@detectTapGestures
                             }
@@ -186,10 +187,15 @@ internal fun FanPreview(
                 },
         ) {
             val dp = density
-            val fit = if (thumbnailDp != null) thumbnailDp * dp / (radiusDp * dp) else 1f
-            withTransform({ scale(fit, fit, pivot = Offset(size.width, size.height)) }) {
+            // The fan is centred on the corner moved in by the padding, and nothing is drawn in the
+            // padding.
+            val corner = Offset(size.width - sidePad * dp, size.height - bottomPad * dp)
+            val fit = if (thumbnailDp != null) thumbnailDp / (radiusDp + max(sidePad, bottomPad)) else 1f
+            withTransform({
+                scale(fit, fit, pivot = Offset(size.width, size.height))
+                clipRect(0f, 0f, corner.x, corner.y)
+            }) {
             val radius = radiusDp * dp
-            val corner = Offset(size.width, size.height)
             val scale = radius / (total * dp)
 
             val quarter = Path().apply { addOval(androidx.compose.ui.geometry.Rect(corner, radius)) }
@@ -205,9 +211,13 @@ internal fun FanPreview(
                 )
             }
 
-            var edge = inner * dp * scale
+            var edge = 0f
             var colorIndex = 0
-            rows.forEachIndexed { rowIndex, row ->
+            // Row 0 is the first ring, flush against the corner, with a single icon: the app on
+            // screen. It is drawn like every other ring and cannot be selected.
+            val ringZero = if (inner > 0) listOf(DockPrefs.Row(1, inner)) else emptyList()
+            (ringZero + rows).forEachIndexed { index, row ->
+                val rowIndex = index - ringZero.size
                 val start = edge
                 edge += row.widthDp * dp * scale
                 val end = edge
@@ -221,11 +231,10 @@ internal fun FanPreview(
                     )
                 }
 
-                val bottom = bottomPad * dp
-                val side = sidePad * dp
                 fun arc(size: Float): Pair<Float, Float> {
-                    val from = asin(((bottom + size / 2f) / centreRadius).coerceAtMost(1f))
-                    val to = (PI / 2).toFloat() - asin(((side + size / 2f) / centreRadius).coerceAtMost(1f))
+                    val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
+                    val from = inset
+                    val to = (PI / 2).toFloat() - inset
                     return if (to >= from) from to to else (PI / 4).toFloat().let { it to it }
                 }
 
