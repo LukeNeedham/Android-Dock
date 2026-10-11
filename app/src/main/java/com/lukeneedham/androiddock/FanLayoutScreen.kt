@@ -67,7 +67,7 @@ import kotlin.math.sin
  * it is made.
  */
 @Composable
-internal fun FanLayoutScreen(onBack: () -> Unit) {
+internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
     var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
@@ -78,7 +78,7 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
-    SubPage(R.string.fan_layout_title, onBack) {
+    SubPage(R.string.fan_layout_title, onBack, footer, header) {
         FanPreview(inner, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
@@ -121,6 +121,7 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
             RowsEditor(context, rows, selectedRow) { selectedRow = it }
+            NavBarSpacer()
         }
     }
 }

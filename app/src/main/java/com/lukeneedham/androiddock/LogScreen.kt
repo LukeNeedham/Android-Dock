@@ -88,6 +88,7 @@ internal fun LogScreen(onBack: () -> Unit) {
             SelectionContainer {
                 Text(text, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
             }
+            NavBarSpacer()
         }
     }
 }
