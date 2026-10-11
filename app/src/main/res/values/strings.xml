@@ -5,7 +5,7 @@
     <string name="sheet_title">Open apps</string>
 
     <string name="onboarding_title">Set up Fan</string>
-    <string name="onboarding_all_set">All set. Tap the bottom-right corner of the navigation bar from any app.</string>
+    <string name="onboarding_all_set">All set. Tap the trigger to open the fan at any time.</string>
     <string name="fan_open">Open fan</string>
     <string name="fan_close">Close fan</string>
     <string name="step_accessibility_title">Turn on the accessibility service</string>
