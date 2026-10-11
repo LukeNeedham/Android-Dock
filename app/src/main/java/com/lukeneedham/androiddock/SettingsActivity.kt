@@ -12,7 +12,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,9 +31,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
@@ -292,27 +294,50 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     }
 }
 
-/** A drop-down of the four screen corners. */
+/**
+ * The four screen corners as a box with a labelled button in each of its corners. The selected
+ * corner is highlighted and carries a tick.
+ */
 @Composable
 private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box(modifier = Modifier.padding(top = 8.dp)) {
-        OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(selected.label), modifier = Modifier.weight(1f))
-            Text("▾")
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DockPrefs.Corner.entries.forEach { corner ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(corner.label)) },
-                    trailingIcon = if (corner == selected) {
-                        { Icon(painterResource(R.drawable.ic_check), contentDescription = null) }
-                    } else null,
-                    onClick = {
-                        open = false
-                        onSelect(corner)
-                    },
-                )
+    val outline = MaterialTheme.colorScheme.outline
+    Box(
+        modifier = Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth()
+            .height(140.dp)
+            .border(1.dp, outline, RoundedCornerShape(12.dp))
+            .padding(6.dp),
+    ) {
+        DockPrefs.Corner.entries.forEach { corner ->
+            val isSelected = corner == selected
+            val shape = RoundedCornerShape(8.dp)
+            val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(
+                        when (corner) {
+                            DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
+                            DockPrefs.Corner.BOTTOM_LEFT -> Alignment.BottomStart
+                            DockPrefs.Corner.TOP_LEFT -> Alignment.TopStart
+                            DockPrefs.Corner.TOP_RIGHT -> Alignment.TopEnd
+                        },
+                    )
+                    .clip(shape)
+                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(corner) })
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                Text(stringResource(corner.label), color = content)
+                if (isSelected) {
+                    Icon(
+                        painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = content,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
             }
         }
     }
