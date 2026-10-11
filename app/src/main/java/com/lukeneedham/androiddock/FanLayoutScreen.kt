@@ -57,6 +57,7 @@ import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -77,12 +78,8 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
-    // The corner ring cannot be narrower than fits an icon under the current padding.
-    val currentMin = DockPrefs.currentWidthMin(bottomPad, sidePad)
-    val currentWidth = inner.coerceAtLeast(currentMin)
-
     SubPage(R.string.fan_layout_title, onBack) {
-        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
+        FanPreview(inner, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -94,14 +91,14 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Text(stringResource(R.string.slider_current_width, currentWidth), modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.slider_current_width, inner), modifier = Modifier.padding(top = 16.dp))
             Slider(
-                value = currentWidth.toFloat(),
+                value = inner.toFloat(),
                 onValueChange = {
                     inner = it.toInt()
                     DockPrefs.setCurrentWidth(context, inner)
                 },
-                valueRange = currentMin.toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
+                valueRange = DockPrefs.CURRENT_WIDTH_MIN.toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
             )
             Text(stringResource(R.string.slider_padding_bottom, bottomPad), modifier = Modifier.padding(top = 16.dp))
             Slider(
@@ -168,14 +165,14 @@ internal fun FanPreview(
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
         else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
         Canvas(
-            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(radiusDp.dp))
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height((radiusDp + bottomPad).dp))
                 .align(Alignment.BottomEnd)
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
-                .pointerInput(onRowTap != null, inner, rows, radiusDp) {
+                .pointerInput(onRowTap != null, inner, rows, radiusDp, bottomPad, sidePad) {
                     if (onRowTap == null) return@pointerInput
                     detectTapGestures { tap ->
-                        val distance = hypot(size.width - tap.x, size.height - tap.y)
+                        val distance = hypot(size.width - sidePad * density - tap.x, size.height - bottomPad * density - tap.y)
                         val scale = radiusDp * density / (total * density)
                         var edge = inner * density * scale
                         rows.forEachIndexed { index, row ->
@@ -190,10 +187,15 @@ internal fun FanPreview(
                 },
         ) {
             val dp = density
-            val fit = if (thumbnailDp != null) thumbnailDp * dp / (radiusDp * dp) else 1f
-            withTransform({ scale(fit, fit, pivot = Offset(size.width, size.height)) }) {
+            // The fan is centred on the corner moved in by the padding, and nothing is drawn in the
+            // padding.
+            val corner = Offset(size.width - sidePad * dp, size.height - bottomPad * dp)
+            val fit = if (thumbnailDp != null) thumbnailDp / (radiusDp + max(sidePad, bottomPad)) else 1f
+            withTransform({
+                scale(fit, fit, pivot = Offset(size.width, size.height))
+                clipRect(0f, 0f, corner.x, corner.y)
+            }) {
             val radius = radiusDp * dp
-            val corner = Offset(size.width, size.height)
             val scale = radius / (total * dp)
 
             val quarter = Path().apply { addOval(androidx.compose.ui.geometry.Rect(corner, radius)) }
@@ -229,23 +231,10 @@ internal fun FanPreview(
                     )
                 }
 
-                val bottom = bottomPad * dp
-                val side = sidePad * dp
-                if (rowIndex < 0) {
-                    // Row 0: one icon in the corner, padded like the others and wholly inside the ring.
-                    var size = min(MAX_ICON_SIZE * dp, (end - start) / ROW_SPACING)
-                    while (size > MIN_ICON_SIZE * dp && hypot(side + size, bottom + size) > end) size -= 1f
-                    size = size.coerceAtLeast(MIN_ICON_SIZE * dp)
-                    drawCircle(
-                        color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
-                        radius = size / 2,
-                        center = Offset(corner.x - side - size / 2, corner.y - bottom - size / 2),
-                    )
-                    return@forEachIndexed
-                }
                 fun arc(size: Float): Pair<Float, Float> {
-                    val from = asin(((bottom + size / 2f) / centreRadius).coerceAtMost(1f))
-                    val to = (PI / 2).toFloat() - asin(((side + size / 2f) / centreRadius).coerceAtMost(1f))
+                    val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
+                    val from = inset
+                    val to = (PI / 2).toFloat() - inset
                     return if (to >= from) from to to else (PI / 4).toFloat().let { it to it }
                 }
 

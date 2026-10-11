@@ -107,27 +107,23 @@ object DockPrefs {
     const val ICON_SIZE_MIN = 16
 
     /**
-     * The narrowest row 0 can be, in dp: the icon at its smallest, inset from the bottom and side
-     * edges by the given padding, must fit wholly inside the ring.
+     * The narrowest row 0 can be, in dp: its icon sits flush in the corner, so its far corner is
+     * the icon's diagonal from the centre, and the smallest icon must fit wholly inside the ring.
      */
-    fun currentWidthMin(bottomPad: Int, sidePad: Int): Int =
-        kotlin.math.ceil(kotlin.math.hypot((sidePad + ICON_SIZE_MIN).toDouble(), (bottomPad + ICON_SIZE_MIN).toDouble())).toInt()
+    val CURRENT_WIDTH_MIN = kotlin.math.ceil(ICON_SIZE_MIN * kotlin.math.sqrt(2.0)).toInt()
     private const val CURRENT_WIDTH_DEFAULT = 100
     private const val CURRENT_WIDTH_KEY = "inner_offset_dp"
 
-    /** Row 0's width: the saved one, raised if the padding leaves too little room for an icon. */
-    fun getCurrentWidth(context: Context): Int {
-        val min = currentWidthMin(getPadding(context, Padding.BOTTOM), getPadding(context, Padding.SIDE))
-        return prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT).coerceIn(min, CURRENT_WIDTH_MAX)
-    }
+    fun getCurrentWidth(context: Context): Int =
+        prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT).coerceIn(CURRENT_WIDTH_MIN, CURRENT_WIDTH_MAX)
 
     fun setCurrentWidth(context: Context, value: Int) {
         prefs(context).edit().putInt(CURRENT_WIDTH_KEY, value).apply()
     }
 
     /**
-     * The clear space, in dp, between the first or last icon of a row and the screen edge it is
-     * nearest: the bottom edge for the first, the side edge for the last.
+     * The clear space, in dp, between the screen edge and where the fan starts: the quarter circle
+     * is centred on the corner moved in by these, so its curves only start after them.
      */
     enum class Padding(val key: String, val default: Int) {
         BOTTOM("padding_bottom_dp", 20),

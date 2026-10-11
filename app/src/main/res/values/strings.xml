@@ -45,8 +45,8 @@
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>
     <string name="slider_current_width">Width of the current app ring in the corner: %1$d dp</string>
-    <string name="slider_padding_bottom">Padding from the bottom edge to the first icon: %1$d dp</string>
-    <string name="slider_padding_side">Padding from the side edge to the last icon: %1$d dp</string>
+    <string name="slider_padding_bottom">Distance from the bottom edge to where the fan starts: %1$d dp</string>
+    <string name="slider_padding_side">Distance from the side edge to where the fan starts: %1$d dp</string>
     <string name="blacklist_title">Hidden apps</string>
     <string name="blacklist_description">These apps never show on the sheet, and a double tap never switches to them.</string>
     <string name="blacklist_empty">No hidden apps.</string>
