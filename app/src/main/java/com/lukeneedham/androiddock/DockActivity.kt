@@ -241,13 +241,13 @@ class DockActivity : AppCompatActivity() {
     }
 
     /**
-     * Closes [app], the one on screen: leaves it for [previous] (or Home), and ends it. Takes it
-     * off the sheet too, so it does not show as a recent app once it has been left.
+     * Closes [app], the one on screen: opens Home, and ends it. Takes it off the sheet too, so it
+     * does not show as a recent app once it has been left.
      */
-    private fun killCurrent(app: RecentApps.App, previous: RecentApps.App?) {
+    private fun killCurrent(app: RecentApps.App) {
         DockPrefs.dismissApp(this, app.packageName)
         closeSheet(haptic = false)
-        RecentApps.switchAwayAndKill(this, app, previous)
+        RecentApps.homeAndKill(this, app)
     }
 
     /**
@@ -361,7 +361,7 @@ class DockActivity : AppCompatActivity() {
                         }
                         setOnLongClickListener {
                             Haptics.longPress(this)
-                            if (isCurrent) killCurrent(app, apps.firstOrNull()) else kill(app)
+                            if (isCurrent) killCurrent(app) else kill(app)
                             true
                         }
                     },

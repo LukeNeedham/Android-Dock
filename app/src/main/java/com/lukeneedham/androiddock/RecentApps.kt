@@ -128,22 +128,18 @@ object RecentApps {
 
     /**
      * Closes [app], which is on screen. The system will not end the process of an app the user
-     * is looking at, so this first leaves it, for [previous] or else the home screen, and then
-     * asks for it to be ended a few times: its process takes a moment to count as background.
-     * Call it while the sheet is still on screen, which is what lets it start an activity.
+     * is looking at, so this first opens the home screen, and then asks for [app] to be ended a
+     * few times: its process takes a moment to count as background. Call it while the sheet is
+     * still on screen, which is what lets it start an activity.
      */
-    fun switchAwayAndKill(context: Context, app: App, previous: App?) {
+    fun homeAndKill(context: Context, app: App) {
         val appContext = context.applicationContext
         try {
-            if (previous != null) {
-                launch(appContext, previous)
-            } else {
-                appContext.startActivity(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }
+            appContext.startActivity(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
         } catch (e: RuntimeException) {
-            DockLog.log(appContext, "could not leave ${app.packageName}: $e")
+            DockLog.log(appContext, "could not open Home to leave ${app.packageName}: $e")
         }
         val handler = Handler(Looper.getMainLooper())
         repeat(KILL_TRIES) { attempt ->

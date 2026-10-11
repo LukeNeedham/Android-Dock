@@ -18,8 +18,8 @@ launch and use. It stays out of the way until you call it.
    the system to end its background processes (`killBackgroundProcesses`) and takes it off the
    sheet. This is best effort: it does nothing to an app running a foreground service. Long
    pressing **the current app** in the corner closes it: the system will not end an app you are
-   looking at, so Fan first switches to the previous app (or Home if there is none), then asks
-   for the old one to be ended a few times over the next two seconds.
+   looking at, so Fan first opens Home, then asks for the app to be ended a few times over the
+   next two seconds.
 4. Dismissing the sheet **also kills Fan's own task**, so it never appears as an entry
    in the system task switcher.
 
