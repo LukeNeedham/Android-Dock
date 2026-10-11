@@ -157,6 +157,17 @@ object DockPrefs {
         prefs(context).edit().putStringSet(BLACKLIST_KEY, packages.toSet()).apply()
     }
 
+    /** How many of the optional onboarding steps (fan layout, trigger, blacklist) are finished. */
+    const val OPTIONAL_STEPS = 3
+    private const val ONBOARDING_KEY = "onboarding_optional_done"
+
+    fun getOptionalStepsDone(context: Context): Int =
+        prefs(context).getInt(ONBOARDING_KEY, 0).coerceIn(0, OPTIONAL_STEPS)
+
+    fun setOptionalStepsDone(context: Context, count: Int) {
+        prefs(context).edit().putInt(ONBOARDING_KEY, count).apply()
+    }
+
     fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }
 
     fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }

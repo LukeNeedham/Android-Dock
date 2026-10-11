@@ -1,12 +1,14 @@
 package com.lukeneedham.androiddock
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -57,8 +60,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.PaddingValues
@@ -73,10 +80,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** The pages of the settings app. */
-internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Log }
+internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log }
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -90,6 +98,7 @@ class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         openCount++
         setContent {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
@@ -131,9 +140,30 @@ private fun AppNavigation(resumes: Int) {
     ) { mutableStateListOf(Route.Settings) }
     val back: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
 
+    // Until setup is done the app is only the onboarding flow, one page per step.
+    val context = LocalContext.current
+    var optionalDone by remember { mutableIntStateOf(DockPrefs.getOptionalStepsDone(context)) }
+    val step = if (resumes >= 0) OnboardingStep.current(context, optionalDone) else null
+    if (step != null) {
+        val moveTo = { done: Int ->
+            optionalDone = done
+            DockPrefs.setOptionalStepsDone(context, done)
+        }
+        OnboardingFlow(
+            step,
+            onStepDone = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal + 1) },
+            onStepBack = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal - 1) },
+        )
+        return
+    }
+
     NavDisplay(
         backStack = backStack,
         onBack = back,
+        // Slide, never fade: a new page enters from the right, and going back reverses it.
+        transitionSpec = { slideInHorizontally { it } togetherWith slideOutHorizontally { -it } },
+        popTransitionSpec = { slideInHorizontally { -it } togetherWith slideOutHorizontally { it } },
+        predictivePopTransitionSpec = { slideInHorizontally { -it } togetherWith slideOutHorizontally { it } },
         entryProvider = { route ->
             NavEntry(route) {
                 when (route) {
@@ -141,6 +171,7 @@ private fun AppNavigation(resumes: Int) {
                     Route.Trigger -> TriggerScreen(back)
                     Route.FanLayout -> FanLayoutScreen(back)
                     Route.Blacklist -> BlacklistScreen(back)
+                    Route.Debug -> DebugScreen(back) { backStack.add(it) }
                     Route.Log -> LogScreen(back)
                 }
             }
@@ -152,65 +183,51 @@ private fun AppNavigation(resumes: Int) {
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    // Reading [resumes] here makes the checks below re-run after returning from system settings.
-    val accessibilityDone = resumes >= 0 && SetupState.isAccessibilityEnabled(context)
-    val usageDone = resumes >= 0 && SetupState.isUsageAccessGranted(context)
+    val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    // The fan opens over this page, so its state is polled; nothing else announces it.
+    val fanOpen by produceState(DockActivity.isOpen) {
+        while (true) {
+            value = DockActivity.isOpen
+            delay(150)
+        }
+    }
 
     Column(
         modifier = Modifier
-            .systemBarsPadding()
+            .topAndSideInsets()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
-        Text(stringResource(R.string.onboarding_title), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
         Text(
-            stringResource(R.string.onboarding_intro),
+            stringResource(R.string.onboarding_all_set),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 8.dp),
         )
-        Column(modifier = Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            StepCard(
-                title = R.string.step_accessibility_title,
-                description = R.string.step_accessibility_description,
-                hint = R.string.step_accessibility_hint,
-                done = accessibilityDone,
-                action = R.string.step_accessibility_action,
-                onAction = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
-                secondaryAction = R.string.step_app_info_action,
-                onSecondaryAction = {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null),
-                        ),
-                    )
-                },
-            )
-            StepCard(
-                title = R.string.step_usage_title,
-                description = R.string.step_usage_description,
-                done = usageDone,
-                action = R.string.step_usage_action,
-                onAction = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
-            )
-        }
-        if (accessibilityDone && usageDone) {
-            Text(
-                stringResource(R.string.onboarding_all_set),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-        }
+        PermissionStatus(
+            title = R.string.status_accessibility_title,
+            ok = SetupState.isAccessibilityEnabled(context),
+            onOpen = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+        )
+        PermissionStatus(
+            title = R.string.status_usage_title,
+            ok = SetupState.isUsageAccessGranted(context),
+            onOpen = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
+        )
         Button(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                DockActivity.starting = true
-                context.startActivity(Intent(context, DockActivity::class.java))
+                if (fanOpen) {
+                    DockActivity.close(haptic = false)
+                } else {
+                    DockActivity.starting = true
+                    context.startActivity(Intent(context, DockActivity::class.java))
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
-        ) { Text(stringResource(R.string.onboarding_try_it)) }
+                .padding(top = 24.dp),
+        ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
@@ -250,12 +267,40 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.blacklist_open)) }
 
-        TextButton(
-            onClick = { navigate(Route.Log) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-        ) { Text(stringResource(R.string.onboarding_view_log)) }
+        if (isDebuggable) {
+            FilledTonalButton(
+                onClick = { navigate(Route.Debug) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+            ) { Text(stringResource(R.string.debug_open)) }
+        }
+        NavBarSpacer()
+    }
+}
+
+/**
+ * One check on the home page: its [title], then whether it is set up (a tick and "Completed", or a
+ * cross and "Not completed"), with a link to its system page at the right edge.
+ */
+@Composable
+private fun PermissionStatus(title: Int, ok: Boolean, onOpen: () -> Unit) {
+    Text(
+        stringResource(title),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(top = 24.dp),
+    )
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Icon(
+            painterResource(if (ok) R.drawable.ic_check else R.drawable.ic_close),
+            contentDescription = null,
+            tint = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+        )
+        Text(
+            stringResource(if (ok) R.string.status_completed else R.string.status_not_completed),
+            modifier = Modifier.weight(1f).padding(start = 8.dp),
+        )
+        TextButton(onClick = onOpen) { Text(stringResource(R.string.status_open)) }
     }
 }
 
@@ -272,44 +317,6 @@ internal fun SectionHeader(title: Int, description: Int?) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 4.dp),
         )
-    }
-}
-
-@Composable
-private fun StepCard(
-    title: Int,
-    description: Int,
-    done: Boolean,
-    action: Int,
-    onAction: () -> Unit,
-    hint: Int? = null,
-    secondaryAction: Int? = null,
-    onSecondaryAction: (() -> Unit)? = null,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            val text = stringResource(title)
-            Text(if (done) "$text  ✓" else text, style = MaterialTheme.typography.titleMedium)
-            Text(
-                stringResource(description),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            if (done) return@Column
-            if (hint != null) {
-                Text(
-                    stringResource(hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            FilledTonalButton(onClick = onAction, modifier = Modifier.padding(top = 12.dp)) {
-                Text(stringResource(action))
-            }
-            if (secondaryAction != null && onSecondaryAction != null) {
-                TextButton(onClick = onSecondaryAction) { Text(stringResource(secondaryAction)) }
-            }
-        }
     }
 }
 

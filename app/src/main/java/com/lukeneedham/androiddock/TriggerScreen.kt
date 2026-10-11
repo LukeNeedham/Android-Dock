@@ -19,9 +19,9 @@ import androidx.compose.ui.unit.dp
 
 /** The trigger on a page of its own: where it sits, how big it is, and its colour. */
 @Composable
-internal fun TriggerScreen(onBack: () -> Unit) {
+internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
-    SubPage(R.string.position_title, onBack) {
+    SubPage(R.string.position_title, onBack, footer, header) {
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -39,6 +39,7 @@ internal fun TriggerScreen(onBack: () -> Unit) {
                 SettingSlider(context, setting, label)
             }
             ColorSettingRow(context, DockPrefs.ColorSetting.BUTTON, R.string.color_button)
+            NavBarSpacer()
         }
     }
 }
