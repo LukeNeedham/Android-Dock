@@ -71,6 +71,7 @@ import kotlin.math.sin
 @Composable
 internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
+    val corner = DockPrefs.getCorner(context)
     var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
     var showCurrent by remember { mutableStateOf(DockPrefs.getShowCurrent(context)) }
     val currentWidth = inner.coerceAtLeast(DockPrefs.currentWidthMin(showCurrent))
