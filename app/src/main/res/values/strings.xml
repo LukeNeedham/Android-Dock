@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Fan</string>
     <string name="accessibility_service_label">Fan</string>
-    <string name="accessibility_service_description">Lets Fan detect a tap on the bottom-right corner of the navigation bar, and open the app switcher sheet.</string>
+    <string name="accessibility_service_description">Lets Fan detect a tap on the trigger in your chosen screen corner, and open the app switcher sheet.</string>
     <string name="sheet_title">Open apps</string>
 
     <string name="settings_title">Fan settings</string>
@@ -9,7 +9,7 @@
     <string name="fan_open">Open fan</string>
     <string name="fan_close">Close fan</string>
     <string name="step_accessibility_title">Turn on the accessibility service</string>
-    <string name="step_accessibility_description">Lets Fan notice a tap on the corner of the navigation bar. Find Fan in the list and switch it on.</string>
+    <string name="step_accessibility_description">Lets Fan notice a tap on the corner trigger. Find Fan in the list and switch it on.</string>
     <string name="step_accessibility_hint">If the switch is greyed out: open the app info page, tap the ⋮ menu and choose Allow restricted settings, then try again.</string>
     <string name="step_accessibility_action">Open accessibility settings</string>
     <string name="step_app_info_action">Open app info</string>
@@ -21,7 +21,7 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_finish">Finish</string>
     <string name="onboarding_required_note">Required. This page moves on once it is done.</string>
-    <string name="onboarding_welcome">Fan is not an app you open. After setup, tap the bottom-right corner of the navigation bar to switch apps.</string>
+    <string name="onboarding_welcome">Fan is not an app you open. After setup, tap the trigger in the screen corner (bottom right unless you change it) to switch apps.</string>
     <string name="status_accessibility_title">Accessibility service</string>
     <string name="status_usage_title">App usage access</string>
     <string name="status_completed">Completed</string>
@@ -32,17 +32,26 @@
     <string name="status_open">Open settings</string>
     <string name="onboarding_view_log">View debug log</string>
     <string name="log_title">Debug log</string>
-    <string name="log_empty">Nothing recorded yet. Enable the accessibility service, then touch the bottom-right corner.</string>
+    <string name="log_empty">Nothing recorded yet. Enable the accessibility service, then touch the trigger corner.</string>
     <string name="log_refresh">Refresh</string>
     <string name="log_copy">Copy</string>
     <string name="log_clear">Clear</string>
     <string name="log_copied">Log copied</string>
+    <string name="corner_title">Screen corner</string>
+    <string name="corner_description">The corner of the screen that the trigger and the fan sit in. The trigger\'s position and the fan\'s spacing are measured from the two edges of this corner.</string>
+    <string name="corner_bottom_right">Bottom right</string>
+    <string name="corner_bottom_left">Bottom left</string>
+    <string name="corner_top_left">Top left</string>
+    <string name="corner_top_right">Top right</string>
+    <string name="edge_top">top</string>
+    <string name="edge_bottom">bottom</string>
+    <string name="edge_left">left</string>
+    <string name="edge_right">right</string>
     <string name="position_title">Trigger</string>
-    <string name="position_description">With gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the trigger until a swipe up from it stays with Fan. Touching it opens the sheet, and a long press shows the actions: Back, Home, Recents, these settings and a few system actions.</string>
+    <string name="position_description">In a bottom corner with gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the trigger until a swipe up from it stays with Fan. Touching it opens the sheet, and a long press shows the actions: Back, Home, Recents, these settings and a few system actions.</string>
     <string name="trigger_summary">The strip over the corner of the navigation bar that opens the sheet: where it sits, how big it is, and its colour.</string>
     <string name="trigger_open">Customise trigger</string>
-    <string name="slider_right">Distance from the right edge: %1$d dp</string>
-    <string name="slider_bottom">Distance from the bottom: %1$d dp</string>
+    <string name="slider_edge">Distance from the %1$s edge: %2$d dp</string>
     <string name="slider_width">Width: %1$d dp</string>
     <string name="slider_height">Height: %1$d dp</string>
     <string name="sheet_empty">No recently used apps.</string>
@@ -55,13 +64,12 @@
     <string name="color_alpha">Opacity: %1$d</string>
     <string name="sheet_title_loading">Loading apps…</string>
     <string name="sheet_title_section">Fan layout</string>
-    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. The corner ring holds just the app that is open now (and is empty on the home screen); you can change its width, or hide the app and keep only the space. Long press that app, like any other, to open its App Info page. Ring 1 is the next one out. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
+    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. The corner ring holds just the app that is open now (and is empty on the home screen); you can change its width, or hide the app and keep only the space. Long press that app, like any other, to open its App Info page. Ring 1 is the next one out. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the screen edge; the widths add up to the sheet\'s size.</string>
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>
     <string name="row_current_title">Corner ring</string>
     <string name="row_show_current">Show current app</string>
-    <string name="slider_padding_bottom">Distance from the bottom edge to where the fan starts: %1$d dp</string>
-    <string name="slider_padding_side">Distance from the side edge to where the fan starts: %1$d dp</string>
+    <string name="slider_padding">Distance from the %1$s edge to where the fan starts: %2$d dp</string>
     <string name="blacklist_title">Hidden apps</string>
     <string name="blacklist_description">These apps never show on the sheet, and a double tap never switches to them.</string>
     <string name="blacklist_empty">No hidden apps.</string>

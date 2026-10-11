@@ -9,7 +9,7 @@ launch and use. It stays out of the way until you call it.
 
 ## The idea
 
-1. You tap the **bottom-right corner of the screen, in the navigation bar**.
+1. You tap the **trigger in your chosen screen corner** (bottom right by default; pick any corner on the home page).
 2. A **corner sheet**, a quarter circle in the bottom-right corner of the screen, opens over
    whatever you were doing. The icons of your **recently used apps** run along its arc, the most
    recent nearest the bottom edge. The ring in the very corner (row zero) holds just **the app you

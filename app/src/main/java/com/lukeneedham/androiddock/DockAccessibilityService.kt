@@ -15,7 +15,7 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
 /**
- * Places a [CornerTouchView] over the bottom-right corner of the screen, on top of the
+ * Places a [CornerTouchView] over the chosen corner of the screen, on top of the
  * navigation bar. Its position and size come from [DockPrefs]. Touching it opens the sheet, and a long press opens the sheet
  * in its actions mode (Home, Back, Recents, Fan settings).
  */
@@ -56,7 +56,6 @@ class DockAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.BOTTOM or Gravity.END
         }
         fillLayout(params)
         val view = CornerTouchView(this).apply {
@@ -70,12 +69,15 @@ class DockAccessibilityService : AccessibilityService() {
 
     private fun dpToPx(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 
-    /** Sets the window's size and offsets, measured from the bottom-right corner, from the prefs. */
+    /** Sets the window's size and offsets, measured from the chosen corner, from the prefs. */
     private fun fillLayout(params: WindowManager.LayoutParams) {
+        val corner = DockPrefs.getCorner(this)
+        params.gravity = (if (corner.bottom) Gravity.BOTTOM else Gravity.TOP) or
+            (if (corner.end) Gravity.RIGHT else Gravity.LEFT)
         params.width = dpToPx(DockPrefs.get(this, DockPrefs.Setting.WIDTH))
         params.height = dpToPx(DockPrefs.get(this, DockPrefs.Setting.HEIGHT))
-        params.x = dpToPx(DockPrefs.get(this, DockPrefs.Setting.RIGHT_OFFSET))
-        params.y = dpToPx(DockPrefs.get(this, DockPrefs.Setting.BOTTOM_OFFSET))
+        params.x = dpToPx(DockPrefs.get(this, DockPrefs.Setting.HORIZONTAL_OFFSET))
+        params.y = dpToPx(DockPrefs.get(this, DockPrefs.Setting.VERTICAL_OFFSET))
     }
 
     private fun applyLayout() {
@@ -85,7 +87,7 @@ class DockAccessibilityService : AccessibilityService() {
         getSystemService(WindowManager::class.java).updateViewLayout(view, params)
         DockLog.log(
             this,
-            "trigger set to " + DockPrefs.Setting.entries.joinToString(" ") {
+            "trigger set to corner=${DockPrefs.getCorner(this).name.lowercase()} " + DockPrefs.Setting.entries.joinToString(" ") {
                 "${it.name.lowercase()}=${DockPrefs.get(this, it)}dp"
             },
         )

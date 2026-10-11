@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
+    val corner = DockPrefs.getCorner(context)
     SubPage(R.string.position_title, onBack, footer, header) {
         Column(
             modifier = Modifier
@@ -30,11 +31,11 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
         ) {
             Text(stringResource(R.string.position_description), style = MaterialTheme.typography.bodyMedium)
             DockPrefs.Setting.entries.forEach { setting ->
-                val label = when (setting) {
-                    DockPrefs.Setting.RIGHT_OFFSET -> R.string.slider_right
-                    DockPrefs.Setting.BOTTOM_OFFSET -> R.string.slider_bottom
-                    DockPrefs.Setting.WIDTH -> R.string.slider_width
-                    DockPrefs.Setting.HEIGHT -> R.string.slider_height
+                val label: @Composable (Int) -> String = when (setting) {
+                    DockPrefs.Setting.HORIZONTAL_OFFSET -> { v -> stringResource(R.string.slider_edge, stringResource(corner.horizontalEdge), v) }
+                    DockPrefs.Setting.VERTICAL_OFFSET -> { v -> stringResource(R.string.slider_edge, stringResource(corner.verticalEdge), v) }
+                    DockPrefs.Setting.WIDTH -> { v -> stringResource(R.string.slider_width, v) }
+                    DockPrefs.Setting.HEIGHT -> { v -> stringResource(R.string.slider_height, v) }
                 }
                 SettingSlider(context, setting, label)
             }

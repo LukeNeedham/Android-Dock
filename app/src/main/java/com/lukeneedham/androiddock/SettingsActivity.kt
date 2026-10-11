@@ -26,6 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
@@ -230,6 +233,13 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .padding(top = 24.dp),
         ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
+        var corner by remember { mutableStateOf(DockPrefs.getCorner(context)) }
+        SectionHeader(R.string.corner_title, R.string.corner_description)
+        CornerPicker(corner) {
+            corner = it
+            DockPrefs.setCorner(context, it)
+        }
+
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
             onClick = { navigate(Route.Trigger) },
@@ -256,6 +266,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 showCurrent = DockPrefs.getShowCurrent(context),
                 sheetColor = sheetColor,
                 edgeColor = edgeColor,
+                corner = corner,
                 thumbnailDp = 96,
                 modifier = Modifier.padding(start = 16.dp),
             )
@@ -278,6 +289,29 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             ) { Text(stringResource(R.string.debug_open)) }
         }
         NavBarSpacer()
+    }
+}
+
+/** A drop-down of the four screen corners. */
+@Composable
+private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.padding(top = 8.dp)) {
+        OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(selected.label), modifier = Modifier.weight(1f))
+            Text("▾")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DockPrefs.Corner.entries.forEach { corner ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(corner.label)) },
+                    onClick = {
+                        open = false
+                        onSelect(corner)
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -324,10 +358,10 @@ internal fun SectionHeader(title: Int, description: Int?) {
 
 /** A labelled slider that saves its value as it moves; the running service applies it live. */
 @Composable
-internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: Int) {
+internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: @Composable (Int) -> String) {
     var value by remember { mutableIntStateOf(DockPrefs.get(context, setting)) }
     Text(
-        stringResource(label, value),
+        label(value),
         modifier = Modifier.padding(top = 16.dp),
     )
     Slider(
