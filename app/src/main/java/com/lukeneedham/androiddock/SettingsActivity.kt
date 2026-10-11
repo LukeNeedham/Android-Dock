@@ -63,6 +63,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.PaddingValues
@@ -157,6 +160,10 @@ private fun AppNavigation(resumes: Int) {
     NavDisplay(
         backStack = backStack,
         onBack = back,
+        // Slide, never fade: a new page enters from the right, and going back reverses it.
+        transitionSpec = { slideInHorizontally { it } togetherWith slideOutHorizontally { -it } },
+        popTransitionSpec = { slideInHorizontally { -it } togetherWith slideOutHorizontally { it } },
+        predictivePopTransitionSpec = { slideInHorizontally { -it } togetherWith slideOutHorizontally { it } },
         entryProvider = { route ->
             NavEntry(route) {
                 when (route) {
