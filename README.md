@@ -25,8 +25,9 @@ launch and use. It stays out of the way until you call it.
    in the system task switcher.
 
 **Long pressing the corner** opens the sheet in its actions mode: the same layout, styling and
-colours, but the icons are Home, Back, Recents and Fan settings, done through the accessibility
-service (the corner ring is left empty). The sheet closes first, then the action runs a moment
+colours, but the icons are actions (the corner ring is left empty): Back, Home and Recents, then
+Fan settings, System settings, Screenshot (Android 9+), Power menu and Flashlight. Back, Home,
+Recents, Screenshot and the Power menu go through the accessibility service. The sheet closes first, then the action runs a moment
 later so it acts on whatever was underneath.
 
 Opening Fan from the launcher does not show the sheet. It shows a settings screen with

@@ -1,0 +1,13 @@
+<!-- A white circle with a dark grey glyph inside it, like the other actions of the sheet. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12,12m-12,0a12,12 0 1,0 24,0a12,12 0 1,0 -24,0" />
+    <path
+        android:fillColor="#424242"
+        android:pathData="M13,4.5L8,13h3.5l-1,6.5L16,10.5h-3.5z" />
+</vector>

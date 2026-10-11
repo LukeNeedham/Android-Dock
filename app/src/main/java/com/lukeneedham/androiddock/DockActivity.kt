@@ -9,7 +9,9 @@ import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -285,22 +287,37 @@ class DockActivity : AppCompatActivity() {
             val drawable = ContextCompat.getDrawable(this, icon)!!
             return Entry(drawable, getString(label), { closeSheet(haptic = false); block() })
         }
-        return listOf(
+        return buildList {
             // Back, Home, Recents: the order of the system's three-button navigation.
-            action(R.drawable.ic_action_back, R.string.action_back) {
+            add(action(R.drawable.ic_action_back, R.string.action_back) {
                 DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_BACK)
-            },
-            action(R.drawable.ic_action_home, R.string.action_home) {
+            })
+            add(action(R.drawable.ic_action_home, R.string.action_home) {
                 DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_HOME)
-            },
-            action(R.drawable.ic_action_recents, R.string.action_recents) {
+            })
+            add(action(R.drawable.ic_action_recents, R.string.action_recents) {
                 DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_RECENTS)
-            },
-            action(R.drawable.ic_action_settings, R.string.action_settings) {
-                DockLog.log(this, "actions: opening settings")
-                startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            },
-        )
+            })
+            add(action(R.drawable.ic_action_fan_settings, R.string.action_settings) {
+                DockLog.log(this@DockActivity, "actions: opening settings")
+                startActivity(Intent(this@DockActivity, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            })
+            add(action(R.drawable.ic_action_settings, R.string.action_system_settings) {
+                startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            })
+            // Taking a screenshot needs Android 9; on older versions the action is left out.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                add(action(R.drawable.ic_action_screenshot, R.string.action_screenshot) {
+                    DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+                })
+            }
+            add(action(R.drawable.ic_action_power, R.string.action_power) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)
+            })
+            add(action(R.drawable.ic_action_flashlight, R.string.action_flashlight) {
+                Torch.toggle(this@DockActivity)
+            })
+        }
     }
 
     private fun addAppView(root: ViewGroup, view: View, params: ViewGroup.LayoutParams) {

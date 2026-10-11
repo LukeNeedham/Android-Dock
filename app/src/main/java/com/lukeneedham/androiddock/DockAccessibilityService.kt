@@ -34,6 +34,7 @@ class DockAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        Torch.track(this)
         val navMode = Settings.Secure.getInt(contentResolver, "navigation_mode", -1)
         DockLog.log(
             this,
