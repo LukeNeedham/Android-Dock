@@ -77,8 +77,12 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
+    // The corner ring cannot be narrower than fits an icon under the current padding.
+    val currentMin = DockPrefs.currentWidthMin(bottomPad, sidePad)
+    val currentWidth = inner.coerceAtLeast(currentMin)
+
     SubPage(R.string.fan_layout_title, onBack) {
-        FanPreview(inner, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
+        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -90,14 +94,14 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Text(stringResource(R.string.slider_current_width, inner), modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.slider_current_width, currentWidth), modifier = Modifier.padding(top = 16.dp))
             Slider(
-                value = inner.toFloat(),
+                value = currentWidth.toFloat(),
                 onValueChange = {
                     inner = it.toInt()
                     DockPrefs.setCurrentWidth(context, inner)
                 },
-                valueRange = DockPrefs.CURRENT_WIDTH_MIN.toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
+                valueRange = currentMin.toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
             )
             Text(stringResource(R.string.slider_padding_bottom, bottomPad), modifier = Modifier.padding(top = 16.dp))
             Slider(
@@ -125,7 +129,7 @@ internal fun FanLayoutScreen(onBack: () -> Unit) {
 }
 
 private const val MAX_ICON_SIZE = 64
-private const val MIN_ICON_SIZE = 16
+private const val MIN_ICON_SIZE = DockPrefs.ICON_SIZE_MIN
 private const val ROW_SPACING = 1.2f
 private const val ICON_SPACING = 1.15f
 
@@ -227,6 +231,18 @@ internal fun FanPreview(
 
                 val bottom = bottomPad * dp
                 val side = sidePad * dp
+                if (rowIndex < 0) {
+                    // Row 0: one icon in the corner, padded like the others and wholly inside the ring.
+                    var size = min(MAX_ICON_SIZE * dp, (end - start) / ROW_SPACING)
+                    while (size > MIN_ICON_SIZE * dp && hypot(side + size, bottom + size) > end) size -= 1f
+                    size = size.coerceAtLeast(MIN_ICON_SIZE * dp)
+                    drawCircle(
+                        color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
+                        radius = size / 2,
+                        center = Offset(corner.x - side - size / 2, corner.y - bottom - size / 2),
+                    )
+                    return@forEachIndexed
+                }
                 fun arc(size: Float): Pair<Float, Float> {
                     val from = asin(((bottom + size / 2f) / centreRadius).coerceAtMost(1f))
                     val to = (PI / 2).toFloat() - asin(((side + size / 2f) / centreRadius).coerceAtMost(1f))

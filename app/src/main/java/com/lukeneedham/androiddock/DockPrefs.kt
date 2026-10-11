@@ -101,13 +101,25 @@ object DockPrefs {
      * It is drawn like any other row, but the user can only change its width. The key is the
      * one the gap before the first row used to be stored under, so a user's setting carries over.
      */
-    const val CURRENT_WIDTH_MIN = 32
     const val CURRENT_WIDTH_MAX = 150
+
+    /** The smallest an app icon is drawn, in dp. */
+    const val ICON_SIZE_MIN = 16
+
+    /**
+     * The narrowest row 0 can be, in dp: the icon at its smallest, inset from the bottom and side
+     * edges by the given padding, must fit wholly inside the ring.
+     */
+    fun currentWidthMin(bottomPad: Int, sidePad: Int): Int =
+        kotlin.math.ceil(kotlin.math.hypot((sidePad + ICON_SIZE_MIN).toDouble(), (bottomPad + ICON_SIZE_MIN).toDouble())).toInt()
     private const val CURRENT_WIDTH_DEFAULT = 100
     private const val CURRENT_WIDTH_KEY = "inner_offset_dp"
 
-    fun getCurrentWidth(context: Context): Int =
-        prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT).coerceIn(CURRENT_WIDTH_MIN, CURRENT_WIDTH_MAX)
+    /** Row 0's width: the saved one, raised if the padding leaves too little room for an icon. */
+    fun getCurrentWidth(context: Context): Int {
+        val min = currentWidthMin(getPadding(context, Padding.BOTTOM), getPadding(context, Padding.SIDE))
+        return prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT).coerceIn(min, CURRENT_WIDTH_MAX)
+    }
 
     fun setCurrentWidth(context: Context, value: Int) {
         prefs(context).edit().putInt(CURRENT_WIDTH_KEY, value).apply()

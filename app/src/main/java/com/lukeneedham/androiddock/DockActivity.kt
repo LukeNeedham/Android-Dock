@@ -23,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -322,6 +323,18 @@ class DockActivity : AppCompatActivity() {
             val centreRadius = (start + end) / 2
             val n = filled[i]
             var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
+            if (i == 0) {
+                // The icon of row 0 sits in the corner with the same padding from the bottom and
+                // side edges as the other rows' icons, and as big as it can be while its far
+                // corner stays inside the ring. The ring is never narrower than fits it at the
+                // smallest size.
+                while (size > MIN_ICON_SIZE.dp && hypot(sidePad + size.toFloat(), bottomPad + size.toFloat()) > end) size--
+                size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
+                val cx = sidePad + size / 2f
+                val cy = bottomPad + size / 2f
+                val angle = atan2(cy, cx)
+                return@mapIndexed Placement(hypot(cx, cy), size, angle, angle)
+            }
             while (size > MIN_ICON_SIZE.dp && n > 0) {
                 val (from, to) = arc(centreRadius, size)
                 val fits = if (n == 1) to >= from else {
@@ -410,7 +423,7 @@ class DockActivity : AppCompatActivity() {
         private const val ENTER_MS = 280L
         private const val EXIT_MS = 200L
         private const val MAX_ICON_SIZE = 64
-        private const val MIN_ICON_SIZE = 16
+        private const val MIN_ICON_SIZE = DockPrefs.ICON_SIZE_MIN
         private const val ROW_SPACING = 1.2f
         private const val ICON_SPACING = 1.15f
     }
