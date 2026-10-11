@@ -1,14 +1,11 @@
 package com.lukeneedham.androiddock
 
-import android.app.ActivityManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.os.Handler
-import android.os.Looper
 
 /** Works out which apps the user has recently had open, from the system's usage events. */
 object RecentApps {
@@ -113,43 +110,6 @@ object RecentApps {
         val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
-
-    /**
-     * Asks the system to end [app]'s background processes. Best effort: it does nothing to an app
-     * that is on screen or running a foreground service, and gives no result.
-     */
-    fun kill(context: Context, app: App) {
-        // Ending our own processes would take the accessibility service down with them.
-        if (app.packageName == context.packageName) return
-        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        manager.killBackgroundProcesses(app.packageName)
-        DockLog.log(context, "asked the system to end ${app.packageName}")
-    }
-
-    /**
-     * Closes [app], which is on screen. The system will not end the process of an app the user
-     * is looking at, so this first opens the home screen, and then asks for [app] to be ended a
-     * few times: its process takes a moment to count as background. Call it while the sheet is
-     * still on screen, which is what lets it start an activity.
-     */
-    fun homeAndKill(context: Context, app: App) {
-        val appContext = context.applicationContext
-        try {
-            appContext.startActivity(
-                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
-        } catch (e: RuntimeException) {
-            DockLog.log(appContext, "could not open Home to leave ${app.packageName}: $e")
-        }
-        val handler = Handler(Looper.getMainLooper())
-        repeat(KILL_TRIES) { attempt ->
-            handler.postDelayed({ kill(appContext, app) }, KILL_FIRST_DELAY_MS + attempt * KILL_RETRY_MS)
-        }
-    }
-
-    private const val KILL_TRIES = 3
-    private const val KILL_FIRST_DELAY_MS = 600L
-    private const val KILL_RETRY_MS = 700L
 
     // Usage event types that are not in the public API before Android 10; the system reports them
     // either way.

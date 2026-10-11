@@ -15,12 +15,11 @@ launch and use. It stays out of the way until you call it.
    recent nearest the bottom edge. The ring in the very corner (row zero) holds just **the app you
    are in now**, and is left blank on the home screen. It is laid out like any other ring, and
    its width and whether it shows the app at all (otherwise it is only margin) are all that can be changed, by selecting it on the fan layout page.
-3. Pick an app to switch to it, or dismiss the sheet. **Long press** an app to kill it: Fan asks
-   the system to end its background processes (`killBackgroundProcesses`) and takes it off the
-   sheet. This is best effort: it does nothing to an app running a foreground service. Long
-   pressing **the current app** in the corner closes it: the system will not end an app you are
-   looking at, so Fan first opens Home, then asks for the app to be ended a few times over the
-   next two seconds.
+3. Pick an app to switch to it, or dismiss the sheet. **Long press** an app, the current app
+   included, to open its App Info page in the system settings, where it can be force stopped.
+   (Fan used to try to kill the app itself with `killBackgroundProcesses`, but that never worked
+   on the apps people want to kill: it cannot touch an app on screen or one with a foreground
+   service, and only the system can force stop.)
 4. Dismissing the sheet **also kills Fan's own task**, so it never appears as an entry
    in the system task switcher.
 

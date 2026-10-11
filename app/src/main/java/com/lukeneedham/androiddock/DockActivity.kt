@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -249,10 +250,10 @@ class DockActivity : AppCompatActivity() {
                         // Hidden, row 0 is left empty and is only margin.
                         val current = recents.current.takeIf { DockPrefs.getShowCurrent(this) }?.let { app ->
                             // Already on screen behind the sheet, so a tap has nothing to switch to.
-                            Entry(app.icon, app.label, { closeSheet(haptic = false) }, { killCurrent(app) })
+                            Entry(app.icon, app.label, { closeSheet(haptic = false) }, { openAppInfo(app) })
                         }
                         val entries = recents.others.map { app ->
-                            Entry(app.icon, app.label, { launch(app) }, { kill(app) })
+                            Entry(app.icon, app.label, { launch(app) }, { openAppInfo(app) })
                         }
                         showEntries(sheetView, current, entries, rows, radius, textColor)
                     }
@@ -325,24 +326,17 @@ class DockActivity : AppCompatActivity() {
         root.addView(view, params)
     }
 
-    /**
-     * Closes [app], the one on screen: opens Home, and ends it. Takes it off the sheet too, so it
-     * does not show as a recent app once it has been left.
-     */
-    private fun killCurrent(app: RecentApps.App) {
-        DockPrefs.dismissApp(this, app.packageName)
+    /** Opens the system's App Info page for [app], closing the sheet. */
+    private fun openAppInfo(app: RecentApps.App) {
         closeSheet(haptic = false)
-        RecentApps.homeAndKill(this, app)
-    }
-
-    /**
-     * Ends [app]'s background processes, and takes it off the sheet until the user opens it again,
-     * filling its place.
-     */
-    private fun kill(app: RecentApps.App) {
-        RecentApps.kill(this, app)
-        DockPrefs.dismissApp(this, app.packageName)
-        reload?.invoke()
+        try {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", app.packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (e: RuntimeException) {
+            DockLog.log(this, "could not open app info for ${app.packageName}: $e")
+        }
     }
 
     /**

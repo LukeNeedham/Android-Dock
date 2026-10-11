@@ -7,9 +7,6 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- A normal permission (no prompt): lets a long press on an app end its background processes. -->
-    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
-
     <!-- Lets the sheet look up the name, icon and launch intent of other apps. -->
     <queries>
         <intent>
@@ -20,6 +17,11 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
+        </intent>
+        <!-- And of the system's App Info page, which a long press on an app opens. -->
+        <intent>
+            <action android:name="android.settings.APPLICATION_DETAILS_SETTINGS" />
+            <data android:scheme="package" />
         </intent>
     </queries>
 
