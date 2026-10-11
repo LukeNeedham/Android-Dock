@@ -305,6 +305,9 @@ private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner
             DockPrefs.Corner.entries.forEach { corner ->
                 DropdownMenuItem(
                     text = { Text(stringResource(corner.label)) },
+                    trailingIcon = if (corner == selected) {
+                        { Icon(painterResource(R.drawable.ic_check), contentDescription = null) }
+                    } else null,
                     onClick = {
                         open = false
                         onSelect(corner)
