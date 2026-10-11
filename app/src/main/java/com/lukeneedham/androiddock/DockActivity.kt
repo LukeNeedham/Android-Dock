@@ -235,7 +235,7 @@ class DockActivity : AppCompatActivity() {
                 // Nothing to load: the actions are fixed. The corner ring is left empty.
                 appViews.forEach { sheetView.removeView(it) }
                 appViews.clear()
-                showEntries(sheetView, null, actionEntries(textColor), rows, radius, textColor)
+                showEntries(sheetView, null, actionEntries(), rows, radius, textColor)
             } else {
                 Thread {
                     val recents = RecentApps.loadRecents(this, maxItems)
@@ -279,10 +279,10 @@ class DockActivity : AppCompatActivity() {
         if (!closing) reload?.invoke()
     }
 
-    /** The actions mode's icons, tinted like the sheet's text so they read on its colours. */
-    private fun actionEntries(tint: Int): List<Entry> {
+    /** The actions mode's icons: dark grey glyphs in white circles, which read on any sheet colour. */
+    private fun actionEntries(): List<Entry> {
         fun action(icon: Int, label: Int, block: () -> Unit): Entry {
-            val drawable = ContextCompat.getDrawable(this, icon)!!.mutate().apply { setTint(tint) }
+            val drawable = ContextCompat.getDrawable(this, icon)!!
             return Entry(drawable, getString(label), { closeSheet(haptic = false); block() })
         }
         return listOf(
