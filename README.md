@@ -90,7 +90,11 @@ These need working out when the features are built:
 ## Project setup
 
 - Kotlin, single `app` module, package `com.lukeneedham.androiddock` (kept from the old name, "Android Dock", so installs update in place)
-- `minSdk` 26, `targetSdk` / `compileSdk` 35
+- `minSdk` 23 (Android 6), `targetSdk` 35, `compileSdk` 36. The floor is set by Compose and the
+  libraries around it, and by the trigger overlay and the flashlight. Older Android means a few
+  gaps, none of them blocking: below Android 10 the system does not report when an app's activities
+  are destroyed, so apps swiped away in the system recents stay listed in the fan, and below
+  Android 9 there is no Screenshot action. Not tested below the versions the author has devices for.
 - Gradle Kotlin DSL with a version catalog (`gradle/libs.versions.toml`)
 
 Build a debug APK:
