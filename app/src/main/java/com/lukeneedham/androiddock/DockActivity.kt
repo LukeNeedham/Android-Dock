@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
@@ -19,7 +20,9 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import android.accessibilityservice.AccessibilityService
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import kotlin.math.asin
@@ -32,6 +35,9 @@ import kotlin.math.sin
  * Hosts the corner sheet of open apps: a quarter circle in the bottom-right corner of the screen.
  * The app icons run along its arc. Has no other UI: the activity is transparent, and when the
  * sheet goes away the whole task is removed, so the app never lingers in the system task switcher.
+ *
+ * In its actions mode ([altRequested]) the sheet has the same layout and styling, but its icons
+ * are actions (Home, Back, Recents, Fan settings) rather than apps.
  */
 class DockActivity : AppCompatActivity() {
 
@@ -161,6 +167,8 @@ class DockActivity : AppCompatActivity() {
             .setDuration(ENTER_MS)
             .setInterpolator(DecelerateInterpolator())
             .start()
+        // The request that revived this sheet may have asked for the other mode.
+        applyMode()
     }
 
     override fun onStop() {
@@ -223,25 +231,76 @@ class DockActivity : AppCompatActivity() {
         val maxItems = rows.drop(1).sumOf { it.count }
         reload = {
             val generation = ++loadGeneration
-            Thread {
-                val recents = RecentApps.loadRecents(this, maxItems)
-                runOnUiThread {
-                    // A newer load has started since, so this one is out of date.
-                    if (isDestroyed || isFinishing || generation != loadGeneration) return@runOnUiThread
-                    appViews.forEach { sheetView.removeView(it) }
-                    appViews.clear()
-                    showApps(sheetView, recents, rows, radius, textColor)
-                }
-            }.start()
+            if (altRequested) {
+                // Nothing to load: the actions are fixed. The corner ring is left empty.
+                appViews.forEach { sheetView.removeView(it) }
+                appViews.clear()
+                showEntries(sheetView, null, actionEntries(textColor), rows, radius, textColor)
+            } else {
+                Thread {
+                    val recents = RecentApps.loadRecents(this, maxItems)
+                    runOnUiThread {
+                        // A newer load has started since, so this one is out of date.
+                        if (isDestroyed || isFinishing || generation != loadGeneration) return@runOnUiThread
+                        appViews.forEach { sheetView.removeView(it) }
+                        appViews.clear()
+                        // Hidden, row 0 is left empty and is only margin.
+                        val current = recents.current.takeIf { DockPrefs.getShowCurrent(this) }?.let { app ->
+                            // Already on screen behind the sheet, so a tap has nothing to switch to.
+                            Entry(app.icon, app.label, { closeSheet(haptic = false) }, { killCurrent(app) })
+                        }
+                        val entries = recents.others.map { app ->
+                            Entry(app.icon, app.label, { launch(app) }, { kill(app) })
+                        }
+                        showEntries(sheetView, current, entries, rows, radius, textColor)
+                    }
+                }.start()
+            }
         }
         reload?.invoke()
         return root
     }
 
-    /** The views showApps added, so they can be cleared when the list is reloaded. */
+    /** The views showEntries added, so they can be cleared when the list is reloaded. */
     private val appViews = ArrayList<View>()
     private var loadGeneration = 0
     private var reload: (() -> Unit)? = null
+
+    /** What fills one icon slot of the sheet: an app, or in actions mode an action. */
+    private class Entry(
+        val icon: Drawable,
+        val label: String,
+        val onClick: () -> Unit,
+        val onLongClick: (() -> Unit)? = null,
+    )
+
+    /** Shows the sheet again, from whichever mode [altRequested] now says. */
+    private fun applyMode() {
+        if (!closing) reload?.invoke()
+    }
+
+    /** The actions mode's icons, tinted like the sheet's text so they read on its colours. */
+    private fun actionEntries(tint: Int): List<Entry> {
+        fun action(icon: Int, label: Int, block: () -> Unit): Entry {
+            val drawable = ContextCompat.getDrawable(this, icon)!!.mutate().apply { setTint(tint) }
+            return Entry(drawable, getString(label), { closeSheet(haptic = false); block() })
+        }
+        return listOf(
+            action(R.drawable.ic_action_home, R.string.action_home) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_HOME)
+            },
+            action(R.drawable.ic_action_back, R.string.action_back) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_BACK)
+            },
+            action(R.drawable.ic_action_recents, R.string.action_recents) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_RECENTS)
+            },
+            action(R.drawable.ic_action_settings, R.string.action_settings) {
+                DockLog.log(this, "actions: opening settings")
+                startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            },
+        )
+    }
 
     private fun addAppView(root: ViewGroup, view: View, params: ViewGroup.LayoutParams) {
         appViews.add(view)
@@ -271,14 +330,11 @@ class DockActivity : AppCompatActivity() {
     /**
      * Spreads the icons evenly along one or more arcs (rows), between the two straight edges of
      * the fan. Each row sizes its icons to the room it has. The first row is a row like the
-     * others, flush against the corner, but holds just the app on screen, or nothing on the home
-     * screen.
+     * others, flush against the corner, but holds just the [current] entry (the app on screen), or
+     * nothing, as on the home screen or in actions mode. [entries] fill the other rows.
      */
-    private fun showApps(root: ViewGroup, recents: RecentApps.Recents, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
-        // Hidden, row 0 is left empty and is only margin.
-        val current = recents.current.takeIf { DockPrefs.getShowCurrent(this) }
-        val apps = recents.others
-        if (apps.isEmpty()) {
+    private fun showEntries(root: ViewGroup, current: Entry?, entries: List<Entry>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
+        if (entries.isEmpty()) {
             addAppView(
                 root,
                 TextView(this).apply {
@@ -300,7 +356,7 @@ class DockActivity : AppCompatActivity() {
 
         // Row 0 holds only the app on screen. The rest fill from the inside; a row with no app
         // left stays empty.
-        var left = apps.size
+        var left = entries.size
         val filled = rows.mapIndexed { i, row ->
             if (i == 0) return@mapIndexed if (current != null) 1 else 0
             val n = minOf(left, row.count)
@@ -353,8 +409,7 @@ class DockActivity : AppCompatActivity() {
         filled.forEachIndexed { i, n ->
             val (centreRadius, size, from, to) = placed[i]
             repeat(n) { slot ->
-                val isCurrent = i == 0
-                val app = if (isCurrent) current!! else apps[next++]
+                val entry = if (i == 0) current!! else entries[next++]
                 // The most recent app is nearest the bottom edge, where the thumb that pressed the
                 // corner button is, and the oldest is at the top of the arc.
                 val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
@@ -363,18 +418,19 @@ class DockActivity : AppCompatActivity() {
                 addAppView(
                     root,
                     ImageView(this).apply {
-                        setImageDrawable(app.icon)
-                        contentDescription = app.label
+                        setImageDrawable(entry.icon)
+                        contentDescription = entry.label
                         isClickable = true
                         setOnClickListener {
                             Haptics.confirm(this)
-                            // Already on screen behind the sheet, so there is nothing to switch to.
-                            if (isCurrent) closeSheet(haptic = false) else launch(app)
+                            entry.onClick()
                         }
-                        setOnLongClickListener {
-                            Haptics.longPress(this)
-                            if (isCurrent) killCurrent(app) else kill(app)
-                            true
+                        entry.onLongClick?.let { onLongClick ->
+                            setOnLongClickListener {
+                                Haptics.longPress(this)
+                                onLongClick()
+                                true
+                            }
                         }
                     },
                     FrameLayout.LayoutParams(size, size, Gravity.BOTTOM or Gravity.END).apply {
@@ -409,6 +465,19 @@ class DockActivity : AppCompatActivity() {
          */
         @Volatile
         var starting = false
+
+        /**
+         * Whether the sheet that is up, or about to be, shows actions rather than apps. A press
+         * on the corner clears it; a long press sets it.
+         */
+        @Volatile
+        var altRequested = false
+
+        /** Switches the sheet that is up, or about to be, to its actions. */
+        fun showActions() {
+            altRequested = true
+            current?.applyMode()
+        }
 
         /** Whether a tap on the corner should close the sheet, rather than open it. */
         val isOpen: Boolean

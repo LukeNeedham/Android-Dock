@@ -4,7 +4,8 @@ An Android overlay that gives you a task switcher from anywhere, in one tap. It 
 launch and use. It stays out of the way until you call it.
 
 > **Status:** early prototype. The corner trigger opens a corner sheet of recent apps, and a
-> long press opens the settings. Touches are recorded in the in-app debug log.
+> long press opens the same sheet showing actions instead of apps. Touches are recorded in the
+> in-app debug log.
 
 ## The idea
 
@@ -22,6 +23,11 @@ launch and use. It stays out of the way until you call it.
    next two seconds.
 4. Dismissing the sheet **also kills Fan's own task**, so it never appears as an entry
    in the system task switcher.
+
+**Long pressing the corner** opens the sheet in its actions mode: the same layout, styling and
+colours, but the icons are Home, Back, Recents and Fan settings, done through the accessibility
+service (the corner ring is left empty). The sheet closes first, then the action runs a moment
+later so it acts on whatever was underneath.
 
 Opening Fan from the launcher does not show the sheet. It shows a settings screen with
 the setup steps, which is where a new user starts.

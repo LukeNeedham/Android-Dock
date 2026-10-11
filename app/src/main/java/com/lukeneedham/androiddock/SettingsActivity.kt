@@ -220,6 +220,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 if (fanOpen) {
                     DockActivity.close(haptic = false)
                 } else {
+                    DockActivity.altRequested = false
                     DockActivity.starting = true
                     context.startActivity(Intent(context, DockActivity::class.java))
                 }
