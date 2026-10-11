@@ -191,12 +191,13 @@ internal fun FanPreview(
             // The fan is centred on the corner moved in by the padding, and nothing is drawn in the
             // padding.
             val corner = Offset(size.width - sidePad * dp, size.height - bottomPad * dp)
+            val radius = radiusDp * dp
             val fit = if (thumbnailDp != null) thumbnailDp / (radiusDp + max(sidePad, bottomPad)) else 1f
             withTransform({
                 scale(fit, fit, pivot = Offset(size.width, size.height))
-                clipRect(0f, 0f, corner.x, corner.y)
+                // The quarter the fan fills, before it is scaled: nothing is drawn in the padding.
+                clipRect(corner.x - radius, corner.y - radius, corner.x, corner.y)
             }) {
-            val radius = radiusDp * dp
             val scale = radius / (total * dp)
 
             val quarter = Path().apply { addOval(androidx.compose.ui.geometry.Rect(corner, radius)) }
@@ -232,11 +233,11 @@ internal fun FanPreview(
                     )
                 }
 
+                // The angles of the first and last icon, which cross over when the icons are too big
+                // for the ring: then the icon does not fit.
                 fun arc(size: Float): Pair<Float, Float> {
                     val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
-                    val from = inset
-                    val to = (PI / 2).toFloat() - inset
-                    return if (to >= from) from to to else (PI / 4).toFloat().let { it to it }
+                    return inset to (PI / 2).toFloat() - inset
                 }
 
                 val n = row.count
@@ -251,7 +252,10 @@ internal fun FanPreview(
                     size -= 1f
                 }
                 size = size.coerceAtLeast(MIN_ICON_SIZE * dp)
-                val (from, to) = arc(size)
+                // Even the smallest icon is too big: put it on the diagonal.
+                val (from, to) = arc(size).let { (a, b) ->
+                    if (b >= a) a to b else (PI / 4).toFloat().let { it to it }
+                }
                 repeat(n) { slot ->
                     val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
                     drawCircle(

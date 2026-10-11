@@ -323,12 +323,11 @@ class DockActivity : AppCompatActivity() {
         // two straight edges of the fan, and the rest are spread evenly between them.
         data class Placement(val centreRadius: Float, val size: Int, val from: Float, val to: Float)
 
+        // The angles of the first and last icon, which cross over when the icons are too big for
+        // the ring: then the icon does not fit.
         fun arc(centreRadius: Float, size: Int): Pair<Float, Float> {
             val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
-            val from = inset
-            val to = (Math.PI / 2).toFloat() - inset
-            // No room along the edges: put the row's icon on the diagonal.
-            return if (to >= from) from to to else (Math.PI / 4).toFloat().let { it to it }
+            return inset to (Math.PI / 2).toFloat() - inset
         }
 
         val placed = rows.mapIndexed { i, _ ->
@@ -346,7 +345,10 @@ class DockActivity : AppCompatActivity() {
                 size--
             }
             size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
-            val (from, to) = arc(centreRadius, size)
+            // Even the smallest icon is too big: put it on the diagonal.
+            val (from, to) = arc(centreRadius, size).let { (a, b) ->
+                if (b >= a) a to b else (Math.PI / 4).toFloat().let { it to it }
+            }
             Placement(centreRadius, size, from, to)
         }
 
