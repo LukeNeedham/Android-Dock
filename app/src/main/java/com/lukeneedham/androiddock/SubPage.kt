@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 private val LocalFooterShown = compositionLocalOf { false }
 
 /** Insets for the top and sides only: the bottom is left to the content, so it scrolls under the nav bar. */
+@Composable
 internal fun Modifier.topAndSideInsets(): Modifier = windowInsetsPadding(
     WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
 )
