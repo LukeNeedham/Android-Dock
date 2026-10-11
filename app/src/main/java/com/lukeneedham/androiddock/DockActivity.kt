@@ -387,7 +387,8 @@ class DockActivity : AppCompatActivity() {
         val placed = rows.mapIndexed { i, _ ->
             val (start, end) = bands[i]
             val centreRadius = (start + end) / 2
-            val n = filled[i]
+            // A row is laid out as if it were full, whatever it holds.
+            val n = rows[i].count
             var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
             while (size > MIN_ICON_SIZE.dp && n > 0) {
                 val (from, to) = arc(centreRadius, size)
@@ -407,13 +408,15 @@ class DockActivity : AppCompatActivity() {
         }
 
         var next = 0
-        filled.forEachIndexed { i, n ->
+        filled.forEachIndexed { i, held ->
+            val count = rows[i].count
             val (centreRadius, size, from, to) = placed[i]
-            repeat(n) { slot ->
+            // The first slots of a row that is not full are filled, and the rest are left empty.
+            repeat(held) { slot ->
                 val entry = if (i == 0) current!! else entries[next++]
                 // The most recent app is nearest the bottom edge, where the thumb that pressed the
                 // corner button is, and the oldest is at the top of the arc.
-                val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
+                val angle = if (count == 1) (from + to) / 2 else from + (to - from) * slot / (count - 1)
                 val cx = centreRadius * cos(angle)
                 val cy = centreRadius * sin(angle)
                 addAppView(
