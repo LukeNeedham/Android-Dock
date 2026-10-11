@@ -23,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import kotlin.math.asin
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -35,43 +36,37 @@ import kotlin.math.sin
 class DockActivity : AppCompatActivity() {
 
     /**
-     * A quarter circle centred on the bottom-right corner of its own bounds moved in by the
-     * padding: [sidePad] from the right edge and [bottomPad] from the bottom edge, in px. The
-     * curve starts there, so nothing is drawn in the padding.
+     * A quarter circle centred on the bottom-right corner of its own bounds. It starts at the
+     * screen's edges: the padding only moves the rings and icons in, not this background.
      */
     private class SheetBackgroundView(
         context: Context,
         private val cornerColor: Int,
         private val edgeColor: Int,
-        private val sidePad: Int,
-        private val bottomPad: Int,
     ) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = cornerColor }
-
-        private val centreX get() = (width - sidePad).toFloat()
-        private val centreY get() = (height - bottomPad).toFloat()
 
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             super.onSizeChanged(w, h, oldw, oldh)
             // Fades from the corner to the sheet's outer edge.
-            paint.shader = RadialGradient(centreX, centreY, centreX, cornerColor, edgeColor, Shader.TileMode.CLAMP)
+            paint.shader =
+                RadialGradient(w.toFloat(), h.toFloat(), w.toFloat(), cornerColor, edgeColor, Shader.TileMode.CLAMP)
         }
 
         /**
-         * Only the quarter circle takes touches. A touch anywhere else is left unhandled, so it
-         * falls through to the root and closes the sheet.
+         * Only the quarter circle takes touches. A touch in the square's empty corner is left
+         * unhandled, so it falls through to the root and closes the sheet.
          */
         @SuppressLint("ClickableViewAccessibility")
         override fun onTouchEvent(event: MotionEvent): Boolean {
             if (event.actionMasked == MotionEvent.ACTION_DOWN &&
-                (event.x > centreX || event.y > centreY || hypot(centreX - event.x, centreY - event.y) > centreX)
+                hypot(width - event.x, height - event.y) > width
             ) return false
             return super.onTouchEvent(event)
         }
 
         override fun onDraw(canvas: Canvas) {
-            canvas.clipRect(0f, 0f, centreX, centreY)
-            canvas.drawCircle(centreX, centreY, centreX, paint)
+            canvas.drawCircle(width.toFloat(), height.toFloat(), width.toFloat(), paint)
         }
     }
 
@@ -194,20 +189,21 @@ class DockActivity : AppCompatActivity() {
         // The rows' widths add up to the sheet's radius, shrunk to fit narrow screens.
         val radius = minOf(rows.sumOf { it.widthDp.dp }, (screenWidth * 0.9f).toInt())
 
-        // The fan is centred on the corner moved in by the padding, so the sheet is the fan's
-        // square plus the padding along the bottom and the right edge.
+        // The rings are centred on the corner moved in by the padding, but the background is
+        // centred on the corner itself, and reaches far enough to hold the outermost ring.
         val sidePad = DockPrefs.getPadding(this, DockPrefs.Padding.SIDE).dp
         val bottomPad = DockPrefs.getPadding(this, DockPrefs.Padding.BOTTOM).dp
-        // Everything in the sheet lives in this view, so one scale animates the lot, about the
-        // fan's centre.
+        val extent = radius + ceil(hypot(sidePad.toFloat(), bottomPad.toFloat())).toInt()
+        // Everything in the sheet lives in this square, so one scale animates the lot, about the
+        // corner.
         val sheetView = FrameLayout(this).apply {
-            pivotX = radius.toFloat()
-            pivotY = radius.toFloat()
+            pivotX = extent.toFloat()
+            pivotY = extent.toFloat()
             scaleX = 0f
             scaleY = 0f
         }
         sheet = sheetView
-        root.addView(sheetView, FrameLayout.LayoutParams(radius + sidePad, radius + bottomPad, Gravity.BOTTOM or Gravity.END))
+        root.addView(sheetView, FrameLayout.LayoutParams(extent, extent, Gravity.BOTTOM or Gravity.END))
         sheetView.post {
             // A tap to close can land before this first frame; do not grow what is closing.
             if (closing) return@post
@@ -220,8 +216,8 @@ class DockActivity : AppCompatActivity() {
 
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
-            SheetBackgroundView(this, sheetColor, edgeColor, sidePad, bottomPad).apply { isClickable = true },
-            FrameLayout.LayoutParams(radius + sidePad, radius + bottomPad),
+            SheetBackgroundView(this, sheetColor, edgeColor).apply { isClickable = true },
+            FrameLayout.LayoutParams(extent, extent),
         )
 
         val maxItems = rows.drop(1).sumOf { it.count }

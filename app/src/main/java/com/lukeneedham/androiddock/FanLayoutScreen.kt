@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -177,8 +178,11 @@ internal fun FanPreview(
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
         else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
+        // The rings are centred on the corner moved in by the padding, but the background is
+        // centred on the corner itself, and reaches far enough to hold the outermost ring.
+        val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
         Canvas(
-            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height((radiusDp + bottomPad).dp))
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(backgroundDp.dp))
                 .align(Alignment.BottomEnd)
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
@@ -199,28 +203,30 @@ internal fun FanPreview(
                 },
         ) {
             val dp = density
-            // The fan is centred on the corner moved in by the padding, and nothing is drawn in the
-            // padding.
+            // The screen's corner, which the background is centred on, and the corner moved in by
+            // the padding, which the rings are centred on.
+            val screenCorner = Offset(size.width, size.height)
             val corner = Offset(size.width - sidePad * dp, size.height - bottomPad * dp)
             val radius = radiusDp * dp
-            val fit = if (thumbnailDp != null) thumbnailDp / (radiusDp + max(sidePad, bottomPad)) else 1f
+            val backgroundRadius = backgroundDp * dp
+            val fit = if (thumbnailDp != null) thumbnailDp / backgroundDp else 1f
             withTransform({
-                scale(fit, fit, pivot = Offset(size.width, size.height))
-                // The quarter the fan fills, before it is scaled: nothing is drawn in the padding.
-                clipRect(corner.x - radius, corner.y - radius, corner.x, corner.y)
+                scale(fit, fit, pivot = screenCorner)
+                // The quarter the background fills, before it is scaled.
+                clipRect(screenCorner.x - backgroundRadius, screenCorner.y - backgroundRadius, screenCorner.x, screenCorner.y)
             }) {
             val scale = radius / (total * dp)
 
-            val quarter = Path().apply { addOval(androidx.compose.ui.geometry.Rect(corner, radius)) }
+            val quarter = Path().apply { addOval(androidx.compose.ui.geometry.Rect(screenCorner, backgroundRadius)) }
             clipPath(quarter) {
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(Color(sheetColor), Color(edgeColor)),
-                        center = corner,
-                        radius = radius,
+                        center = screenCorner,
+                        radius = backgroundRadius,
                     ),
-                    radius = radius,
-                    center = corner,
+                    radius = backgroundRadius,
+                    center = screenCorner,
                 )
             }
 
@@ -233,12 +239,15 @@ internal fun FanPreview(
                 val end = edge
                 val centreRadius = (start + end) / 2
                 if (rowIndex == selectedRow) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.2f),
-                        radius = centreRadius,
-                        center = corner,
-                        style = Stroke(width = end - start),
-                    )
+                    // Only the quarter the rings fill, not the padding.
+                    clipRect(corner.x - radius, corner.y - radius, corner.x, corner.y) {
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.2f),
+                            radius = centreRadius,
+                            center = corner,
+                            style = Stroke(width = end - start),
+                        )
+                    }
                 }
 
                 if (row.count == 0) return@forEachIndexed
