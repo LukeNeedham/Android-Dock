@@ -208,14 +208,11 @@ internal fun FanPreview(
             var edge = inner * dp * scale
             var colorIndex = 0
             if (inner > 0) {
-                // The corner space holds the app on screen, with the same insets from the bottom
-                // and side edges as the rings' icons, and as big as fits inside the space.
+                // The corner space holds the app on screen, sized like any other icon, with the
+                // same insets from the bottom and side edges as the rings' icons.
                 val bottomInset = bottomPad * dp
                 val sideInset = sidePad * dp
-                fun reach(s: Float) = hypot(sideInset + s / 2, bottomInset + s / 2) + s / 2
-                var currentSize = min(MAX_ICON_SIZE * dp, edge / ROW_SPACING)
-                while (currentSize > MIN_ICON_SIZE * dp && reach(currentSize) > edge) currentSize -= 1f
-                currentSize = currentSize.coerceAtLeast(MIN_ICON_SIZE * dp)
+                val currentSize = min(MAX_ICON_SIZE * dp, edge / ROW_SPACING).coerceAtLeast(MIN_ICON_SIZE * dp)
                 drawCircle(
                     color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
                     radius = currentSize / 2,

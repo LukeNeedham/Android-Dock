@@ -324,11 +324,9 @@ class DockActivity : AppCompatActivity() {
             val n = filled[i]
             var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
             if (i == 0) {
-                // The app on screen has the same insets from the bottom and side edges as the
-                // other rings' first and last icons, so its edges line up with theirs. It is as
-                // big as fits inside the corner space.
-                fun reach(s: Int) = hypot(sidePad + s / 2f, bottomPad + s / 2f) + s / 2f
-                while (size > MIN_ICON_SIZE.dp && reach(size) > end) size--
+                // The app on screen is sized like any other icon, and has the same insets from
+                // the bottom and side edges as the other rings' first and last icons, so its
+                // bottom and right edges line up with theirs.
                 size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
                 val cx = sidePad + size / 2f
                 val cy = bottomPad + size / 2f
