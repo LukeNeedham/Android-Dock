@@ -97,13 +97,13 @@ object DockPrefs {
     fun newRow() = Row(6, ROW_WIDTH_DEFAULT)
 
     /**
-     * The width, in dp, of the space in the corner that holds the app on screen, before the
-     * first row. It is not a row: it only ever holds that one app. The key is the one the
-     * gap before the first row used to be stored under, so a user's setting carries over.
+     * The width, in dp, of row 0: the ring against the corner that holds just the app on screen.
+     * It is drawn like any other row, but the user can only change its width. The key is the
+     * one the gap before the first row used to be stored under, so a user's setting carries over.
      */
     const val CURRENT_WIDTH_MIN = 32
     const val CURRENT_WIDTH_MAX = 150
-    private const val CURRENT_WIDTH_DEFAULT = 70
+    private const val CURRENT_WIDTH_DEFAULT = 100
     private const val CURRENT_WIDTH_KEY = "inner_offset_dp"
 
     fun getCurrentWidth(context: Context): Int =

@@ -41,10 +41,10 @@
     <string name="color_alpha">Opacity: %1$d</string>
     <string name="sheet_title_loading">Loading apps…</string>
     <string name="sheet_title_section">Sheet</string>
-    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. Ring 1 is closest to the corner, after the space in the corner itself. That space always holds the app that is open now (and is empty on the home screen). Long press that app to close it: Fan opens Home and ends the app. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
+    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. Ring 1 is closest to the corner, after the corner ring. The corner ring holds just the app that is open now (and is empty on the home screen); you can only change its width. Long press that app to close it: Fan opens Home and ends the app. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>
-    <string name="slider_current_width">Width of the corner space for the current app: %1$d dp</string>
+    <string name="slider_current_width">Width of the current app ring in the corner: %1$d dp</string>
     <string name="slider_padding_bottom">Padding from the bottom edge to the first icon: %1$d dp</string>
     <string name="slider_padding_side">Padding from the side edge to the last icon: %1$d dp</string>
     <string name="blacklist_title">Hidden apps</string>

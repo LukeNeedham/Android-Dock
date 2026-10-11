@@ -23,7 +23,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import kotlin.math.asin
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -290,8 +289,8 @@ class DockActivity : AppCompatActivity() {
             if (current == null) return
         }
 
-        // Row 0 is the corner space. The rest fill from the inside; a row with no app left stays
-        // empty.
+        // Row 0 is a row like the others, flush against the corner, but holds only the app on
+        // screen. The rest fill from the inside; a row with no app left stays empty.
         var left = apps.size
         val filled = rows.mapIndexed { i, row ->
             if (i == 0) return@mapIndexed if (current != null) 1 else 0
@@ -323,16 +322,6 @@ class DockActivity : AppCompatActivity() {
             val centreRadius = (start + end) / 2
             val n = filled[i]
             var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
-            if (i == 0) {
-                // The app on screen is sized like any other icon, and has the same insets from
-                // the bottom and side edges as the other rings' first and last icons, so its
-                // bottom and right edges line up with theirs.
-                size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
-                val cx = sidePad + size / 2f
-                val cy = bottomPad + size / 2f
-                val angle = atan2(cy, cx)
-                return@mapIndexed Placement(hypot(cx, cy), size, angle, angle)
-            }
             while (size > MIN_ICON_SIZE.dp && n > 0) {
                 val (from, to) = arc(centreRadius, size)
                 val fits = if (n == 1) to >= from else {

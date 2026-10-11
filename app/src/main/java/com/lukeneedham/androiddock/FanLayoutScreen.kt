@@ -205,21 +205,13 @@ internal fun FanPreview(
                 )
             }
 
-            var edge = inner * dp * scale
+            var edge = 0f
             var colorIndex = 0
-            if (inner > 0) {
-                // The corner space holds the app on screen, sized like any other icon, with the
-                // same insets from the bottom and side edges as the rings' icons.
-                val bottomInset = bottomPad * dp
-                val sideInset = sidePad * dp
-                val currentSize = min(MAX_ICON_SIZE * dp, edge / ROW_SPACING).coerceAtLeast(MIN_ICON_SIZE * dp)
-                drawCircle(
-                    color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
-                    radius = currentSize / 2,
-                    center = Offset(corner.x - sideInset - currentSize / 2, corner.y - bottomInset - currentSize / 2),
-                )
-            }
-            rows.forEachIndexed { rowIndex, row ->
+            // Row 0 is the first ring, flush against the corner, with a single icon: the app on
+            // screen. It is drawn like every other ring and cannot be selected.
+            val ringZero = if (inner > 0) listOf(DockPrefs.Row(1, inner)) else emptyList()
+            (ringZero + rows).forEachIndexed { index, row ->
+                val rowIndex = index - ringZero.size
                 val start = edge
                 edge += row.widthDp * dp * scale
                 val end = edge

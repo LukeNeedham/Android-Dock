@@ -11,9 +11,9 @@ launch and use. It stays out of the way until you call it.
 1. You tap the **bottom-right corner of the screen, in the navigation bar**.
 2. A **corner sheet**, a quarter circle in the bottom-right corner of the screen, opens over
    whatever you were doing. The icons of your **recently used apps** run along its arc, the most
-   recent nearest the bottom edge. The space in the very corner always holds **the app you are
-   in now**, and is left blank on the home screen. Its width is set on the fan layout page; it
-   is not a ring, so that is all that can be changed.
+   recent nearest the bottom edge. The ring in the very corner (row zero) holds just **the app you
+   are in now**, and is left blank on the home screen. It is laid out like any other ring, and
+   its width, set on the fan layout page, is all that can be changed.
 3. Pick an app to switch to it, or dismiss the sheet. **Long press** an app to kill it: Fan asks
    the system to end its background processes (`killBackgroundProcesses`) and takes it off the
    sheet. This is best effort: it does nothing to an app running a foreground service. Long
