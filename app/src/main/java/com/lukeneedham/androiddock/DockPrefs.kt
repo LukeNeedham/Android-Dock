@@ -114,11 +114,29 @@ object DockPrefs {
     private const val CURRENT_WIDTH_DEFAULT = 100
     private const val CURRENT_WIDTH_KEY = "inner_offset_dp"
 
+    /**
+     * The narrowest row 0 can be, in dp: with its app hidden it is only a margin, but still wide
+     * enough to tap in the layout preview.
+     */
+    private const val CURRENT_WIDTH_HIDDEN_MIN = 8
+
+    fun currentWidthMin(showCurrent: Boolean): Int = if (showCurrent) CURRENT_WIDTH_MIN else CURRENT_WIDTH_HIDDEN_MIN
+
     fun getCurrentWidth(context: Context): Int =
-        prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT).coerceIn(CURRENT_WIDTH_MIN, CURRENT_WIDTH_MAX)
+        prefs(context).getInt(CURRENT_WIDTH_KEY, CURRENT_WIDTH_DEFAULT)
+            .coerceIn(currentWidthMin(getShowCurrent(context)), CURRENT_WIDTH_MAX)
 
     fun setCurrentWidth(context: Context, value: Int) {
         prefs(context).edit().putInt(CURRENT_WIDTH_KEY, value).apply()
+    }
+
+    /** Whether row 0 shows the app on screen. When off, the row is left empty, as margin. */
+    private const val SHOW_CURRENT_KEY = "show_current_app"
+
+    fun getShowCurrent(context: Context): Boolean = prefs(context).getBoolean(SHOW_CURRENT_KEY, true)
+
+    fun setShowCurrent(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(SHOW_CURRENT_KEY, value).apply()
     }
 
     /**

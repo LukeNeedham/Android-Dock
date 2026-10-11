@@ -279,7 +279,8 @@ class DockActivity : AppCompatActivity() {
      * screen.
      */
     private fun showApps(root: ViewGroup, recents: RecentApps.Recents, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
-        val current = recents.current
+        // Hidden, row 0 is left empty and is only margin.
+        val current = recents.current.takeIf { DockPrefs.getShowCurrent(this) }
         val apps = recents.others
         if (apps.isEmpty()) {
             addAppView(

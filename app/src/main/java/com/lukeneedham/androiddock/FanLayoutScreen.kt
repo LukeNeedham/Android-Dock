@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,16 +71,19 @@ import kotlin.math.sin
 internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
     var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
+    var showCurrent by remember { mutableStateOf(DockPrefs.getShowCurrent(context)) }
+    val currentWidth = inner.coerceAtLeast(DockPrefs.currentWidthMin(showCurrent))
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
     var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
-    // The row the sliders edit, chosen by tapping it in the preview and tinted there.
+    // The row the controls edit, chosen by tapping it in the preview and tinted there. -1 is the
+    // corner ring for the current app, 0 the first of the rows.
     var selectedRow by remember { mutableIntStateOf(0) }
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
-        FanPreview(inner, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
+        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, showCurrent = showCurrent, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -90,15 +94,6 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 stringResource(R.string.rows_description),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
-            )
-            Text(stringResource(R.string.slider_current_width, inner), modifier = Modifier.padding(top = 16.dp))
-            Slider(
-                value = inner.toFloat(),
-                onValueChange = {
-                    inner = it.toInt()
-                    DockPrefs.setCurrentWidth(context, inner)
-                },
-                valueRange = DockPrefs.CURRENT_WIDTH_MIN.toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
             )
             Text(stringResource(R.string.slider_padding_bottom, bottomPad), modifier = Modifier.padding(top = 16.dp))
             Slider(
@@ -120,7 +115,19 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
             )
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
-            RowsEditor(context, rows, selectedRow) { selectedRow = it }
+            RowsEditor(
+                context, rows, selectedRow,
+                currentWidth = currentWidth,
+                showCurrent = showCurrent,
+                onCurrentWidth = {
+                    inner = it
+                    DockPrefs.setCurrentWidth(context, it)
+                },
+                onShowCurrent = {
+                    showCurrent = it
+                    DockPrefs.setShowCurrent(context, it)
+                },
+            ) { selectedRow = it }
             NavBarSpacer()
         }
     }
@@ -151,6 +158,7 @@ internal fun FanPreview(
     selectedRow: Int?,
     sheetColor: Int,
     edgeColor: Int,
+    showCurrent: Boolean = true,
     thumbnailDp: Int? = null,
     onRowTap: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -160,8 +168,12 @@ internal fun FanPreview(
             .then(if (thumbnailDp != null) Modifier.size(thumbnailDp.dp).clip(RoundedCornerShape(8.dp)) else Modifier.fillMaxWidth())
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // As in the sheet: the corner space plus the rows' widths is the radius, shrunk to fit the width.
-        val total = inner + rows.sumOf { it.widthDp }
+        // Row 0, flush against the corner, holds a single icon: the app on screen, or nothing when
+        // that is hidden. It is drawn like every other ring.
+        val ringZero = if (inner > 0) listOf(DockPrefs.Row(if (showCurrent) 1 else 0, inner)) else emptyList()
+        val allRows = ringZero + rows
+        // As in the sheet: the rows' widths, row 0's included, make the radius, shrunk to fit the width.
+        val total = allRows.sumOf { it.widthDp }
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
         else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
@@ -170,17 +182,16 @@ internal fun FanPreview(
                 .align(Alignment.BottomEnd)
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
-                .pointerInput(onRowTap != null, inner, rows, radiusDp, bottomPad, sidePad) {
+                .pointerInput(onRowTap != null, allRows, radiusDp, bottomPad, sidePad) {
                     if (onRowTap == null) return@pointerInput
                     detectTapGestures { tap ->
                         val distance = hypot(size.width - sidePad * density - tap.x, size.height - bottomPad * density - tap.y)
                         val scale = radiusDp * density / (total * density)
-                        var edge = inner * density * scale
-                        rows.forEachIndexed { index, row ->
+                        var edge = 0f
+                        allRows.forEachIndexed { index, row ->
                             edge += row.widthDp * density * scale
                             if (distance <= edge) {
-                                // A tap in the corner space selects row 1.
-                                onRowTap(index)
+                                onRowTap(index - ringZero.size)
                                 return@detectTapGestures
                             }
                         }
@@ -215,10 +226,7 @@ internal fun FanPreview(
 
             var edge = 0f
             var colorIndex = 0
-            // Row 0 is the first ring, flush against the corner, with a single icon: the app on
-            // screen. It is drawn like every other ring and cannot be selected.
-            val ringZero = if (inner > 0) listOf(DockPrefs.Row(1, inner)) else emptyList()
-            (ringZero + rows).forEachIndexed { index, row ->
+            allRows.forEachIndexed { index, row ->
                 val rowIndex = index - ringZero.size
                 val start = edge
                 edge += row.widthDp * dp * scale
@@ -232,6 +240,8 @@ internal fun FanPreview(
                         style = Stroke(width = end - start),
                     )
                 }
+
+                if (row.count == 0) return@forEachIndexed
 
                 // The angles of the first and last icon, which cross over when the icons are too big
                 // for the ring: then the icon does not fit.
@@ -275,11 +285,42 @@ internal fun FanPreview(
  * in the preview. Delete acts on the selected ring too.
  */
 @Composable
-private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selected: Int, onSelect: (Int) -> Unit) {
+private fun RowsEditor(
+    context: Context,
+    rows: MutableList<DockPrefs.Row>,
+    selected: Int,
+    currentWidth: Int,
+    showCurrent: Boolean,
+    onCurrentWidth: (Int) -> Unit,
+    onShowCurrent: (Boolean) -> Unit,
+    onSelect: (Int) -> Unit,
+) {
     val haptic = LocalHapticFeedback.current
     val delete = stringResource(R.string.row_delete)
     fun save() = DockPrefs.setRows(context, rows.toList())
 
+    if (selected < 0) {
+        // The corner ring: its width, and whether it shows the app on screen. Nothing else.
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                Text(
+                    stringResource(R.string.row_current_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = showCurrent, onCheckedChange = onShowCurrent)
+                    Text(stringResource(R.string.row_show_current))
+                }
+                Text(stringResource(R.string.row_width, currentWidth))
+                Slider(
+                    value = currentWidth.toFloat(),
+                    onValueChange = { onCurrentWidth(it.toInt()) },
+                    valueRange = DockPrefs.currentWidthMin(showCurrent).toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
+                )
+            }
+        }
+    } else {
     val index = selected.coerceIn(0, rows.lastIndex)
     val row = rows[index]
     Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
@@ -321,6 +362,7 @@ private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selec
                 valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
             )
         }
+    }
     }
     if (rows.size < DockPrefs.ROWS_MAX) {
         FilledTonalButton(
