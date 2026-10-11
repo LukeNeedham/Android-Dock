@@ -286,11 +286,12 @@ class DockActivity : AppCompatActivity() {
             return Entry(drawable, getString(label), { closeSheet(haptic = false); block() })
         }
         return listOf(
-            action(R.drawable.ic_action_home, R.string.action_home) {
-                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_HOME)
-            },
+            // Back, Home, Recents: the order of the system's three-button navigation.
             action(R.drawable.ic_action_back, R.string.action_back) {
                 DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_BACK)
+            },
+            action(R.drawable.ic_action_home, R.string.action_home) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_HOME)
             },
             action(R.drawable.ic_action_recents, R.string.action_recents) {
                 DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_RECENTS)

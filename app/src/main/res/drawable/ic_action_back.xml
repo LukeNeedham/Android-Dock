@@ -12,5 +12,5 @@
         android:strokeColor="#424242"
         android:strokeWidth="1.6"
         android:strokeLineJoin="round"
-        android:pathData="M15.5,6.5L8,12l7.5,5.5z" />
+        android:pathData="M14.25,6.5L6.75,12l7.5,5.5z" />
 </vector>

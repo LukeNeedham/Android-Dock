@@ -231,7 +231,6 @@ internal fun FanPreview(
             }
 
             var edge = 0f
-            var colorIndex = 0
             allRows.forEachIndexed { index, row ->
                 val rowIndex = index - ringZero.size
                 val start = edge
@@ -278,7 +277,9 @@ internal fun FanPreview(
                 repeat(n) { slot ->
                     val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
                     drawCircle(
-                        color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
+                        // Each row starts from its own place in the palette, so the colours of a row
+                        // do not depend on how many icons the rows before it hold.
+                        color = PLACEHOLDER_COLORS[(index * 5 + slot) % PLACEHOLDER_COLORS.size],
                         radius = size / 2,
                         center = Offset(corner.x - centreRadius * cos(angle), corner.y - centreRadius * sin(angle)),
                     )
