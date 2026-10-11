@@ -385,6 +385,7 @@ class DockActivity : AppCompatActivity() {
      * nothing, as on the home screen or in actions mode. [entries] fill the other rows.
      */
     private fun showEntries(root: ViewGroup, current: Entry?, entries: List<Entry>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
+        val corner = DockPrefs.getCorner(this)
         if (entries.isEmpty()) {
             addAppView(
                 root,
@@ -418,7 +419,6 @@ class DockActivity : AppCompatActivity() {
         // the screen. Its icons are as large as fit in that band and without touching along the
         // chord between neighbours, up to [MAX_ICON_SIZE].
         val bands = rowBands(rows, radius)
-        val corner = DockPrefs.getCorner(this)
         val bottomPad = DockPrefs.getPadding(this, DockPrefs.Padding.BOTTOM).dp
         val sidePad = DockPrefs.getPadding(this, DockPrefs.Padding.SIDE).dp
         // Angles and radii are measured from the fan's centre, which is moved in from the corner
