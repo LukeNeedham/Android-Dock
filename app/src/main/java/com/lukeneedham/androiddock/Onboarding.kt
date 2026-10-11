@@ -92,7 +92,7 @@ internal fun OnboardingFlow(step: OnboardingStep, onStepDone: () -> Unit) {
 private fun PermissionPage(step: OnboardingStep, title: Int, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
-            .systemBarsPadding()
+            .topAndSideInsets()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
@@ -115,6 +115,7 @@ private fun PermissionPage(step: OnboardingStep, title: Int, content: @Composabl
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 24.dp),
         )
+        NavBarSpacer()
     }
 }
 

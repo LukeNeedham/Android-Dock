@@ -177,7 +177,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
 
     Column(
         modifier = Modifier
-            .systemBarsPadding()
+            .topAndSideInsets()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
@@ -258,6 +258,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .fillMaxWidth()
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.onboarding_view_log)) }
+        NavBarSpacer()
     }
 }
 

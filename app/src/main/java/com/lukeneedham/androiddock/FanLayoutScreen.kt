@@ -66,7 +66,7 @@ import kotlin.math.sin
  * it is made.
  */
 @Composable
-internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: @Composable () -> Unit = {}) {
+internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
     var inner by remember { mutableIntStateOf(DockPrefs.getInnerOffset(context)) }
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
@@ -120,6 +120,7 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: @Composable () -> Un
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
             RowsEditor(context, rows, selectedRow) { selectedRow = it }
+            NavBarSpacer()
         }
     }
 }
