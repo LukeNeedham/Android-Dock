@@ -23,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -322,8 +323,19 @@ class DockActivity : AppCompatActivity() {
             val centreRadius = (start + end) / 2
             val n = filled[i]
             var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
-            // The app on screen sits on the diagonal, whatever the padding.
-            while (i > 0 && size > MIN_ICON_SIZE.dp && n > 0) {
+            if (i == 0) {
+                // The app on screen has the same insets from the bottom and side edges as the
+                // other rings' first and last icons, so its edges line up with theirs. It is as
+                // big as fits inside the corner space.
+                fun reach(s: Int) = hypot(sidePad + s / 2f, bottomPad + s / 2f) + s / 2f
+                while (size > MIN_ICON_SIZE.dp && reach(size) > end) size--
+                size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
+                val cx = sidePad + size / 2f
+                val cy = bottomPad + size / 2f
+                val angle = atan2(cy, cx)
+                return@mapIndexed Placement(hypot(cx, cy), size, angle, angle)
+            }
+            while (size > MIN_ICON_SIZE.dp && n > 0) {
                 val (from, to) = arc(centreRadius, size)
                 val fits = if (n == 1) to >= from else {
                     val step = (to - from) / (n - 1)
@@ -333,7 +345,7 @@ class DockActivity : AppCompatActivity() {
                 size--
             }
             size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
-            val (from, to) = if (i == 0) (Math.PI / 4).toFloat().let { it to it } else arc(centreRadius, size)
+            val (from, to) = arc(centreRadius, size)
             Placement(centreRadius, size, from, to)
         }
 

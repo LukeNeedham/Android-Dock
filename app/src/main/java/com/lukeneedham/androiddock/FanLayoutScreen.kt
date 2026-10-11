@@ -208,14 +208,18 @@ internal fun FanPreview(
             var edge = inner * dp * scale
             var colorIndex = 0
             if (inner > 0) {
-                // The corner space holds the app on screen, on the diagonal.
-                val centreRadius = edge / 2
-                val currentSize = min(MAX_ICON_SIZE * dp, edge / ROW_SPACING).coerceAtLeast(MIN_ICON_SIZE * dp)
-                val offset = centreRadius * cos(PI.toFloat() / 4)
+                // The corner space holds the app on screen, with the same insets from the bottom
+                // and side edges as the rings' icons, and as big as fits inside the space.
+                val bottomInset = bottomPad * dp
+                val sideInset = sidePad * dp
+                fun reach(s: Float) = hypot(sideInset + s / 2, bottomInset + s / 2) + s / 2
+                var currentSize = min(MAX_ICON_SIZE * dp, edge / ROW_SPACING)
+                while (currentSize > MIN_ICON_SIZE * dp && reach(currentSize) > edge) currentSize -= 1f
+                currentSize = currentSize.coerceAtLeast(MIN_ICON_SIZE * dp)
                 drawCircle(
                     color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
                     radius = currentSize / 2,
-                    center = Offset(corner.x - offset, corner.y - offset),
+                    center = Offset(corner.x - sideInset - currentSize / 2, corner.y - bottomInset - currentSize / 2),
                 )
             }
             rows.forEachIndexed { rowIndex, row ->
