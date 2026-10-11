@@ -4,6 +4,7 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 
 /** Works out which apps the user has recently had open, from the system's usage events. */
@@ -12,9 +13,23 @@ object RecentApps {
     class App(val packageName: String, val label: String, val icon: Drawable)
 
     /**
-     * Up to [limit] of the most recently used apps from the last day, most recent first, not
-     * counting the app on screen now. Android gives no list of running apps to ordinary apps, so
-     * this is built from usage events (needs usage access). Runs off the main thread.
+     * What the sheet shows: the app on screen now, which is null on the home screen (or when
+     * there is nothing to go on), and the recent apps other than it.
+     */
+    class Recents(val current: App?, val others: List<App>)
+
+    /** The recent apps other than the one on screen; see [loadRecents]. */
+    fun load(context: Context, limit: Int): List<App> = loadRecents(context, limit).others
+
+    /**
+     * The app on screen now, and up to [limit] of the most recently used apps from the last
+     * day, most recent first, not counting the one on screen. Android gives no list of running
+     * apps to ordinary apps, so this is built from usage events (needs usage access). Runs off
+     * the main thread.
+     *
+     * The app on screen is not filtered by the blacklist or by dismissals, since it is open
+     * whatever the user thinks of it. A launcher on screen means the home screen, so there is
+     * no current app.
      *
      * Apps the user dismissed from the sheet stay out until they have been used again, and
      * blacklisted apps never show.
@@ -22,8 +37,8 @@ object RecentApps {
      * The dock's own screens are left out, except the settings app, which counts as an app like
      * any other while it is open. The sheet and the accessibility service never count.
      */
-    fun load(context: Context, limit: Int): List<App> {
-        if (!SetupState.isUsageAccessGranted(context)) return emptyList()
+    fun loadRecents(context: Context, limit: Int): Recents {
+        if (!SetupState.isUsageAccessGranted(context)) return Recents(null, emptyList())
         val packages = context.packageManager
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
@@ -63,26 +78,31 @@ object RecentApps {
         // The app on screen is the most recently used one. It is already on screen behind the
         // sheet, so it is left out.
         val currentApp = lastUsed.entries.maxByOrNull { it.value }?.key
+        val current = currentApp?.takeIf { it !in launchers }?.let { appOf(packages, it) }
         val dismissed = DockPrefs.getDismissed(context)
         val blacklist = DockPrefs.getBlacklist(context)
-        return lastUsed.entries
+        val others = lastUsed.entries
             // A blacklisted app still counts as the app on screen above; it is only never listed.
             .filter { it.key != currentApp && it.key !in launchers && it.key !in blacklist }
             // Dismissed by the user, and not used since.
             .filter { it.value > (dismissed[it.key] ?: 0L) }
             .sortedByDescending { it.value }
             .asSequence()
-            .mapNotNull { (pkg, _) ->
-                if (packages.getLaunchIntentForPackage(pkg) == null) return@mapNotNull null
-                try {
-                    val info = packages.getApplicationInfo(pkg, 0)
-                    App(pkg, packages.getApplicationLabel(info).toString(), packages.getApplicationIcon(info))
-                } catch (e: Exception) {
-                    null
-                }
-            }
+            .mapNotNull { (pkg, _) -> appOf(packages, pkg) }
             .take(limit)
             .toList()
+        return Recents(current, others)
+    }
+
+    /** [pkg] as an [App], or null if it cannot be opened from the sheet. */
+    private fun appOf(packages: PackageManager, pkg: String): App? {
+        if (packages.getLaunchIntentForPackage(pkg) == null) return null
+        return try {
+            val info = packages.getApplicationInfo(pkg, 0)
+            App(pkg, packages.getApplicationLabel(info).toString(), packages.getApplicationIcon(info))
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** Opens [app], bringing its task forward if it is already running. */

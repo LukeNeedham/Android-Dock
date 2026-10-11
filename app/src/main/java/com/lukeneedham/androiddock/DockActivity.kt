@@ -8,7 +8,11 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.graphics.drawable.Drawable
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -19,10 +23,13 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import android.accessibilityservice.AccessibilityService
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import kotlin.math.asin
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -31,11 +38,15 @@ import kotlin.math.sin
  * Hosts the corner sheet of open apps: a quarter circle in the bottom-right corner of the screen.
  * The app icons run along its arc. Has no other UI: the activity is transparent, and when the
  * sheet goes away the whole task is removed, so the app never lingers in the system task switcher.
+ *
+ * In its actions mode ([altRequested]) the sheet has the same layout and styling, but its icons
+ * are actions (Home, Back, Recents, Fan settings) rather than apps.
  */
 class DockActivity : AppCompatActivity() {
 
     /**
-     * A quarter circle centred on the bottom-right corner of its own bounds.
+     * A quarter circle centred on the bottom-right corner of its own bounds. It starts at the
+     * screen's edges: the padding only moves the rings and icons in, not this background.
      */
     private class SheetBackgroundView(
         context: Context,
@@ -68,11 +79,34 @@ class DockActivity : AppCompatActivity() {
         }
     }
 
-    /** The inner and outer radius of each row, in px, scaled so they fit a sheet of [radius]. */
+    /**
+     * Takes touches on row 0, the corner ring, wherever they land in it: the ring is centred on
+     * the corner moved in by [sidePad] and [bottomPad], and reaches [ringRadius]. A tap closes the
+     * sheet, whether or not the app on screen is shown there. The icon, when there is one, is
+     * above this and takes its own touches.
+     */
+    private class CornerRingView(
+        context: Context,
+        private val sidePad: Int,
+        private val bottomPad: Int,
+        private val ringRadius: Float,
+    ) : View(context) {
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+                hypot(width - sidePad - event.x, height - bottomPad - event.y) > ringRadius
+            ) return false
+            return super.onTouchEvent(event)
+        }
+    }
+
+    /**
+     * The inner and outer radius of each row, in px, scaled so they fit a sheet of [radius].
+     * The first row is the one for the app on screen, which starts at the corner.
+     */
     private fun rowBands(rows: List<DockPrefs.Row>, radius: Int): List<Pair<Float, Float>> {
-        val innerPx = DockPrefs.getInnerOffset(this).dp
-        val scale = radius.toFloat() / (innerPx + rows.sumOf { it.widthDp.dp })
-        var edge = innerPx * scale
+        val scale = radius.toFloat() / rows.sumOf { it.widthDp.dp }
+        var edge = 0f
         return rows.map { row ->
             val start = edge
             edge += row.widthDp.dp * scale
@@ -157,6 +191,8 @@ class DockActivity : AppCompatActivity() {
             .setDuration(ENTER_MS)
             .setInterpolator(DecelerateInterpolator())
             .start()
+        // The request that revived this sheet may have asked for the other mode.
+        applyMode()
     }
 
     override fun onStop() {
@@ -180,21 +216,26 @@ class DockActivity : AppCompatActivity() {
         val root = FrameLayout(this).apply { setOnClickListener { closeSheet() } }
 
         val screenWidth = resources.displayMetrics.widthPixels
-        val rows = DockPrefs.getRows(this)
-        // The gap before row 1 plus the rows' widths is the sheet's radius, shrunk to fit narrow
-        // screens.
-        val innerPx = DockPrefs.getInnerOffset(this).dp
-        val radius = minOf(innerPx + rows.sumOf { it.widthDp.dp }, (screenWidth * 0.9f).toInt())
+        // The corner space for the app on screen counts as a row of one, ahead of the user's rows.
+        val rows = listOf(DockPrefs.Row(1, DockPrefs.getCurrentWidth(this))) + DockPrefs.getRows(this)
+        // The rows' widths add up to the sheet's radius, shrunk to fit narrow screens.
+        val radius = minOf(rows.sumOf { it.widthDp.dp }, (screenWidth * 0.9f).toInt())
 
-        // Everything in the sheet lives in this square, so one scale animates the lot.
+        // The rings are centred on the corner moved in by the padding, but the background is
+        // centred on the corner itself, and reaches far enough to hold the outermost ring.
+        val sidePad = DockPrefs.getPadding(this, DockPrefs.Padding.SIDE).dp
+        val bottomPad = DockPrefs.getPadding(this, DockPrefs.Padding.BOTTOM).dp
+        val extent = radius + ceil(hypot(sidePad.toFloat(), bottomPad.toFloat())).toInt()
+        // Everything in the sheet lives in this square, so one scale animates the lot, about the
+        // corner.
         val sheetView = FrameLayout(this).apply {
-            pivotX = radius.toFloat()
-            pivotY = radius.toFloat()
+            pivotX = extent.toFloat()
+            pivotY = extent.toFloat()
             scaleX = 0f
             scaleY = 0f
         }
         sheet = sheetView
-        root.addView(sheetView, FrameLayout.LayoutParams(radius, radius, Gravity.BOTTOM or Gravity.END))
+        root.addView(sheetView, FrameLayout.LayoutParams(extent, extent, Gravity.BOTTOM or Gravity.END))
         sheetView.post {
             // A tap to close can land before this first frame; do not grow what is closing.
             if (closing) return@post
@@ -208,49 +249,132 @@ class DockActivity : AppCompatActivity() {
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
             SheetBackgroundView(this, sheetColor, edgeColor).apply { isClickable = true },
-            FrameLayout.LayoutParams(radius, radius),
+            FrameLayout.LayoutParams(extent, extent),
         )
 
-        val maxItems = rows.sumOf { it.count }
+        // Row 0, the corner ring: a tap anywhere in it closes the sheet, even where no app is shown.
+        val cornerRadius = rows[0].widthDp.dp * radius.toFloat() / rows.sumOf { it.widthDp.dp }
+        sheetView.addView(
+            CornerRingView(this, sidePad, bottomPad, cornerRadius).apply { setOnClickListener { closeSheet() } },
+            FrameLayout.LayoutParams(extent, extent),
+        )
+
+        val maxItems = rows.drop(1).sumOf { it.count }
         reload = {
             val generation = ++loadGeneration
-            Thread {
-                val apps = RecentApps.load(this, maxItems)
-                runOnUiThread {
-                    // A newer load has started since, so this one is out of date.
-                    if (isDestroyed || isFinishing || generation != loadGeneration) return@runOnUiThread
-                    appViews.forEach { sheetView.removeView(it) }
-                    appViews.clear()
-                    showApps(sheetView, apps, rows, radius, textColor)
-                }
-            }.start()
+            if (altRequested) {
+                // Nothing to load: the actions are fixed. The corner ring is left empty.
+                appViews.forEach { sheetView.removeView(it) }
+                appViews.clear()
+                showEntries(sheetView, null, actionEntries(), rows, radius, textColor)
+            } else {
+                Thread {
+                    val recents = RecentApps.loadRecents(this, maxItems)
+                    runOnUiThread {
+                        // A newer load has started since, so this one is out of date.
+                        if (isDestroyed || isFinishing || generation != loadGeneration) return@runOnUiThread
+                        appViews.forEach { sheetView.removeView(it) }
+                        appViews.clear()
+                        // Hidden, row 0 is left empty and is only margin.
+                        val current = recents.current.takeIf { DockPrefs.getShowCurrent(this) }?.let { app ->
+                            // Already on screen behind the sheet, so a tap has nothing to switch to.
+                            Entry(app.icon, app.label, { closeSheet(haptic = false) }, { openAppInfo(app) })
+                        }
+                        val entries = recents.others.map { app ->
+                            Entry(app.icon, app.label, { launch(app) }, { openAppInfo(app) })
+                        }
+                        showEntries(sheetView, current, entries, rows, radius, textColor)
+                    }
+                }.start()
+            }
         }
         reload?.invoke()
         return root
     }
 
-    /** The views showApps added, so they can be cleared when the list is reloaded. */
+    /** The views showEntries added, so they can be cleared when the list is reloaded. */
     private val appViews = ArrayList<View>()
     private var loadGeneration = 0
     private var reload: (() -> Unit)? = null
+
+    /** What fills one icon slot of the sheet: an app, or in actions mode an action. */
+    private class Entry(
+        val icon: Drawable,
+        val label: String,
+        val onClick: () -> Unit,
+        val onLongClick: (() -> Unit)? = null,
+    )
+
+    /** Shows the sheet again, from whichever mode [altRequested] now says. */
+    private fun applyMode() {
+        if (!closing) reload?.invoke()
+    }
+
+    /** The actions mode's icons: dark grey glyphs in white circles, which read on any sheet colour. */
+    private fun actionEntries(): List<Entry> {
+        fun action(icon: Int, label: Int, block: () -> Unit): Entry {
+            val drawable = ContextCompat.getDrawable(this, icon)!!
+            return Entry(drawable, getString(label), { closeSheet(haptic = false); block() })
+        }
+        return buildList {
+            // Back, Home, Recents: the order of the system's three-button navigation.
+            add(action(R.drawable.ic_action_back, R.string.action_back) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_BACK)
+            })
+            add(action(R.drawable.ic_action_home, R.string.action_home) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_HOME)
+            })
+            add(action(R.drawable.ic_action_recents, R.string.action_recents) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_RECENTS)
+            })
+            add(action(R.drawable.ic_action_fan_settings, R.string.action_settings) {
+                DockLog.log(this@DockActivity, "actions: opening settings")
+                startActivity(Intent(this@DockActivity, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            })
+            add(action(R.drawable.ic_action_settings, R.string.action_system_settings) {
+                startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            })
+            // Taking a screenshot needs Android 9; on older versions the action is left out.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                add(action(R.drawable.ic_action_screenshot, R.string.action_screenshot) {
+                    DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+                })
+            }
+            add(action(R.drawable.ic_action_power, R.string.action_power) {
+                DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)
+            })
+            add(action(R.drawable.ic_action_flashlight, R.string.action_flashlight) {
+                Torch.toggle(this@DockActivity)
+            })
+        }
+    }
 
     private fun addAppView(root: ViewGroup, view: View, params: ViewGroup.LayoutParams) {
         appViews.add(view)
         root.addView(view, params)
     }
 
-    /** Takes [app] off the sheet until the user opens it again, and fills its place. */
-    private fun dismiss(app: RecentApps.App) {
-        DockPrefs.dismissApp(this, app.packageName)
-        reload?.invoke()
+    /** Opens the system's App Info page for [app], closing the sheet. */
+    private fun openAppInfo(app: RecentApps.App) {
+        closeSheet(haptic = false)
+        try {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", app.packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (e: RuntimeException) {
+            DockLog.log(this, "could not open app info for ${app.packageName}: $e")
+        }
     }
 
     /**
      * Spreads the icons evenly along one or more arcs (rows), between the two straight edges of
-     * the sheet. Each row sizes its icons to the room it has.
+     * the fan. Each row sizes its icons to the room it has. The first row is a row like the
+     * others, flush against the corner, but holds just the [current] entry (the app on screen), or
+     * nothing, as on the home screen or in actions mode. [entries] fill the other rows.
      */
-    private fun showApps(root: ViewGroup, apps: List<RecentApps.App>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
-        if (apps.isEmpty()) {
+    private fun showEntries(root: ViewGroup, current: Entry?, entries: List<Entry>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
+        if (entries.isEmpty()) {
             addAppView(
                 root,
                 TextView(this).apply {
@@ -267,12 +391,14 @@ class DockActivity : AppCompatActivity() {
                     bottomMargin = (radius * 0.35f).toInt()
                 },
             )
-            return
+            if (current == null) return
         }
 
-        // Row 0 is the innermost. Rows fill from the inside; a row with no app left stays empty.
-        var left = apps.size
-        val filled = rows.map { row ->
+        // Row 0 holds only the app on screen. The rest fill from the inside; a row with no app
+        // left stays empty.
+        var left = entries.size
+        val filled = rows.mapIndexed { i, row ->
+            if (i == 0) return@mapIndexed if (current != null) 1 else 0
             val n = minOf(left, row.count)
             left -= n
             n
@@ -284,22 +410,24 @@ class DockActivity : AppCompatActivity() {
         val bands = rowBands(rows, radius)
         val bottomPad = DockPrefs.getPadding(this, DockPrefs.Padding.BOTTOM).dp
         val sidePad = DockPrefs.getPadding(this, DockPrefs.Padding.SIDE).dp
-        // The icons of a row run from `from` (nearest the bottom edge) to `to` (nearest the side
-        // edge), measured as the angle up from the bottom edge. The first and last icon keep the
-        // padding clear of those edges, and the rest are spread evenly between them.
+        // Angles and radii are measured from the fan's centre, which is moved in from the corner
+        // by the padding. The icons of a row run from `from` (nearest the bottom) to `to` (nearest
+        // the side), measured as the angle up from the bottom. The first and last icon touch the
+        // two straight edges of the fan, and the rest are spread evenly between them.
         data class Placement(val centreRadius: Float, val size: Int, val from: Float, val to: Float)
 
+        // The angles of the first and last icon, which cross over when the icons are too big for
+        // the ring: then the icon does not fit.
         fun arc(centreRadius: Float, size: Int): Pair<Float, Float> {
-            val from = asin(((bottomPad + size / 2f) / centreRadius).coerceAtMost(1f))
-            val to = (Math.PI / 2).toFloat() - asin(((sidePad + size / 2f) / centreRadius).coerceAtMost(1f))
-            // No room for the padding: put the row's icons on the diagonal.
-            return if (to >= from) from to to else (Math.PI / 4).toFloat().let { it to it }
+            val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
+            return inset to (Math.PI / 2).toFloat() - inset
         }
 
         val placed = rows.mapIndexed { i, _ ->
             val (start, end) = bands[i]
             val centreRadius = (start + end) / 2
-            val n = filled[i]
+            // A row is laid out as if it were full, whatever it holds.
+            val n = rows[i].count
             var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
             while (size > MIN_ICON_SIZE.dp && n > 0) {
                 val (from, to) = arc(centreRadius, size)
@@ -311,39 +439,46 @@ class DockActivity : AppCompatActivity() {
                 size--
             }
             size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
-            val (from, to) = arc(centreRadius, size)
+            // Even the smallest icon is too big: put it on the diagonal.
+            val (from, to) = arc(centreRadius, size).let { (a, b) ->
+                if (b >= a) a to b else (Math.PI / 4).toFloat().let { it to it }
+            }
             Placement(centreRadius, size, from, to)
         }
 
         var next = 0
-        filled.forEachIndexed { i, n ->
+        filled.forEachIndexed { i, held ->
+            val count = rows[i].count
             val (centreRadius, size, from, to) = placed[i]
-            repeat(n) { slot ->
-                val app = apps[next++]
+            // The first slots of a row that is not full are filled, and the rest are left empty.
+            repeat(held) { slot ->
+                val entry = if (i == 0) current!! else entries[next++]
                 // The most recent app is nearest the bottom edge, where the thumb that pressed the
                 // corner button is, and the oldest is at the top of the arc.
-                val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
+                val angle = if (count == 1) (from + to) / 2 else from + (to - from) * slot / (count - 1)
                 val cx = centreRadius * cos(angle)
                 val cy = centreRadius * sin(angle)
                 addAppView(
                     root,
                     ImageView(this).apply {
-                        setImageDrawable(app.icon)
-                        contentDescription = app.label
+                        setImageDrawable(entry.icon)
+                        contentDescription = entry.label
                         isClickable = true
                         setOnClickListener {
                             Haptics.confirm(this)
-                            launch(app)
+                            entry.onClick()
                         }
-                        setOnLongClickListener {
-                            Haptics.longPress(this)
-                            dismiss(app)
-                            true
+                        entry.onLongClick?.let { onLongClick ->
+                            setOnLongClickListener {
+                                Haptics.longPress(this)
+                                onLongClick()
+                                true
+                            }
                         }
                     },
                     FrameLayout.LayoutParams(size, size, Gravity.BOTTOM or Gravity.END).apply {
-                        rightMargin = (cx - size / 2f).toInt()
-                        bottomMargin = (cy - size / 2f).toInt()
+                        rightMargin = (sidePad + cx - size / 2f).toInt()
+                        bottomMargin = (bottomPad + cy - size / 2f).toInt()
                     },
                 )
             }
@@ -374,6 +509,19 @@ class DockActivity : AppCompatActivity() {
         @Volatile
         var starting = false
 
+        /**
+         * Whether the sheet that is up, or about to be, shows actions rather than apps. A press
+         * on the corner clears it; a long press sets it.
+         */
+        @Volatile
+        var altRequested = false
+
+        /** Switches the sheet that is up, or about to be, to its actions. */
+        fun showActions() {
+            altRequested = true
+            current?.applyMode()
+        }
+
         /** Whether a tap on the corner should close the sheet, rather than open it. */
         val isOpen: Boolean
             get() = starting || current?.let { !it.closing && !it.isFinishing } == true
@@ -387,7 +535,7 @@ class DockActivity : AppCompatActivity() {
         private const val ENTER_MS = 280L
         private const val EXIT_MS = 200L
         private const val MAX_ICON_SIZE = 64
-        private const val MIN_ICON_SIZE = 16
+        private const val MIN_ICON_SIZE = DockPrefs.ICON_SIZE_MIN
         private const val ROW_SPACING = 1.2f
         private const val ICON_SPACING = 1.15f
     }

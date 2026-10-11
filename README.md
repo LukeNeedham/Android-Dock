@@ -4,17 +4,30 @@ An Android overlay that gives you a task switcher from anywhere, in one tap. It 
 launch and use. It stays out of the way until you call it.
 
 > **Status:** early prototype. The corner trigger opens a corner sheet of recent apps, and a
-> long press opens the settings. Touches are recorded in the in-app debug log.
+> long press opens the same sheet showing actions instead of apps. Touches are recorded in the
+> in-app debug log.
 
 ## The idea
 
 1. You tap the **bottom-right corner of the screen, in the navigation bar**.
 2. A **corner sheet**, a quarter circle in the bottom-right corner of the screen, opens over
    whatever you were doing. The icons of your **recently used apps** run along its arc, the most
-   recent nearest the bottom edge.
-3. Pick an app to switch to it, or dismiss the sheet.
+   recent nearest the bottom edge. The ring in the very corner (row zero) holds just **the app you
+   are in now**, and is left blank on the home screen. It is laid out like any other ring, and
+   its width and whether it shows the app at all (otherwise it is only margin) are all that can be changed, by selecting it on the fan layout page.
+3. Pick an app to switch to it, or dismiss the sheet. **Long press** an app, the current app
+   included, to open its App Info page in the system settings, where it can be force stopped.
+   (Fan used to try to kill the app itself with `killBackgroundProcesses`, but that never worked
+   on the apps people want to kill: it cannot touch an app on screen or one with a foreground
+   service, and only the system can force stop.)
 4. Dismissing the sheet **also kills Fan's own task**, so it never appears as an entry
    in the system task switcher.
+
+**Long pressing the corner** opens the sheet in its actions mode: the same layout, styling and
+colours, but the icons are actions (the corner ring is left empty): Back, Home and Recents, then
+Fan settings, System settings, Screenshot (Android 9+), Power menu and Flashlight. Back, Home,
+Recents, Screenshot and the Power menu go through the accessibility service. The sheet closes first, then the action runs a moment
+later so it acts on whatever was underneath.
 
 Opening Fan from the launcher does not show the sheet. It shows a settings screen with
 the setup steps, which is where a new user starts.
@@ -76,7 +89,11 @@ These need working out when the features are built:
 ## Project setup
 
 - Kotlin, single `app` module, package `com.lukeneedham.androiddock` (kept from the old name, "Android Dock", so installs update in place)
-- `minSdk` 26, `targetSdk` / `compileSdk` 35
+- `minSdk` 23 (Android 6), `targetSdk` 35, `compileSdk` 36. The floor is set by Compose and the
+  libraries around it, and by the trigger overlay and the flashlight. Older Android means a few
+  gaps, none of them blocking: below Android 10 the system does not report when an app's activities
+  are destroyed, so apps swiped away in the system recents stay listed in the fan, and below
+  Android 9 there is no Screenshot action. Not tested below the versions the author has devices for.
 - Gradle Kotlin DSL with a version catalog (`gradle/libs.versions.toml`)
 
 Build a debug APK:

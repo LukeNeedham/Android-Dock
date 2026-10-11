@@ -38,7 +38,7 @@
     <string name="log_clear">Clear</string>
     <string name="log_copied">Log copied</string>
     <string name="position_title">Trigger</string>
-    <string name="position_description">With gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the trigger until a swipe up from it stays with Fan. Touching it opens the sheet, and a long press opens these settings.</string>
+    <string name="position_description">With gesture navigation, the system takes over a swipe that starts in a strip along the bottom of the screen, and Recents opens. Raise the trigger until a swipe up from it stays with Fan. Touching it opens the sheet, and a long press shows the actions: Back, Home, Recents, these settings and a few system actions.</string>
     <string name="trigger_summary">The strip over the corner of the navigation bar that opens the sheet: where it sits, how big it is, and its colour.</string>
     <string name="trigger_open">Customise trigger</string>
     <string name="slider_right">Distance from the right edge: %1$d dp</string>
@@ -55,12 +55,13 @@
     <string name="color_alpha">Opacity: %1$d</string>
     <string name="sheet_title_loading">Loading apps…</string>
     <string name="sheet_title_section">Fan layout</string>
-    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. Ring 1 is closest to the corner. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
+    <string name="rows_description">Tap a ring in the preview to select it, then use the controls below to change it. The corner ring holds just the app that is open now (and is empty on the home screen); you can change its width, or hide the app and keep only the space. Long press that app, like any other, to open its App Info page. Ring 1 is the next one out. Icons fill ring 1 first, then the next ring out. Each ring sizes its icons to its width. The sheet lists as many apps as all the rings hold. A ring\'s width is how far it reaches along the bottom edge; the widths add up to the sheet\'s size.</string>
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>
-    <string name="slider_inner_offset">Gap from the corner to ring 1: %1$d dp</string>
-    <string name="slider_padding_bottom">Padding from the bottom edge to the first icon: %1$d dp</string>
-    <string name="slider_padding_side">Padding from the side edge to the last icon: %1$d dp</string>
+    <string name="row_current_title">Corner ring</string>
+    <string name="row_show_current">Show current app</string>
+    <string name="slider_padding_bottom">Distance from the bottom edge to where the fan starts: %1$d dp</string>
+    <string name="slider_padding_side">Distance from the side edge to where the fan starts: %1$d dp</string>
     <string name="blacklist_title">Hidden apps</string>
     <string name="blacklist_description">These apps never show on the sheet, and a double tap never switches to them.</string>
     <string name="blacklist_empty">No hidden apps.</string>
@@ -75,6 +76,14 @@
     <string name="fan_layout_open">Customise fan layout</string>
     <string name="fan_layout_preview_note">Preview with placeholder apps</string>
     <string name="back">Back</string>
+    <string name="action_home">Home</string>
+    <string name="action_back">Back</string>
+    <string name="action_recents">Recent apps</string>
+    <string name="action_settings">Fan settings</string>
+    <string name="action_system_settings">System settings</string>
+    <string name="action_screenshot">Screenshot</string>
+    <string name="action_power">Power menu</string>
+    <string name="action_flashlight">Flashlight</string>
     <string name="blacklist_open">Edit hidden apps</string>
     <string name="row_add">Add ring</string>
 </resources>

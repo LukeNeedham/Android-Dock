@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
@@ -14,7 +16,8 @@ import android.view.accessibility.AccessibilityEvent
 
 /**
  * Places a [CornerTouchView] over the bottom-right corner of the screen, on top of the
- * navigation bar. Its position and size come from [DockPrefs]. Touching it opens the sheet, and a long press opens the settings.
+ * navigation bar. Its position and size come from [DockPrefs]. Touching it opens the sheet, and a long press opens the sheet
+ * in its actions mode (Home, Back, Recents, Fan settings).
  */
 class DockAccessibilityService : AccessibilityService() {
 
@@ -26,8 +29,12 @@ class DockAccessibilityService : AccessibilityService() {
         if (DockPrefs.isColorKey(key)) cornerView?.applyColor()
     }
 
+    private val handler = Handler(Looper.getMainLooper())
+
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instance = this
+        Torch.track(this)
         val navMode = Settings.Secure.getInt(contentResolver, "navigation_mode", -1)
         DockLog.log(
             this,
@@ -54,7 +61,7 @@ class DockAccessibilityService : AccessibilityService() {
         fillLayout(params)
         val view = CornerTouchView(this).apply {
             onPress = ::onCornerPress
-            onLongPress = ::openSettings
+            onLongPress = ::openActions
         }
         getSystemService(WindowManager::class.java).addView(view, params)
         cornerView = view
@@ -128,6 +135,7 @@ class DockAccessibilityService : AccessibilityService() {
             DockLog.log(this, "closing sheet")
             return
         }
+        DockActivity.altRequested = false
         DockActivity.starting = true
         try {
             startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -138,15 +146,27 @@ class DockAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** A long press on the button opens the dock's settings, and closes the sheet it also opened. */
-    private fun openSettings() {
+    /**
+     * A long press on the button shows the sheet's actions. The press that started it has
+     * already opened the sheet, which is switched over; if that press closed an open sheet
+     * instead, the sheet is opened again, showing the actions.
+     */
+    private fun openActions() {
         Haptics.longPress(cornerView)
-        DockActivity.close(haptic = false)
+        if (DockActivity.isOpen) {
+            DockActivity.showActions()
+            DockLog.log(this, "long press: showing actions")
+            return
+        }
+        DockActivity.altRequested = true
+        DockActivity.starting = true
         try {
-            startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            DockLog.log(this, "long press: opening settings")
+            startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            DockLog.log(this, "long press: opening actions")
         } catch (e: RuntimeException) {
-            DockLog.log(this, "could not open settings: $e")
+            DockActivity.starting = false
+            DockActivity.altRequested = false
+            DockLog.log(this, "could not open actions: $e")
         }
     }
 
@@ -162,8 +182,27 @@ class DockAccessibilityService : AccessibilityService() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         DockLog.log(this, "service unbound")
+        if (instance === this) instance = null
         DockPrefs.prefs(this).unregisterOnSharedPreferenceChangeListener(prefsListener)
         removeCornerView()
         return super.onUnbind(intent)
+    }
+
+    companion object {
+        @Volatile
+        private var instance: DockAccessibilityService? = null
+
+        /**
+         * Performs a global action (Home, Back, Recents) as the user would. It waits a moment
+         * first, so the sheet that asked has gone and the action acts on what was under it.
+         * Returns false if the service is not running.
+         */
+        fun perform(action: Int): Boolean {
+            val service = instance ?: return false
+            service.handler.postDelayed({ service.performGlobalAction(action) }, ACTION_DELAY_MS)
+            return true
+        }
+
+        private const val ACTION_DELAY_MS = 350L
     }
 }

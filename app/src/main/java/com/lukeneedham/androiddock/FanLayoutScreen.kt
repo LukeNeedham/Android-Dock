@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -57,6 +59,7 @@ import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -68,17 +71,20 @@ import kotlin.math.sin
 @Composable
 internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
-    var inner by remember { mutableIntStateOf(DockPrefs.getInnerOffset(context)) }
+    var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
+    var showCurrent by remember { mutableStateOf(DockPrefs.getShowCurrent(context)) }
+    val currentWidth = inner.coerceAtLeast(DockPrefs.currentWidthMin(showCurrent))
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
     var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
-    // The row the sliders edit, chosen by tapping it in the preview and tinted there.
+    // The row the controls edit, chosen by tapping it in the preview and tinted there. -1 is the
+    // corner ring for the current app, 0 the first of the rows.
     var selectedRow by remember { mutableIntStateOf(0) }
     var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
-        FanPreview(inner, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, onRowTap = { selectedRow = it })
+        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, showCurrent = showCurrent, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -89,15 +95,6 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 stringResource(R.string.rows_description),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
-            )
-            Text(stringResource(R.string.slider_inner_offset, inner), modifier = Modifier.padding(top = 16.dp))
-            Slider(
-                value = inner.toFloat(),
-                onValueChange = {
-                    inner = it.toInt()
-                    DockPrefs.setInnerOffset(context, inner)
-                },
-                valueRange = 0f..DockPrefs.INNER_MAX.toFloat(),
             )
             Text(stringResource(R.string.slider_padding_bottom, bottomPad), modifier = Modifier.padding(top = 16.dp))
             Slider(
@@ -119,14 +116,26 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
             )
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
             ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
-            RowsEditor(context, rows, selectedRow) { selectedRow = it }
+            RowsEditor(
+                context, rows, selectedRow,
+                currentWidth = currentWidth,
+                showCurrent = showCurrent,
+                onCurrentWidth = {
+                    inner = it
+                    DockPrefs.setCurrentWidth(context, it)
+                },
+                onShowCurrent = {
+                    showCurrent = it
+                    DockPrefs.setShowCurrent(context, it)
+                },
+            ) { selectedRow = it }
             NavBarSpacer()
         }
     }
 }
 
 private const val MAX_ICON_SIZE = 64
-private const val MIN_ICON_SIZE = 16
+private const val MIN_ICON_SIZE = DockPrefs.ICON_SIZE_MIN
 private const val ROW_SPACING = 1.2f
 private const val ICON_SPACING = 1.15f
 
@@ -150,6 +159,7 @@ internal fun FanPreview(
     selectedRow: Int?,
     sheetColor: Int,
     edgeColor: Int,
+    showCurrent: Boolean = true,
     thumbnailDp: Int? = null,
     onRowTap: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -159,27 +169,33 @@ internal fun FanPreview(
             .then(if (thumbnailDp != null) Modifier.size(thumbnailDp.dp).clip(RoundedCornerShape(8.dp)) else Modifier.fillMaxWidth())
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // As in the sheet: the gap plus the rows' widths is the radius, shrunk to fit the width.
-        val total = inner + rows.sumOf { it.widthDp }
+        // Row 0, flush against the corner, holds a single icon: the app on screen, or nothing when
+        // that is hidden. It is drawn like every other ring.
+        val ringZero = if (inner > 0) listOf(DockPrefs.Row(if (showCurrent) 1 else 0, inner)) else emptyList()
+        val allRows = ringZero + rows
+        // As in the sheet: the rows' widths, row 0's included, make the radius, shrunk to fit the width.
+        val total = allRows.sumOf { it.widthDp }
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
         else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
+        // The rings are centred on the corner moved in by the padding, but the background is
+        // centred on the corner itself, and reaches far enough to hold the outermost ring.
+        val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
         Canvas(
-            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(radiusDp.dp))
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(backgroundDp.dp))
                 .align(Alignment.BottomEnd)
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
-                .pointerInput(onRowTap != null, inner, rows, radiusDp) {
+                .pointerInput(onRowTap != null, allRows, radiusDp, bottomPad, sidePad) {
                     if (onRowTap == null) return@pointerInput
                     detectTapGestures { tap ->
-                        val distance = hypot(size.width - tap.x, size.height - tap.y)
+                        val distance = hypot(size.width - sidePad * density - tap.x, size.height - bottomPad * density - tap.y)
                         val scale = radiusDp * density / (total * density)
-                        var edge = inner * density * scale
-                        rows.forEachIndexed { index, row ->
+                        var edge = 0f
+                        allRows.forEachIndexed { index, row ->
                             edge += row.widthDp * density * scale
                             if (distance <= edge) {
-                                // A tap in the gap before row 1 selects row 1.
-                                onRowTap(index)
+                                onRowTap(index - ringZero.size)
                                 return@detectTapGestures
                             }
                         }
@@ -187,47 +203,59 @@ internal fun FanPreview(
                 },
         ) {
             val dp = density
-            val fit = if (thumbnailDp != null) thumbnailDp * dp / (radiusDp * dp) else 1f
-            withTransform({ scale(fit, fit, pivot = Offset(size.width, size.height)) }) {
+            // The screen's corner, which the background is centred on, and the corner moved in by
+            // the padding, which the rings are centred on.
+            val screenCorner = Offset(size.width, size.height)
+            val corner = Offset(size.width - sidePad * dp, size.height - bottomPad * dp)
             val radius = radiusDp * dp
-            val corner = Offset(size.width, size.height)
+            val backgroundRadius = backgroundDp * dp
+            val fit = if (thumbnailDp != null) thumbnailDp / backgroundDp else 1f
+            withTransform({
+                scale(fit, fit, pivot = screenCorner)
+                // The quarter the background fills, before it is scaled.
+                clipRect(screenCorner.x - backgroundRadius, screenCorner.y - backgroundRadius, screenCorner.x, screenCorner.y)
+            }) {
             val scale = radius / (total * dp)
 
-            val quarter = Path().apply { addOval(androidx.compose.ui.geometry.Rect(corner, radius)) }
+            val quarter = Path().apply { addOval(androidx.compose.ui.geometry.Rect(screenCorner, backgroundRadius)) }
             clipPath(quarter) {
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(Color(sheetColor), Color(edgeColor)),
-                        center = corner,
-                        radius = radius,
+                        center = screenCorner,
+                        radius = backgroundRadius,
                     ),
-                    radius = radius,
-                    center = corner,
+                    radius = backgroundRadius,
+                    center = screenCorner,
                 )
             }
 
-            var edge = inner * dp * scale
-            var colorIndex = 0
-            rows.forEachIndexed { rowIndex, row ->
+            var edge = 0f
+            allRows.forEachIndexed { index, row ->
+                val rowIndex = index - ringZero.size
                 val start = edge
                 edge += row.widthDp * dp * scale
                 val end = edge
                 val centreRadius = (start + end) / 2
                 if (rowIndex == selectedRow) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.2f),
-                        radius = centreRadius,
-                        center = corner,
-                        style = Stroke(width = end - start),
-                    )
+                    // Only the quarter the rings fill, not the padding.
+                    clipRect(corner.x - radius, corner.y - radius, corner.x, corner.y) {
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.2f),
+                            radius = centreRadius,
+                            center = corner,
+                            style = Stroke(width = end - start),
+                        )
+                    }
                 }
 
-                val bottom = bottomPad * dp
-                val side = sidePad * dp
+                if (row.count == 0) return@forEachIndexed
+
+                // The angles of the first and last icon, which cross over when the icons are too big
+                // for the ring: then the icon does not fit.
                 fun arc(size: Float): Pair<Float, Float> {
-                    val from = asin(((bottom + size / 2f) / centreRadius).coerceAtMost(1f))
-                    val to = (PI / 2).toFloat() - asin(((side + size / 2f) / centreRadius).coerceAtMost(1f))
-                    return if (to >= from) from to to else (PI / 4).toFloat().let { it to it }
+                    val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
+                    return inset to (PI / 2).toFloat() - inset
                 }
 
                 val n = row.count
@@ -242,11 +270,16 @@ internal fun FanPreview(
                     size -= 1f
                 }
                 size = size.coerceAtLeast(MIN_ICON_SIZE * dp)
-                val (from, to) = arc(size)
+                // Even the smallest icon is too big: put it on the diagonal.
+                val (from, to) = arc(size).let { (a, b) ->
+                    if (b >= a) a to b else (PI / 4).toFloat().let { it to it }
+                }
                 repeat(n) { slot ->
                     val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
                     drawCircle(
-                        color = PLACEHOLDER_COLORS[colorIndex++ % PLACEHOLDER_COLORS.size],
+                        // Each row starts from its own place in the palette, so the colours of a row
+                        // do not depend on how many icons the rows before it hold.
+                        color = PLACEHOLDER_COLORS[(index * 5 + slot) % PLACEHOLDER_COLORS.size],
                         radius = size / 2,
                         center = Offset(corner.x - centreRadius * cos(angle), corner.y - centreRadius * sin(angle)),
                     )
@@ -262,11 +295,42 @@ internal fun FanPreview(
  * in the preview. Delete acts on the selected ring too.
  */
 @Composable
-private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selected: Int, onSelect: (Int) -> Unit) {
+private fun RowsEditor(
+    context: Context,
+    rows: MutableList<DockPrefs.Row>,
+    selected: Int,
+    currentWidth: Int,
+    showCurrent: Boolean,
+    onCurrentWidth: (Int) -> Unit,
+    onShowCurrent: (Boolean) -> Unit,
+    onSelect: (Int) -> Unit,
+) {
     val haptic = LocalHapticFeedback.current
     val delete = stringResource(R.string.row_delete)
     fun save() = DockPrefs.setRows(context, rows.toList())
 
+    if (selected < 0) {
+        // The corner ring: its width, and whether it shows the app on screen. Nothing else.
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                Text(
+                    stringResource(R.string.row_current_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = showCurrent, onCheckedChange = onShowCurrent)
+                    Text(stringResource(R.string.row_show_current))
+                }
+                Text(stringResource(R.string.row_width, currentWidth))
+                Slider(
+                    value = currentWidth.toFloat(),
+                    onValueChange = { onCurrentWidth(it.toInt()) },
+                    valueRange = DockPrefs.currentWidthMin(showCurrent).toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
+                )
+            }
+        }
+    } else {
     val index = selected.coerceIn(0, rows.lastIndex)
     val row = rows[index]
     Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
@@ -308,6 +372,7 @@ private fun RowsEditor(context: Context, rows: MutableList<DockPrefs.Row>, selec
                 valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
             )
         }
+    }
     }
     if (rows.size < DockPrefs.ROWS_MAX) {
         FilledTonalButton(
