@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -41,7 +42,7 @@ internal fun NavBarSpacer() {
 
 /**
  * The frame of every settings sub page: a toolbar with a back button (none if [onBack] is null,
- * as in onboarding) and [title], then [content], then [footer] pinned to the bottom.
+ * as in onboarding) and [title], then [content], then [footer] pinned to the bottom. A [header] goes above the toolbar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,11 +50,15 @@ internal fun SubPage(
     title: Int,
     onBack: (() -> Unit)?,
     footer: (@Composable () -> Unit)? = null,
+    header: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val hasFooter = footer != null
     Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
+        header?.invoke()
         TopAppBar(
+            // The header, when there is one, already sits under the status bar.
+            windowInsets = if (header != null) WindowInsets(0) else TopAppBarDefaults.windowInsets,
             title = { Text(stringResource(title)) },
             navigationIcon = {
                 if (onBack != null) {

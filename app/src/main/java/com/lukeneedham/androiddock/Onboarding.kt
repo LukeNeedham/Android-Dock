@@ -4,10 +4,22 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -44,9 +56,33 @@ internal enum class OnboardingStep(val required: Boolean) {
     }
 }
 
-/** One page for [step]; [onStepDone] is called when an optional step is finished or skipped. */
+/**
+ * The page for [step], sliding in from the right (and the old one out to the left) when moving
+ * forwards, and the other way round when moving back. [onStepDone] moves past an optional step;
+ * [onStepBack] returns from one to the optional step before it.
+ */
 @Composable
-internal fun OnboardingFlow(step: OnboardingStep, onStepDone: () -> Unit) {
+internal fun OnboardingFlow(step: OnboardingStep, onStepDone: () -> Unit, onStepBack: () -> Unit) {
+    val canGoBack = step.ordinal > OnboardingStep.FanLayout.ordinal
+    BackHandler(enabled = canGoBack, onBack = onStepBack)
+    AnimatedContent(
+        targetState = step,
+        transitionSpec = {
+            val forwards = targetState.ordinal > initialState.ordinal
+            val direction = if (forwards) 1 else -1
+            (slideInHorizontally { width -> width * direction } togetherWith
+                slideOutHorizontally { width -> -width * direction })
+                .using(SizeTransform(clip = false))
+        },
+        label = "onboarding",
+    ) { page ->
+        OnboardingPage(page, onStepDone, if (page.ordinal > OnboardingStep.FanLayout.ordinal) onStepBack else null)
+    }
+}
+
+@Composable
+private fun OnboardingPage(step: OnboardingStep, onStepDone: () -> Unit, onBack: (() -> Unit)?) {
+    val header: @Composable () -> Unit = { OnboardingHeader(step) }
     val footer: @Composable () -> Unit = { OptionalFooter(step, onStepDone) }
     when (step) {
         OnboardingStep.Accessibility -> PermissionPage(step, R.string.step_accessibility_title) {
@@ -81,56 +117,72 @@ internal fun OnboardingFlow(step: OnboardingStep, onStepDone: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             ) { Text(stringResource(R.string.step_usage_action)) }
         }
-        OnboardingStep.FanLayout -> FanLayoutScreen(null, footer)
-        OnboardingStep.Trigger -> TriggerScreen(null, footer)
-        OnboardingStep.Blacklist -> BlacklistScreen(null, footer)
+        OnboardingStep.FanLayout -> FanLayoutScreen(onBack, footer, header)
+        OnboardingStep.Trigger -> TriggerScreen(onBack, footer, header)
+        OnboardingStep.Blacklist -> BlacklistScreen(onBack, footer, header)
     }
 }
 
-/** The page of a required permission step: the step count, the explanation and the button. */
+/** The banner on every onboarding page, so it is clear the user is setting the app up. */
 @Composable
-private fun PermissionPage(step: OnboardingStep, title: Int, content: @Composable () -> Unit) {
+internal fun OnboardingHeader(step: OnboardingStep) {
     Column(
         modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primaryContainer)
             .topAndSideInsets()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp),
     ) {
-        Text(stepCount(step), style = MaterialTheme.typography.labelLarge)
-        if (step == OnboardingStep.Accessibility) {
-            Text(
-                stringResource(R.string.onboarding_welcome),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
         Text(
-            stringResource(title),
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 16.dp, bottom = 16.dp),
+            stringResource(R.string.onboarding_header),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
-        content()
         Text(
-            stringResource(R.string.onboarding_required_note),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 24.dp),
+            stepCount(step) + if (step.required) "" else " · " + stringResource(R.string.onboarding_optional),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
-        NavBarSpacer()
     }
 }
 
-/** Pinned under an optional step's own page: the step count, and Skip beside Next. */
+/** The page of a required permission step: the banner, the explanation and the button. */
+@Composable
+private fun PermissionPage(step: OnboardingStep, title: Int, content: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        OnboardingHeader(step)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+        ) {
+            if (step == OnboardingStep.Accessibility) {
+                Text(stringResource(R.string.onboarding_welcome), style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(
+                stringResource(title),
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp),
+            )
+            content()
+            Text(
+                stringResource(R.string.onboarding_required_note),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 24.dp),
+            )
+            NavBarSpacer()
+        }
+    }
+}
+
+/** Pinned under an optional step's own page: the Next button (Finish on the last). */
 @Composable
 private fun OptionalFooter(step: OnboardingStep, onStepDone: () -> Unit) {
     val last = step == OnboardingStep.Blacklist
-    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
-        Text(
-            stepCount(step) + " · " + stringResource(R.string.onboarding_optional),
-            style = MaterialTheme.typography.labelLarge,
-        )
-        Button(onClick = onStepDone, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Text(stringResource(if (last) R.string.onboarding_finish else R.string.onboarding_next))
-        }
+    Button(onClick = onStepDone, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
+        Text(stringResource(if (last) R.string.onboarding_finish else R.string.onboarding_next))
     }
 }
 

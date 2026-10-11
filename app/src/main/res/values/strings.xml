@@ -4,7 +4,7 @@
     <string name="accessibility_service_description">Lets Fan detect a tap on the bottom-right corner of the navigation bar, and open the app switcher sheet.</string>
     <string name="sheet_title">Open apps</string>
 
-    <string name="onboarding_title">Set up Fan</string>
+    <string name="settings_title">Fan settings</string>
     <string name="onboarding_all_set">All set. Tap the trigger to open the fan at any time.</string>
     <string name="fan_open">Open fan</string>
     <string name="fan_close">Close fan</string>
@@ -22,10 +22,13 @@
     <string name="onboarding_finish">Finish</string>
     <string name="onboarding_required_note">Required. This page moves on once it is done.</string>
     <string name="onboarding_welcome">Fan is not an app you open. After setup, tap the bottom-right corner of the navigation bar to switch apps.</string>
-    <string name="status_accessibility_ok">Accessibility service is on</string>
-    <string name="status_accessibility_off">Accessibility service is off</string>
-    <string name="status_usage_ok">App usage access is granted</string>
-    <string name="status_usage_off">App usage access is not granted</string>
+    <string name="status_accessibility_title">Accessibility service</string>
+    <string name="status_usage_title">App usage access</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_not_completed">Not completed</string>
+    <string name="onboarding_header">Setting up Fan</string>
+    <string name="debug_open">Debug Settings</string>
+    <string name="debug_title">Debug</string>
     <string name="status_open">Open settings</string>
     <string name="onboarding_view_log">View debug log</string>
     <string name="log_title">Debug log</string>

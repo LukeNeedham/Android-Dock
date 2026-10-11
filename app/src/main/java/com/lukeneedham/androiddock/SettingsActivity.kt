@@ -1,6 +1,7 @@
 package com.lukeneedham.androiddock
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -58,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -78,7 +81,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** The pages of the settings app. */
-internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Log }
+internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log }
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -139,10 +142,15 @@ private fun AppNavigation(resumes: Int) {
     var optionalDone by remember { mutableIntStateOf(DockPrefs.getOptionalStepsDone(context)) }
     val step = if (resumes >= 0) OnboardingStep.current(context, optionalDone) else null
     if (step != null) {
-        OnboardingFlow(step) {
-            optionalDone = step.ordinal - OnboardingStep.FanLayout.ordinal + 1
-            DockPrefs.setOptionalStepsDone(context, optionalDone)
+        val moveTo = { done: Int ->
+            optionalDone = done
+            DockPrefs.setOptionalStepsDone(context, done)
         }
+        OnboardingFlow(
+            step,
+            onStepDone = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal + 1) },
+            onStepBack = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal - 1) },
+        )
         return
     }
 
@@ -156,6 +164,7 @@ private fun AppNavigation(resumes: Int) {
                     Route.Trigger -> TriggerScreen(back)
                     Route.FanLayout -> FanLayoutScreen(back)
                     Route.Blacklist -> BlacklistScreen(back)
+                    Route.Debug -> DebugScreen(back) { backStack.add(it) }
                     Route.Log -> LogScreen(back)
                 }
             }
@@ -167,6 +176,7 @@ private fun AppNavigation(resumes: Int) {
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     // The fan opens over this page, so its state is polled; nothing else announces it.
     val fanOpen by produceState(DockActivity.isOpen) {
         while (true) {
@@ -181,22 +191,20 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
-        Text(stringResource(R.string.onboarding_title), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
         Text(
             stringResource(R.string.onboarding_all_set),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 8.dp),
         )
         PermissionStatus(
+            title = R.string.status_accessibility_title,
             ok = SetupState.isAccessibilityEnabled(context),
-            okText = R.string.status_accessibility_ok,
-            offText = R.string.status_accessibility_off,
             onOpen = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
         )
         PermissionStatus(
+            title = R.string.status_usage_title,
             ok = SetupState.isUsageAccessGranted(context),
-            okText = R.string.status_usage_ok,
-            offText = R.string.status_usage_off,
             onOpen = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
         )
         Button(
@@ -211,7 +219,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = 24.dp),
         ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
@@ -252,23 +260,38 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.blacklist_open)) }
 
-        TextButton(
-            onClick = { navigate(Route.Log) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-        ) { Text(stringResource(R.string.onboarding_view_log)) }
+        if (isDebuggable) {
+            FilledTonalButton(
+                onClick = { navigate(Route.Debug) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+            ) { Text(stringResource(R.string.debug_open)) }
+        }
         NavBarSpacer()
     }
 }
 
-/** One row on the home page: whether a permission is set up, with a link to its system page. */
+/**
+ * One check on the home page: its [title], then whether it is set up (a tick and "Completed", or a
+ * cross and "Not completed"), with a link to its system page at the right edge.
+ */
 @Composable
-private fun PermissionStatus(ok: Boolean, okText: Int, offText: Int, onOpen: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+private fun PermissionStatus(title: Int, ok: Boolean, onOpen: () -> Unit) {
+    Text(
+        stringResource(title),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(top = 24.dp),
+    )
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Icon(
+            painterResource(if (ok) R.drawable.ic_check else R.drawable.ic_close),
+            contentDescription = null,
+            tint = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+        )
         Text(
-            (if (ok) "✓  " else "✗  ") + stringResource(if (ok) okText else offText),
-            modifier = Modifier.weight(1f),
+            stringResource(if (ok) R.string.status_completed else R.string.status_not_completed),
+            modifier = Modifier.weight(1f).padding(start = 8.dp),
         )
         TextButton(onClick = onOpen) { Text(stringResource(R.string.status_open)) }
     }

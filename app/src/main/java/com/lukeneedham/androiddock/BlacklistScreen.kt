@@ -50,9 +50,9 @@ import kotlinx.coroutines.withContext
 
 /** The apps that never show in the sheet, on a page of their own. */
 @Composable
-internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null) {
+internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
-    SubPage(R.string.blacklist_title, onBack, footer) {
+    SubPage(R.string.blacklist_title, onBack, footer, header) {
         Column(
             modifier = Modifier
                 .weight(1f)
