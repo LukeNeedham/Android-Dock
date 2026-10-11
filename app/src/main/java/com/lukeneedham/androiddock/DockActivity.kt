@@ -80,6 +80,27 @@ class DockActivity : AppCompatActivity() {
     }
 
     /**
+     * Takes touches on row 0, the corner ring, wherever they land in it: the ring is centred on
+     * the corner moved in by [sidePad] and [bottomPad], and reaches [ringRadius]. A tap closes the
+     * sheet, whether or not the app on screen is shown there. The icon, when there is one, is
+     * above this and takes its own touches.
+     */
+    private class CornerRingView(
+        context: Context,
+        private val sidePad: Int,
+        private val bottomPad: Int,
+        private val ringRadius: Float,
+    ) : View(context) {
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+                hypot(width - sidePad - event.x, height - bottomPad - event.y) > ringRadius
+            ) return false
+            return super.onTouchEvent(event)
+        }
+    }
+
+    /**
      * The inner and outer radius of each row, in px, scaled so they fit a sheet of [radius].
      * The first row is the one for the app on screen, which starts at the corner.
      */
@@ -228,6 +249,13 @@ class DockActivity : AppCompatActivity() {
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
             SheetBackgroundView(this, sheetColor, edgeColor).apply { isClickable = true },
+            FrameLayout.LayoutParams(extent, extent),
+        )
+
+        // Row 0, the corner ring: a tap anywhere in it closes the sheet, even where no app is shown.
+        val cornerRadius = rows[0].widthDp.dp * radius.toFloat() / rows.sumOf { it.widthDp.dp }
+        sheetView.addView(
+            CornerRingView(this, sidePad, bottomPad, cornerRadius).apply { setOnClickListener { closeSheet() } },
             FrameLayout.LayoutParams(extent, extent),
         )
 
