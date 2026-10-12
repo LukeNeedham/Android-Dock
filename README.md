@@ -1,129 +1,55 @@
 # Fan: Fast App Nav
 
-An Android overlay that gives you a task switcher from anywhere, in one tap. It is not an app you
-launch and use. It stays out of the way until you call it.
+<img src="docs/fan-logo.svg" alt="Fan logo" width="96" align="right">
 
-> **Status:** early prototype. The corner trigger opens a corner sheet of recent apps, and a
-> long press opens the same sheet showing actions instead of apps. Touches are recorded in the
-> in-app debug log.
+Switch apps from anywhere, in one tap. Fan puts a small trigger in a corner of your screen. Tap
+it and a quarter-circle **fan** of your recent apps opens over whatever you were doing. Pick one
+and you are there.
 
-## The idea
+Fan is not an app you launch and use. After setup it stays out of the way until you call it.
 
-1. You tap the **trigger in your chosen screen corner** (bottom right by default; pick any corner on the home page).
-2. A **corner sheet**, a quarter circle in the bottom-right corner of the screen, opens over
-   whatever you were doing. The icons of your **recently used apps** run along its arc, the most
-   recent nearest the bottom edge. The ring in the very corner (row zero) holds just **the app you
-   are in now**, and is left blank on the home screen. It is laid out like any other ring, and
-   its width and whether it shows the app at all (otherwise it is only margin) are all that can be changed, by selecting it on the fan layout page.
-3. Pick an app to switch to it, or dismiss the sheet. **Long press** an app, the current app
-   included, to open its App Info page in the system settings, where it can be force stopped.
-   (Fan used to try to kill the app itself with `killBackgroundProcesses`, but that never worked
-   on the apps people want to kill: it cannot touch an app on screen or one with a foreground
-   service, and only the system can force stop.)
-4. Dismissing the sheet **also kills Fan's own task**, so it never appears as an entry
-   in the system task switcher.
+## What you can do
 
-**Long pressing the corner** opens the sheet in its actions mode: the same layout, styling and
-colours, but the icons are actions (the corner ring is left empty): Back, Home and Recents, then
-Fan settings, System settings, Screenshot (Android 9+), Power menu and Flashlight. Back, Home,
-Recents, Screenshot and the Power menu go through the accessibility service. The sheet closes first, then the action runs a moment
-later so it acts on whatever was underneath.
-
-Opening Fan from the launcher does not show the sheet. It shows a settings screen with
-the setup steps, which is where a new user starts.
-
-## Main points
-
-- **Overlay, not an app.** No main screen. The only UI is the corner sheet over the current app.
-- **Triggered from the navigation bar.** A tap on the bottom-right corner of the nav bar is
-  intercepted by an accessibility service and opens the sheet.
-- **Open apps list.** The sheet shows the apps currently open, as the system task switcher does.
-- **Leaves no trace.** Closing the sheet removes the task (`finishAndRemoveTask()`), and the
-  activity is excluded from recents, so the dock never shows up as a task itself.
-- **Onboarding on first open.** Opening the app shows a settings screen that walks the user
-  through enabling the accessibility service and usage access, with each step ticked off as it
-  is done. Fan can't work until both are on.
-
-## How it will work
-
-| Piece | Responsibility |
+| Gesture on the trigger | Result |
 |---|---|
-| `DockAccessibilityService` | Watches for a tap on the nav bar's bottom-right corner and launches the sheet. |
-| `SettingsActivity` | The launcher entry. Onboarding checklist for the accessibility service and usage access, re-checked each time the user returns from system settings. |
-| `DockActivity` | Transparent, `excludeFromRecents` activity that shows the corner sheet and removes its own task when the sheet is dismissed. |
+| **Tap** | Opens the fan of recent apps (tap again to close) |
+| **Double tap** | Jumps straight back to the previous app |
+| **Long press** | Opens the same fan showing actions: Back, Home, Recents, Screenshot, Power menu, Flashlight, System settings, Fan settings |
+| **Long press an app** in the fan | Opens its App Info page (where it can be force stopped) |
 
-## Known limitation: updating turns accessibility off
+You choose the screen corner, the trigger's size, position and colour, how many rings of apps the
+fan has, and which apps never appear.
 
-Every time the app is updated, Android turns the accessibility service off, and it has to be
-switched back on by hand: **Settings > Accessibility > Fan**. Usage access is not affected.
+Details: [Using Fan](docs/using-fan.md) · [Customising](docs/customising.md)
 
-This was investigated and cannot be fixed from inside the app. With `WRITE_SECURE_SETTINGS`
-granted over adb, the app can write the enabled-services setting after an update, and the write
-returns success. The system then reverts it within milliseconds (the setting reads back empty
-and the service never binds), however many times it is retried. Toggling it in the Settings app
-works. The cause was not found, on a Pixel 5 running Android 14. That approach, with the adb grant,
-the update receiver and the rechecks, was removed again. It is in the history of PR #4 if it is
-worth another look on a different Android version.
+## Get started
 
-So an update means re-enabling accessibility; this is accepted behaviour, not a bug to fix.
+1. Download the latest APK from the
+   [latest release](https://github.com/LukeNeedham/Android-Dock/releases/latest/download/Android-Dock.apk)
+   and install it (Android 6.0 or newer).
+2. Open **Fan** once. It walks you through two permissions: the **accessibility service** (to
+   see taps on the trigger) and **usage access** (to know which apps you used recently).
+3. Tap the trigger in the corner of your screen.
 
-## Open questions
+Step-by-step, including what to do if the accessibility switch is greyed out:
+[Setup](docs/setup.md)
 
-These need working out when the features are built:
+> **After every update, switch accessibility back on** (Settings > Accessibility > Fan). Android
+> turns it off on each install and it cannot be fixed from inside the app. See
+> [Known limitations](docs/known-limitations.md).
 
-- **Intercepting the nav-bar tap.** An accessibility service does not normally receive raw touches
-  on system bars. The likely approach is a small transparent `TYPE_ACCESSIBILITY_OVERLAY` window
-  placed over the bottom-right corner, which can sit above the navigation bar. This needs testing
-  across gesture navigation and 3-button navigation, where that corner holds different things.
-- **Listing open apps.** Android does not give third-party apps the system recents list.
-  Candidates are usage stats (`UsageStatsManager`, needs the usage-access permission),
-  accessibility window information, or a combination. Thumbnails are likely not available.
-- **Switching to an app.** Launch it from its launcher intent, or ask the system to bring its task
-  forward, depending on what the list can offer.
-- **Restricted settings.** On Android 13+, a sideloaded app's accessibility service can be greyed
-  out until the user allows restricted settings in app info. The onboarding hints at this; it may
-  need a clearer, detected step.
-- **Distribution.** Google Play restricts use of the accessibility API. Plan on sideloading unless
-  that changes.
+## Documentation
 
-## Project setup
+| Doc | Covers |
+|---|---|
+| [Setup](docs/setup.md) | Installing, the two permissions, restricted settings, gesture navigation |
+| [Using Fan](docs/using-fan.md) | The fan, the actions mode, double tap, how the recents list is chosen |
+| [Customising](docs/customising.md) | Corner, trigger, fan layout, colours, hidden apps |
+| [Known limitations](docs/known-limitations.md) | Accessibility reset on update, older Android versions, Google Play |
+| [How it works](docs/how-it-works.md) | Architecture: the overlay, the sheet, the recents list |
+| [Development](docs/development.md) | Building, CI, releases, project layout, the debug log |
 
-- Kotlin, single `app` module, package `com.lukeneedham.androiddock` (kept from the old name, "Android Dock", so installs update in place)
-- `minSdk` 23 (Android 6), `targetSdk` 35, `compileSdk` 36. The floor is set by Compose and the
-  libraries around it, and by the trigger overlay and the flashlight. Older Android means a few
-  gaps, none of them blocking: below Android 10 the system does not report when an app's activities
-  are destroyed, so apps swiped away in the system recents stay listed in the fan, and below
-  Android 9 there is no Screenshot action. Not tested below the versions the author has devices for.
-- Gradle Kotlin DSL with a version catalog (`gradle/libs.versions.toml`)
+## Status
 
-Build a debug APK:
-
-```
-./gradlew assembleDebug
-```
-
-The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
-
-## CI
-
-Pull requests are built by the shared workflows in
-[LukeNeedham/ci-workflows](https://github.com/LukeNeedham/ci-workflows): the debug APK is built
-and a download link is posted as a PR comment. See `.github/workflows/`.
-
-## Releases
-
-A release is a permanent, signed build for testers, published by the **Release** workflow
-(Actions tab > Release > Run workflow, on `main`). Give it a version such as `0.3.0`. The workflow
-and the Gradle script behind it are shared with other projects and live in
-[ci-workflows](https://github.com/LukeNeedham/ci-workflows) (always from `main`, unversioned). It
-tags `0.3.0` (no `v`), builds the release APK, signs it with the key in the repo secrets
-(`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`),
-and publishes a normal release with the APK as `Android-Dock.apk`. The newest release is always at
-`https://github.com/LukeNeedham/Android-Dock/releases/latest/download/Android-Dock.apk`.
-
-The app's version name and code are read from the git tag by `app/build.gradle.kts` through the
-shared script (`0.3.0` becomes code 300). An untagged build is named like `0.3.0-5-gabc1234` (or
-`0.0.0-dev` where no tags are fetched, as on PR builds) and keeps the nearest tag's code.
-
-Releases are signed with a different key from the debug builds on pull requests, so a tester moving
-from a PR build to a release uninstalls once. Later releases update in place.
+An early but working prototype, built for sideloading. Google Play restricts accessibility
+services, so it is distributed through GitHub releases.
