@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -42,7 +43,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.graphics.ColorUtils
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -74,23 +82,39 @@ internal fun BackgroundGradientRow(
 }
 
 private val HANDLE_RADIUS = 11.dp
-private val HANDLE_REACH = 32.dp
+private val SELECTED_HANDLE_RADIUS = 15.dp
+private val HANDLE_REACH = 36.dp
+
+/** How far the clear space around a handle reaches, so a handle at the corner is not cut off. */
+private val HANDLE_INSET = 24.dp
+
+/** Where the gradient's radius ends, as a fraction of the diagonal of the box. */
+private const val GRADIENT_REACH = 0.9f
 
 /**
  * Where the stops sit in a [GradientBox] of the given [side]: along the diagonal from the
  * [corner] the gradient is centred on, through the middle of the box. A stop's position is its
- * distance along that line as a fraction of [side], which is the gradient's radius.
+ * distance along that line as a fraction of [radius], which is the gradient's radius. Handles are
+ * drawn at least [inset] in from the box's sides, so one at the corner stays whole.
  */
-private class DiagonalGeometry(private val side: Float, corner: DockPrefs.Corner) {
+private class DiagonalGeometry(private val side: Float, corner: DockPrefs.Corner, private val inset: Float = 0f) {
     val origin = Offset(if (corner.end) side else 0f, if (corner.bottom) side else 0f)
     private val direction = Offset(if (corner.end) -1f else 1f, if (corner.bottom) -1f else 1f) / sqrt(2f)
+    val radius = side * sqrt(2f) * GRADIENT_REACH
 
-    fun point(position: Float): Offset = origin + direction * (position * side)
+    /** The point on the line for [position]. */
+    fun point(position: Float): Offset = origin + direction * (position * radius)
 
-    /** The position whose point on the line is closest to [at]. */
-    fun positionOf(at: Offset): Float {
+    /** Where the handle for [position] is drawn: [point], kept inside the box. */
+    fun handlePoint(position: Float): Offset {
+        val at = point(position)
+        return Offset(at.x.coerceIn(inset, side - inset), at.y.coerceIn(inset, side - inset))
+    }
+
+    /** How far along the line [at] is, as a position that may be outside 0 to 1. */
+    fun projection(at: Offset): Float {
         val relative = at - origin
-        return ((relative.x * direction.x + relative.y * direction.y) / side).coerceIn(0f, 1f)
+        return (relative.x * direction.x + relative.y * direction.y) / radius
     }
 }
 
@@ -106,7 +130,7 @@ private fun nearestStop(
     reach: Float,
 ): Int? =
     stops.indices
-        .map { it to (geometry.point(stops[it].position) - at).getDistance() }
+        .map { it to (geometry.handlePoint(stops[it].position) - at).getDistance() }
         .filter { it.second <= reach }
         .minWithOrNull(compareBy<Pair<Int, Float>>({ it.second }, { if (it.first == selected) 1 else 0 }))
         ?.first
@@ -115,9 +139,9 @@ private fun nearestStop(
  * The background gradient drawn as the fan draws it: a quarter circle centred on the [corner] of
  * a square box, over grey so translucent colours can be judged.
  *
- * With [onChange], the stops can be edited here. Each stop has a handle on the diagonal through
- * the box, which is dragged along it to change the stop's position. Touching a handle selects its
- * stop ([selected], reported to [onSelect]).
+ * With [onChange], the stops can be edited here. Each stop has a numbered handle on the diagonal
+ * through the box, which is dragged along it to change the stop's position. Touching a handle
+ * selects its stop ([selected], reported to [onSelect]).
  */
 @Composable
 private fun GradientBox(
@@ -134,6 +158,8 @@ private fun GradientBox(
     val latestOnSelect by rememberUpdatedState(onSelect)
     val latestOnChange by rememberUpdatedState(onChange)
     val description = stringResource(R.string.bg_box_description)
+    val textMeasurer = rememberTextMeasurer()
+    val accent = MaterialTheme.colorScheme.primary
 
     Canvas(
         modifier = modifier
@@ -143,19 +169,25 @@ private fun GradientBox(
             .then(
                 if (onChange == null) Modifier else Modifier.pointerInput(corner) {
                     val reach = HANDLE_REACH.toPx()
+                    val inset = HANDLE_INSET.toPx()
                     awaitEachGesture {
-                        val geometry = DiagonalGeometry(size.width.toFloat(), corner)
+                        val geometry = DiagonalGeometry(size.width.toFloat(), corner, inset)
                         val down = awaitFirstDown(requireUnconsumed = false)
                         var active = nearestStop(latestStops, latestSelected, geometry, down.position, reach)
                             ?: return@awaitEachGesture
                         down.consume()
                         latestOnSelect(active)
+                        // The stop follows the finger's movement, not the finger itself, so it does
+                        // not jump when a handle held off the line is grabbed.
+                        val startPosition = latestStops[active].position
+                        val startProjection = geometry.projection(down.position)
                         // The list is kept here as well, as a drag can report twice before the
                         // screen has recomposed with the first change.
                         var working = latestStops
                         drag(down.id) { change ->
                             change.consume()
-                            val (moved, at) = SheetGradient.moved(working, active, geometry.positionOf(change.position))
+                            val position = startPosition + geometry.projection(change.position) - startProjection
+                            val (moved, at) = SheetGradient.moved(working, active, position)
                             working = moved
                             active = at
                             latestOnSelect(at)
@@ -165,15 +197,15 @@ private fun GradientBox(
                 },
             ),
     ) {
-        val geometry = DiagonalGeometry(size.width, corner)
+        val geometry = DiagonalGeometry(size.width, corner, HANDLE_INSET.toPx())
         drawRect(Color.Gray)
         drawCircle(
             brush = Brush.radialGradient(
                 colorStops = SheetGradient.expand(stops).map { it.position to Color(it.color) }.toTypedArray(),
                 center = geometry.origin,
-                radius = size.width,
+                radius = geometry.radius,
             ),
-            radius = size.width,
+            radius = geometry.radius,
             center = geometry.origin,
         )
         if (onChange == null) return@Canvas
@@ -186,22 +218,48 @@ private fun GradientBox(
         )
         // The selected handle last, so it is on top of any it is stacked with.
         stops.indices.sortedBy { it == selected }.forEach { index ->
-            drawHandle(stops[index], geometry.point(stops[index].position), index == selected)
+            drawHandle(textMeasurer, accent, index + 1, stops[index], geometry.handlePoint(stops[index].position), index == selected)
         }
     }
 }
 
-/** A stop's handle: its colour, over grey, in a ring that is thicker when the stop is selected. */
-private fun DrawScope.drawHandle(stop: ColorStop, centre: Offset, isSelected: Boolean) {
-    val radius = HANDLE_RADIUS.toPx()
+/**
+ * A stop's handle: its colour (over grey) with its number in it. It always has a border, a white
+ * ring between two dark ones, so it shows against any colour behind it. The selected handle is
+ * bigger and has an [accent] ring round it as well.
+ */
+private fun DrawScope.drawHandle(
+    textMeasurer: TextMeasurer,
+    accent: Color,
+    number: Int,
+    stop: ColorStop,
+    centre: Offset,
+    isSelected: Boolean,
+) {
+    val radius = (if (isSelected) SELECTED_HANDLE_RADIUS else HANDLE_RADIUS).toPx()
+    val ring = (if (isSelected) 3.dp else 2.dp).toPx()
+    val dark = Color.Black.copy(alpha = 0.75f)
+    if (isSelected) {
+        drawCircle(accent, radius + 7.dp.toPx(), centre, style = Stroke(width = 3.dp.toPx()))
+        drawCircle(Color.White.copy(alpha = 0.35f), radius + 7.dp.toPx(), centre)
+    }
     drawCircle(Color.Gray, radius, centre)
     drawCircle(Color(stop.color), radius, centre)
-    drawCircle(
-        color = if (isSelected) Color.White else Color.Black.copy(alpha = 0.6f),
-        radius = radius,
-        center = centre,
-        style = Stroke(width = (if (isSelected) 3.dp else 1.5.dp).toPx()),
+    drawCircle(dark, radius + ring / 2 + 1.dp.toPx() / 2, centre, style = Stroke(width = 1.dp.toPx()))
+    drawCircle(Color.White, radius, centre, style = Stroke(width = ring))
+    drawCircle(dark, radius - ring / 2 - 1.dp.toPx() / 2, centre, style = Stroke(width = 1.dp.toPx()))
+
+    // The number is dark or light, whichever shows better on the colour over the grey.
+    val shown = ColorUtils.compositeColors(stop.color, Color.Gray.toArgb())
+    val label = textMeasurer.measure(
+        number.toString(),
+        TextStyle(
+            fontSize = if (isSelected) 14.sp else 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (ColorUtils.calculateLuminance(shown) > 0.5) Color.Black else Color.White,
+        ),
     )
+    drawText(label, topLeft = centre - Offset(label.size.width / 2f, label.size.height / 2f))
 }
 
 /**
