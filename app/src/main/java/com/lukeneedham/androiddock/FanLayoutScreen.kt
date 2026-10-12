@@ -81,11 +81,10 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
     // The row the controls edit, chosen by tapping it in the preview and tinted there. -1 is the
     // corner ring for the current app, 0 the first of the rows.
     var selectedRow by remember { mutableIntStateOf(0) }
-    var sheetColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET)) }
-    var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
+    var stops by remember { mutableStateOf(DockPrefs.getSheetStops(context)) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
-        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, corner = corner, showCurrent = showCurrent, onRowTap = { selectedRow = it })
+        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, stops, corner = corner, showCurrent = showCurrent, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -115,8 +114,10 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 },
                 valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
             )
-            ColorSettingRow(context, DockPrefs.ColorSetting.SHEET, R.string.color_sheet_corner) { sheetColor = it }
-            ColorSettingRow(context, DockPrefs.ColorSetting.SHEET_EDGE, R.string.color_sheet_edge) { edgeColor = it }
+            BackgroundGradientRow(stops, corner) {
+                stops = it
+                DockPrefs.setSheetStops(context, it)
+            }
             RowsEditor(
                 context, rows, selectedRow,
                 currentWidth = currentWidth,
@@ -158,8 +159,7 @@ internal fun FanPreview(
     sidePad: Int,
     rows: List<DockPrefs.Row>,
     selectedRow: Int?,
-    sheetColor: Int,
-    edgeColor: Int,
+    stops: List<ColorStop>,
     corner: DockPrefs.Corner = DockPrefs.Corner.BOTTOM_RIGHT,
     showCurrent: Boolean = true,
     thumbnailDp: Int? = null,
@@ -242,7 +242,7 @@ internal fun FanPreview(
             clipPath(quarter) {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(sheetColor), Color(edgeColor)),
+                        colorStops = SheetGradient.expand(stops).map { it.position to Color(it.color) }.toTypedArray(),
                         center = screenCorner,
                         radius = backgroundRadius,
                     ),

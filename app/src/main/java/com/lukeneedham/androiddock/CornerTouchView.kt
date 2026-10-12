@@ -4,20 +4,16 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Rect
 import android.os.Build
-import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import kotlin.math.abs
 
 /**
- * The trigger over the bottom-right corner of the navigation bar.
+ * The trigger over the chosen corner of the screen, on top of the navigation bar.
  *
  * The window that receives ACTION_DOWN also receives every later event of that gesture, so this
  * view is where the whole press-drag-release gesture is observed, in raw screen coordinates.
- *
- * PROTOTYPE: only records the gesture in [DockLog], to check what the overlay can see on the
- * real nav bar.
  */
 @SuppressLint("ViewConstructor")
 class CornerTouchView(context: Context) : View(context) {
@@ -31,8 +27,6 @@ class CornerTouchView(context: Context) : View(context) {
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val longPress = Runnable { onLongPress?.invoke() }
 
-    private var lastMoveLoggedAt = 0L
-    private var downAt = 0L
     private var downX = 0f
     private var downY = 0f
 
@@ -70,48 +64,20 @@ class CornerTouchView(context: Context) : View(context) {
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val name = when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> "DOWN"
-            MotionEvent.ACTION_MOVE -> "MOVE"
-            MotionEvent.ACTION_UP -> "UP"
-            MotionEvent.ACTION_CANCEL -> "CANCEL"
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.rawX
+                downY = event.rawY
+                onPress?.invoke()
+                postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
+            }
+            MotionEvent.ACTION_MOVE ->
+                if (abs(event.rawX - downX) > touchSlop || abs(event.rawY - downY) > touchSlop) {
+                    removeCallbacks(longPress)
+                }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> removeCallbacks(longPress)
             else -> return false
         }
-        if (name == "MOVE") {
-            // A drag produces many events a second. Keep the log readable.
-            val now = SystemClock.uptimeMillis()
-            if (now - lastMoveLoggedAt < MOVE_LOG_INTERVAL_MS) return true
-            lastMoveLoggedAt = now
-        }
-        if (name == "DOWN") {
-            downAt = SystemClock.uptimeMillis()
-            downX = event.rawX
-            downY = event.rawY
-            onPress?.invoke()
-            postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
-        }
-        if (name == "MOVE" && (abs(event.rawX - downX) > touchSlop || abs(event.rawY - downY) > touchSlop)) {
-            removeCallbacks(longPress)
-        }
-        val inside = event.x >= 0 && event.y >= 0 && event.x < width && event.y < height
-        DockLog.log(
-            context,
-            "$name raw=(${event.rawX.toInt()}, ${event.rawY.toInt()}) " +
-                "local=(${event.x.toInt()}, ${event.y.toInt()}) ${if (inside) "inside" else "outside"}",
-        )
-        if (name == "CANCEL" || name == "UP") {
-            removeCallbacks(longPress)
-            val dx = (event.rawX - downX).toInt()
-            val dy = (event.rawY - downY).toInt()
-            DockLog.log(
-                context,
-                "$name after ${SystemClock.uptimeMillis() - downAt}ms, moved dx=$dx dy=$dy since DOWN",
-            )
-        }
         return true
-    }
-
-    private companion object {
-        const val MOVE_LOG_INTERVAL_MS = 50L
     }
 }

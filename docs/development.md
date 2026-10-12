@@ -40,7 +40,7 @@ as on PR builds) and keeps the nearest tag's code.
 ## Debug log
 
 Settings > **Debug Settings** > **View debug log**. It records service start (with device and
-navigation mode), trigger touches, sheet open and close, and crashes, in a file in the app's private
+navigation mode), the trigger's position, sheet open and close, and crashes, in a file in the app's private
 storage that survives the process being killed. Use **Copy** to share it. Capped at about 256 KB.
 
 ## Project layout

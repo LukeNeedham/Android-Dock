@@ -56,8 +56,12 @@
     <string name="slider_height">Height: %1$d dp</string>
     <string name="sheet_empty">No recently used apps.</string>
     <string name="color_button">Trigger colour</string>
-    <string name="color_sheet_corner">Sheet colour at the corner</string>
-    <string name="color_sheet_edge">Sheet colour at the edge</string>
+    <string name="bg_title">Fan background</string>
+    <string name="bg_edit">Edit background gradient</string>
+    <string name="bg_box_description">Background gradient preview</string>
+    <string name="stop_title">Colour stop %1$d of %2$d, %3$d%% of the way out</string>
+    <string name="stop_add">Add colour stop</string>
+    <string name="stop_remove">Remove this stop</string>
     <string name="color_red">Red: %1$d</string>
     <string name="color_green">Green: %1$d</string>
     <string name="color_blue">Blue: %1$d</string>
