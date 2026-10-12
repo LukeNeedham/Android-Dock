@@ -263,7 +263,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
                 sidePad = DockPrefs.getPadding(context, DockPrefs.Padding.SIDE),
                 rows = if (resumes >= 0) DockPrefs.getRows(context) else emptyList(),
-                selectedRow = null,
+                selected = null,
                 showCurrent = DockPrefs.getShowCurrent(context),
                 stops = stops,
                 corner = corner,

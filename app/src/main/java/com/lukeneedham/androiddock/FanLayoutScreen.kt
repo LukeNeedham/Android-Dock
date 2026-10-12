@@ -9,7 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -78,13 +81,13 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
     var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
     var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
     val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
-    // The row the controls edit, chosen by tapping it in the preview and tinted there. -1 is the
-    // corner ring for the current app, 0 the first of the rows.
-    var selectedRow by remember { mutableIntStateOf(0) }
+    // The part of the fan the controls edit, chosen in the preview or the list above the controls,
+    // and tinted in the preview.
+    var selected by remember { mutableStateOf<FanPart>(FanPart.Ring(0)) }
     var stops by remember { mutableStateOf(DockPrefs.getSheetStops(context)) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
-        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, stops, corner = corner, showCurrent = showCurrent, onRowTap = { selectedRow = it })
+        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selected, stops, corner = corner, showCurrent = showCurrent, onSelect = { selected = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -96,30 +99,19 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Text(stringResource(R.string.slider_padding, stringResource(corner.verticalEdge), bottomPad), modifier = Modifier.padding(top = 16.dp))
-            Slider(
-                value = bottomPad.toFloat(),
-                onValueChange = {
-                    bottomPad = it.toInt()
-                    DockPrefs.setPadding(context, DockPrefs.Padding.BOTTOM, bottomPad)
-                },
-                valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
-            )
-            Text(stringResource(R.string.slider_padding, stringResource(corner.horizontalEdge), sidePad), modifier = Modifier.padding(top = 16.dp))
-            Slider(
-                value = sidePad.toFloat(),
-                onValueChange = {
-                    sidePad = it.toInt()
-                    DockPrefs.setPadding(context, DockPrefs.Padding.SIDE, sidePad)
-                },
-                valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
-            )
-            BackgroundGradientRow(stops, corner) {
-                stops = it
-                DockPrefs.setSheetStops(context, it)
-            }
+            PartList(rows.size, corner, selected, onSelect = { selected = it })
             RowsEditor(
-                context, rows, selectedRow,
+                context, rows, selected, corner,
+                bottomPad = bottomPad,
+                sidePad = sidePad,
+                onBottomPad = {
+                    bottomPad = it
+                    DockPrefs.setPadding(context, DockPrefs.Padding.BOTTOM, it)
+                },
+                onSidePad = {
+                    sidePad = it
+                    DockPrefs.setPadding(context, DockPrefs.Padding.SIDE, it)
+                },
                 currentWidth = currentWidth,
                 showCurrent = showCurrent,
                 onCurrentWidth = {
@@ -130,8 +122,58 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                     showCurrent = it
                     DockPrefs.setShowCurrent(context, it)
                 },
-            ) { selectedRow = it }
+            ) { selected = it }
+            BackgroundGradientRow(stops, corner) {
+                stops = it
+                DockPrefs.setSheetStops(context, it)
+            }
             NavBarSpacer()
+        }
+    }
+}
+
+/** A part of the fan that the controls can edit. */
+internal sealed interface FanPart {
+    /** A ring: -1 is the corner ring for the current app, 0 the first of the rows. */
+    data class Ring(val index: Int) : FanPart
+
+    /** The gap between the fan and the corner's horizontal edge. */
+    data object BottomMargin : FanPart
+
+    /** The gap between the fan and the corner's vertical edge. */
+    data object SideMargin : FanPart
+}
+
+private val MIN_TOUCH = 48.dp
+private val GRIP_LENGTH = 40.dp
+private val GRIP_THICKNESS = 14.dp
+
+/** Every part that can be selected, in a row that scrolls: tapping one selects it. */
+@Composable
+private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart, onSelect: (FanPart) -> Unit) {
+    val margin = { edge: Int -> stringResource(R.string.part_margin, stringResource(edge)).replaceFirstChar { it.uppercase() } }
+    val parts = buildList {
+        add(FanPart.Ring(-1) to stringResource(R.string.row_current_title))
+        repeat(ringCount) { add(FanPart.Ring(it) to stringResource(R.string.row_title, it + 1)) }
+        add(FanPart.BottomMargin to margin(corner.verticalEdge))
+        add(FanPart.SideMargin to margin(corner.horizontalEdge))
+    }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
+    ) {
+        parts.forEach { (part, label) ->
+            val on = part == selected
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onSelect(part) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            )
         }
     }
 }
@@ -158,12 +200,12 @@ internal fun FanPreview(
     bottomPad: Int,
     sidePad: Int,
     rows: List<DockPrefs.Row>,
-    selectedRow: Int?,
+    selected: FanPart?,
     stops: List<ColorStop>,
     corner: DockPrefs.Corner = DockPrefs.Corner.BOTTOM_RIGHT,
     showCurrent: Boolean = true,
     thumbnailDp: Int? = null,
-    onRowTap: ((Int) -> Unit)? = null,
+    onSelect: ((FanPart) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -195,9 +237,20 @@ internal fun FanPreview(
                 )
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
-                .pointerInput(onRowTap != null, allRows, radiusDp, bottomPad, sidePad, corner) {
-                    if (onRowTap == null) return@pointerInput
+                .pointerInput(onSelect != null, allRows, radiusDp, bottomPad, sidePad, corner) {
+                    if (onSelect == null) return@pointerInput
                     detectTapGestures { tap ->
+                        // The margins can be nothing wide, so their grips are tapped first, and
+                        // are at least a finger wide.
+                        val grips = gripCentres(size.width.toFloat(), size.height.toFloat(), density, corner, radiusDp, bottomPad, sidePad)
+                        val half = MIN_TOUCH.toPx() / 2
+                        fun hit(c: Offset) = kotlin.math.abs(tap.x - c.x) <= half && kotlin.math.abs(tap.y - c.y) <= half
+                        if (hit(grips.first)) { onSelect(FanPart.BottomMargin); return@detectTapGestures }
+                        if (hit(grips.second)) { onSelect(FanPart.SideMargin); return@detectTapGestures }
+                        val inBottomBand = if (corner.bottom) tap.y >= size.height - bottomPad * density else tap.y <= bottomPad * density
+                        val inSideBand = if (corner.end) tap.x >= size.width - sidePad * density else tap.x <= sidePad * density
+                        if (inBottomBand && bottomPad > 0) { onSelect(FanPart.BottomMargin); return@detectTapGestures }
+                        if (inSideBand && sidePad > 0) { onSelect(FanPart.SideMargin); return@detectTapGestures }
                         val centreX = if (corner.end) size.width - sidePad * density else sidePad * density
                         val centreY = if (corner.bottom) size.height - bottomPad * density else bottomPad * density
                         val distance = hypot(centreX - tap.x, centreY - tap.y)
@@ -206,7 +259,7 @@ internal fun FanPreview(
                         allRows.forEachIndexed { index, row ->
                             edge += row.widthDp * density * scale
                             if (distance <= edge) {
-                                onRowTap(index - ringZero.size)
+                                onSelect(FanPart.Ring(index - ringZero.size))
                                 return@detectTapGestures
                             }
                         }
@@ -258,7 +311,7 @@ internal fun FanPreview(
                 edge += row.widthDp * dp * scale
                 val end = edge
                 val centreRadius = (start + end) / 2
-                if (rowIndex == selectedRow) {
+                if (selected == FanPart.Ring(rowIndex)) {
                     // Only the quarter the rings fill, not the padding.
                     val fill = quarter(ringCentre, radius)
                     clipRect(fill.left, fill.top, fill.right, fill.bottom) {
@@ -308,8 +361,58 @@ internal fun FanPreview(
                 }
             }
             }
+            if (onSelect != null) drawMarginGrips(corner, radiusDp, bottomPad, sidePad, selected)
         }
     }
+}
+
+/** Centres of the bottom and side margin grips, in the canvas's pixels. */
+private fun gripCentres(width: Float, height: Float, density: Float, corner: DockPrefs.Corner, radiusDp: Float, bottomPad: Int, sidePad: Int): Pair<Offset, Offset> {
+    val gripLength = GRIP_LENGTH.value * density
+    val thickness = GRIP_THICKNESS.value * density
+    // Halfway along the fan's reach, and in the middle of the margin or, when that is thin, inside the canvas.
+    val along = radiusDp * density / 2
+    val bottomDepth = max(bottomPad * density / 2, thickness / 2)
+    val sideDepth = max(sidePad * density / 2, thickness / 2)
+    val x = (if (corner.end) width - along else along).coerceIn(gripLength / 2, width - gripLength / 2)
+    val y = (if (corner.bottom) height - along else along).coerceIn(gripLength / 2, height - gripLength / 2)
+    val bottom = Offset(x, if (corner.bottom) height - bottomDepth else bottomDepth)
+    val side = Offset(if (corner.end) width - sideDepth else sideDepth, y)
+    return bottom to side
+}
+
+/**
+ * Shows that the margins exist and can be tapped: a band over each one, as thick as the margin,
+ * and a grip on it. The selected one is brighter.
+ */
+private fun DrawScope.drawMarginGrips(corner: DockPrefs.Corner, radiusDp: Float, bottomPad: Int, sidePad: Int, selected: FanPart?) {
+    val (bottom, side) = gripCentres(size.width, size.height, density, corner, radiusDp, bottomPad, sidePad)
+    val gripLength = GRIP_LENGTH.toPx()
+    val thickness = GRIP_THICKNESS.toPx()
+    fun band(horizontal: Boolean, pad: Int, grip: Offset, on: Boolean) {
+        val depth = pad * density
+        val tint = Color.White.copy(alpha = if (on) 0.4f else 0.15f)
+        if (depth > 0f) {
+            if (horizontal) drawRect(tint, Offset(0f, if (corner.bottom) size.height - depth else 0f), androidx.compose.ui.geometry.Size(size.width, depth))
+            else drawRect(tint, Offset(if (corner.end) size.width - depth else 0f, 0f), androidx.compose.ui.geometry.Size(depth, size.height))
+        }
+        val w = if (horizontal) gripLength else thickness
+        val h = if (horizontal) thickness else gripLength
+        val topLeft = Offset(grip.x - w / 2, grip.y - h / 2)
+        val sz = androidx.compose.ui.geometry.Size(w, h)
+        val round = androidx.compose.ui.geometry.CornerRadius(thickness / 2)
+        drawRoundRect(if (on) Color.White else Color.White.copy(alpha = 0.6f), topLeft, sz, round)
+        drawRoundRect(Color.Black.copy(alpha = 0.5f), topLeft, sz, round, style = Stroke(width = 1.5f * density))
+        // Two short lines along the grip, so it reads as something to hold.
+        for (i in -1..1 step 2) {
+            val o = i * thickness / 5
+            val a = if (horizontal) Offset(grip.x - gripLength / 4, grip.y + o) else Offset(grip.x + o, grip.y - gripLength / 4)
+            val b = if (horizontal) Offset(grip.x + gripLength / 4, grip.y + o) else Offset(grip.x + o, grip.y + gripLength / 4)
+            drawLine(Color.Black.copy(alpha = 0.5f), a, b, strokeWidth = 1.5f * density)
+        }
+    }
+    band(true, bottomPad, bottom, selected == FanPart.BottomMargin)
+    band(false, sidePad, side, selected == FanPart.SideMargin)
 }
 
 /**
@@ -320,18 +423,43 @@ internal fun FanPreview(
 private fun RowsEditor(
     context: Context,
     rows: MutableList<DockPrefs.Row>,
-    selected: Int,
+    selectedPart: FanPart,
+    corner: DockPrefs.Corner,
+    bottomPad: Int,
+    sidePad: Int,
+    onBottomPad: (Int) -> Unit,
+    onSidePad: (Int) -> Unit,
     currentWidth: Int,
     showCurrent: Boolean,
     onCurrentWidth: (Int) -> Unit,
     onShowCurrent: (Boolean) -> Unit,
-    onSelect: (Int) -> Unit,
+    onSelect: (FanPart) -> Unit,
 ) {
+    val selected = (selectedPart as? FanPart.Ring)?.index
     val haptic = LocalHapticFeedback.current
     val delete = stringResource(R.string.row_delete)
     fun save() = DockPrefs.setRows(context, rows.toList())
 
-    if (selected < 0) {
+    if (selected == null) {
+        val bottom = selectedPart == FanPart.BottomMargin
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                val edge = stringResource(if (bottom) corner.verticalEdge else corner.horizontalEdge)
+                val pad = if (bottom) bottomPad else sidePad
+                Text(
+                    stringResource(R.string.part_margin, edge).replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Text(stringResource(R.string.slider_padding, edge, pad))
+                Slider(
+                    value = pad.toFloat(),
+                    onValueChange = { if (bottom) onBottomPad(it.toInt()) else onSidePad(it.toInt()) },
+                    valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
+                )
+            }
+        }
+    } else if (selected < 0) {
         // The corner ring: its width, and whether it shows the app on screen. Nothing else.
         Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
@@ -367,7 +495,7 @@ private fun RowsEditor(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         rows.removeAt(index)
-                        onSelect(index.coerceAtMost(rows.lastIndex))
+                        onSelect(FanPart.Ring(index.coerceAtMost(rows.lastIndex)))
                         save()
                     },
                     enabled = rows.size > 1,
@@ -401,7 +529,7 @@ private fun RowsEditor(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 rows.add(DockPrefs.newRow())
-                onSelect(rows.lastIndex)
+                onSelect(FanPart.Ring(rows.lastIndex))
                 save()
             },
             modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
