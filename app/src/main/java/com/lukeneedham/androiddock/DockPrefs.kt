@@ -63,9 +63,29 @@ object DockPrefs {
     enum class ColorSetting(val key: String, val default: Int) {
         /** The trigger over the navigation bar. Translucent red by default. */
         BUTTON("button_color", 0x29FFFFFF),
-        /** The sheet's colour at the corner; it fades to [SHEET_EDGE] at the outer edge. */
-        SHEET("sheet_color", 0xFF000000.toInt()),
-        SHEET_EDGE("sheet_edge_color", 0x00000000),
+    }
+
+    private const val SHEET_STOPS_KEY = "sheet_stops"
+
+    // The sheet used to have two colours, one at the corner and one at the edge.
+    private const val LEGACY_SHEET_KEY = "sheet_color"
+    private const val LEGACY_SHEET_EDGE_KEY = "sheet_edge_color"
+
+    /** The colour stops of the sheet's background; never empty. See [SheetGradient]. */
+    fun getSheetStops(context: Context): List<ColorStop> {
+        val prefs = prefs(context)
+        SheetGradient.decode(prefs.getString(SHEET_STOPS_KEY, null))?.let { return it }
+        if (prefs.contains(LEGACY_SHEET_KEY) || prefs.contains(LEGACY_SHEET_EDGE_KEY)) {
+            return listOf(
+                ColorStop(0f, prefs.getInt(LEGACY_SHEET_KEY, SheetGradient.DEFAULT[0].color)),
+                ColorStop(1f, prefs.getInt(LEGACY_SHEET_EDGE_KEY, SheetGradient.DEFAULT[1].color)),
+            )
+        }
+        return SheetGradient.DEFAULT
+    }
+
+    fun setSheetStops(context: Context, stops: List<ColorStop>) {
+        prefs(context).edit().putString(SHEET_STOPS_KEY, SheetGradient.encode(stops)).apply()
     }
 
     fun getColor(context: Context, setting: ColorSetting): Int =

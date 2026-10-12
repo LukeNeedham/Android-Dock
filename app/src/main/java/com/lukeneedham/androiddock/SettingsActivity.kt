@@ -257,8 +257,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 modifier = Modifier.weight(1f),
             ) { Text(stringResource(R.string.fan_layout_open)) }
             // A small, read-only picture of the fan as it is now, refreshed on every return here.
-            val sheetColor = if (resumes >= 0) DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET) else 0
-            val edgeColor = if (resumes >= 0) DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE) else 0
+            val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
             FanPreview(
                 inner = if (resumes >= 0) DockPrefs.getCurrentWidth(context) else 0,
                 bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
@@ -266,8 +265,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 rows = if (resumes >= 0) DockPrefs.getRows(context) else emptyList(),
                 selectedRow = null,
                 showCurrent = DockPrefs.getShowCurrent(context),
-                sheetColor = sheetColor,
-                edgeColor = edgeColor,
+                stops = stops,
                 corner = corner,
                 thumbnailDp = 96,
                 modifier = Modifier.padding(start = 16.dp),
@@ -453,20 +451,26 @@ internal fun ColorPickerSheet(title: Int, argb: Int, onChange: (Int) -> Unit, on
         Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
             Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
             ColorSwatch(argb, Modifier.padding(top = 8.dp).fillMaxWidth().height(40.dp))
-            listOf(
-                R.string.color_alpha to 24,
-                R.string.color_red to 16,
-                R.string.color_green to 8,
-                R.string.color_blue to 0,
-            ).forEach { (name, shift) ->
-                val value = (argb ushr shift) and 0xFF
-                Text(stringResource(name, value), modifier = Modifier.padding(top = 8.dp))
-                Slider(
-                    value = value.toFloat(),
-                    onValueChange = { onChange((argb and (0xFF shl shift).inv()) or (it.toInt() shl shift)) },
-                    valueRange = 0f..255f,
-                )
-            }
+            ColorSliders(argb, onChange)
         }
+    }
+}
+
+/** Opacity, red, green and blue sliders for [argb]. */
+@Composable
+internal fun ColorSliders(argb: Int, onChange: (Int) -> Unit) {
+    listOf(
+        R.string.color_alpha to 24,
+        R.string.color_red to 16,
+        R.string.color_green to 8,
+        R.string.color_blue to 0,
+    ).forEach { (name, shift) ->
+        val value = (argb ushr shift) and 0xFF
+        Text(stringResource(name, value), modifier = Modifier.padding(top = 8.dp))
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onChange((argb and (0xFF shl shift).inv()) or (it.toInt() shl shift)) },
+            valueRange = 0f..255f,
+        )
     }
 }

@@ -50,8 +50,7 @@ class DockActivity : AppCompatActivity() {
      */
     private class SheetBackgroundView(
         context: Context,
-        private val cornerColor: Int,
-        private val edgeColor: Int,
+        private val stops: List<ColorStop>,
         private val corner: DockPrefs.Corner,
     ) : View(context) {
         private val atRight = corner.end
@@ -59,13 +58,18 @@ class DockActivity : AppCompatActivity() {
         private fun cx() = if (atRight) width.toFloat() else 0f
         private fun cy() = if (atBottom) height.toFloat() else 0f
 
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = cornerColor }
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             super.onSizeChanged(w, h, oldw, oldh)
-            // Fades from the corner to the sheet's outer edge.
-            paint.shader =
-                RadialGradient(cx(), cy(), w.toFloat(), cornerColor, edgeColor, Shader.TileMode.CLAMP)
+            // The colour stops run from the corner (0) to the sheet's outer edge (1).
+            val expanded = SheetGradient.expand(stops)
+            paint.shader = RadialGradient(
+                cx(), cy(), w.toFloat(),
+                expanded.map { it.color }.toIntArray(),
+                expanded.map { it.position }.toFloatArray(),
+                Shader.TileMode.CLAMP,
+            )
         }
 
         /**
@@ -216,10 +220,9 @@ class DockActivity : AppCompatActivity() {
     }
 
     private fun buildContent(): View {
-        val sheetColor = DockPrefs.getColor(this, DockPrefs.ColorSetting.SHEET)
-        val edgeColor = DockPrefs.getColor(this, DockPrefs.ColorSetting.SHEET_EDGE)
-        // Text sits across the sheet, so it is judged against the middle of the fade.
-        val backdrop = ColorUtils.blendARGB(sheetColor, edgeColor, 0.5f)
+        val stops = DockPrefs.getSheetStops(this)
+        // Text sits across the sheet, so it is judged against the middle of the gradient.
+        val backdrop = SheetGradient.colorAt(stops, 0.5f)
         val textColor = if (ColorUtils.calculateLuminance(backdrop) > 0.5) Color.BLACK else Color.WHITE
 
         // Tapping outside the quarter circle closes the sheet.
@@ -259,7 +262,7 @@ class DockActivity : AppCompatActivity() {
 
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
-            SheetBackgroundView(this, sheetColor, edgeColor, corner).apply { isClickable = true },
+            SheetBackgroundView(this, stops, corner).apply { isClickable = true },
             FrameLayout.LayoutParams(extent, extent),
         )
 
