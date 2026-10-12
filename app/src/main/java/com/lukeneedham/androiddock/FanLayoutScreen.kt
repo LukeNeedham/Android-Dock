@@ -151,12 +151,15 @@ private val GRIP_THICKNESS = 14.dp
 /** Every part that can be selected, in a row that scrolls: tapping one selects it. */
 @Composable
 private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart, onSelect: (FanPart) -> Unit) {
-    val margin = { edge: Int -> stringResource(R.string.part_margin, stringResource(edge)).replaceFirstChar { it.uppercase() } }
+    val bottomLabel = stringResource(R.string.part_margin, stringResource(corner.verticalEdge)).replaceFirstChar { it.uppercase() }
+    val sideLabel = stringResource(R.string.part_margin, stringResource(corner.horizontalEdge)).replaceFirstChar { it.uppercase() }
+    val cornerLabel = stringResource(R.string.row_current_title)
+    val ringLabels = (0 until ringCount).map { stringResource(R.string.row_title, it + 1) }
     val parts = buildList {
-        add(FanPart.Ring(-1) to stringResource(R.string.row_current_title))
-        repeat(ringCount) { add(FanPart.Ring(it) to stringResource(R.string.row_title, it + 1)) }
-        add(FanPart.BottomMargin to margin(corner.verticalEdge))
-        add(FanPart.SideMargin to margin(corner.horizontalEdge))
+        add(FanPart.Ring(-1) to cornerLabel)
+        ringLabels.forEachIndexed { i, label -> add(FanPart.Ring(i) to label) }
+        add(FanPart.BottomMargin to bottomLabel)
+        add(FanPart.SideMargin to sideLabel)
     }
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
