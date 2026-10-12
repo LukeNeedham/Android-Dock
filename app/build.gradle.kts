@@ -6,7 +6,7 @@ plugins {
 
 // Version name and code (from the git tags) and release signing (from the environment) come from the
 // shared script in ci-workflows. See docs/setup.md there.
-apply(from = "https://raw.githubusercontent.com/LukeNeedham/ci-workflows/claude/fan-corner-positioning-6vg5qa/gradle/android-release.gradle.kts")
+apply(from = "https://raw.githubusercontent.com/LukeNeedham/ci-workflows/claude/fan-corner-positioning-6vg5qa/gradle/android-release.gradle")
 
 android {
     namespace = "com.lukeneedham.androiddock"
