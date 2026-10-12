@@ -1,4 +1,5 @@
-# Publishes a permanent, signed release build with the APK attached. Run it from the Actions tab
+# Publishes a permanent, signed release build with the APK attached. It tags the commit v<version>,
+# and the Gradle build reads the app's version from that tag. Run it from the Actions tab
 # (or the GitHub mobile app), on main, and give the version, e.g. 0.3.0.
 #
 # Needs four repo secrets (Settings > Secrets and variables > Actions):
@@ -42,8 +43,16 @@ jobs:
             echo "::error::Tag v$VERSION already exists. Pick a new version."
             exit 1
           fi
-          # Android only updates an app whose version code goes up, so it follows the version.
-          echo "VERSION_CODE=$(( 10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]} * 100 + 10#${BASH_REMATCH[3]} ))" >> "$GITHUB_ENV"
+
+      # The Gradle build takes the version name and code from the tag on the commit it builds, so
+      # the commit is tagged first. The tag is removed again if anything below fails.
+      - name: Tag this commit
+        id: tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git tag "v$VERSION"
+          git push origin "refs/tags/v$VERSION"
 
       - uses: actions/setup-java@v4
         with:
@@ -68,8 +77,7 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          VERSION: ${{ inputs.version }}
-        run: ./gradlew assembleRelease --no-daemon -PreleaseVersionName="$VERSION" -PreleaseVersionCode="$VERSION_CODE"
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Check the APK is signed
         run: |
@@ -85,7 +93,12 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk Android-Dock.apk
           if [ -n "$NOTES" ]; then notes=(--notes "$NOTES"); else notes=(--generate-notes); fi
           gh release create "v$VERSION" Android-Dock.apk \
-            --target "$GITHUB_SHA" \
             --title "v$VERSION (alpha)" \
             --latest \
             "${notes[@]}"
+
+      - name: Remove the tag if the release failed
+        if: failure() && steps.tag.outcome == 'success'
+        env:
+          VERSION: ${{ inputs.version }}
+        run: git push origin --delete "refs/tags/v$VERSION"

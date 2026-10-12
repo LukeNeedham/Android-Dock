@@ -4,6 +4,34 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// The version comes from the git tags, which are the single source of truth: a release is made by
+// tagging a commit `vMAJOR.MINOR.PATCH`.
+//  - On a tagged commit the version name is the tag, e.g. 0.3.0.
+//  - Anywhere else it is `git describe`, e.g. 0.3.0-5-gabc1234 (five commits after v0.3.0), and with
+//    no tag at all (or no tags fetched, as on CI's shallow PR checkouts) it is 0.0.0-dev.
+// The version code is major*10000 + minor*100 + patch of the nearest tag (1 with none), so it only
+// rises with releases and an untagged build never outranks the next release.
+fun git(vararg args: String): String? = try {
+    val process = ProcessBuilder(listOf("git") + args)
+        .directory(rootDir)
+        .redirectError(ProcessBuilder.Redirect.DISCARD)
+        .start()
+    val output = process.inputStream.bufferedReader().readText().trim()
+    output.takeIf { process.waitFor() == 0 && it.isNotEmpty() }
+} catch (e: java.io.IOException) {
+    null
+}
+
+val releaseTagGlob = "v[0-9]*.[0-9]*.[0-9]*"
+val nearestTag = git("describe", "--tags", "--abbrev=0", "--match", releaseTagGlob)
+val gitVersionName = nearestTag
+    ?.let { git("describe", "--tags", "--match", releaseTagGlob)?.removePrefix("v") }
+    ?: "0.0.0-dev"
+val gitVersionCode = nearestTag
+    ?.removePrefix("v")?.split('.')?.map { it.toInt() }
+    ?.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+    ?: 1
+
 android {
     namespace = "com.lukeneedham.androiddock"
     compileSdk = 36
@@ -12,9 +40,8 @@ android {
         applicationId = "com.lukeneedham.androiddock"
         minSdk = 23
         targetSdk = 35
-        // The release workflow passes these in; everything else (PR builds, local builds) keeps the defaults.
-        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toInt() ?: 1
-        versionName = providers.gradleProperty("releaseVersionName").orNull ?: "0.1.1"
+        versionCode = gitVersionCode
+        versionName = gitVersionName
     }
 
     // A fixed debug key, committed to the repo. CI builds on a fresh machine each time, which would
