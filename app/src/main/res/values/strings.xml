@@ -58,8 +58,6 @@
     <string name="color_button">Trigger colour</string>
     <string name="bg_title">Fan background</string>
     <string name="bg_edit">Edit background gradient</string>
-    <string name="bg_editor_title">Background gradient</string>
-    <string name="bg_hint">The box shows the background as the fan draws it. Drag a handle along the diagonal to move that colour stop out from the corner; tap one to edit its colour. A single stop makes it one flat colour.</string>
     <string name="bg_box_description">Background gradient preview</string>
     <string name="stop_title">Colour stop %1$d of %2$d, %3$d%% of the way out</string>
     <string name="stop_add">Add colour stop</string>

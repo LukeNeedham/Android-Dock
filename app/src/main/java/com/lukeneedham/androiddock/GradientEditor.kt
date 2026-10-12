@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -31,14 +30,19 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -85,31 +89,26 @@ private val HANDLE_RADIUS = 11.dp
 private val SELECTED_HANDLE_RADIUS = 15.dp
 private val HANDLE_REACH = 36.dp
 
-/** How far the clear space around a handle reaches, so a handle at the corner is not cut off. */
-private val HANDLE_INSET = 24.dp
+/** The room an editable box leaves round itself, so a handle at its corner is whole and can be touched. */
+private val HANDLE_MARGIN = 28.dp
 
 /** Where the gradient's radius ends, as a fraction of the diagonal of the box. */
 private const val GRADIENT_REACH = 0.9f
 
 /**
- * Where the stops sit in a [GradientBox] of the given [side]: along the diagonal from the
+ * Where the stops sit in a [GradientBox]: the box is a square of the given [side] whose top left
+ * is at ([margin], [margin]) in the drawing, and its stops lie along the diagonal from the
  * [corner] the gradient is centred on, through the middle of the box. A stop's position is its
- * distance along that line as a fraction of [radius], which is the gradient's radius. Handles are
- * drawn at least [inset] in from the box's sides, so one at the corner stays whole.
+ * distance along that line as a fraction of [radius], which is the gradient's radius. The line
+ * starts at the corner, so a handle at position 0 sits on it, half outside the box.
  */
-private class DiagonalGeometry(private val side: Float, corner: DockPrefs.Corner, private val inset: Float = 0f) {
-    val origin = Offset(if (corner.end) side else 0f, if (corner.bottom) side else 0f)
+private class DiagonalGeometry(val side: Float, corner: DockPrefs.Corner, val margin: Float) {
+    val origin = Offset(margin + if (corner.end) side else 0f, margin + if (corner.bottom) side else 0f)
     private val direction = Offset(if (corner.end) -1f else 1f, if (corner.bottom) -1f else 1f) / sqrt(2f)
     val radius = side * sqrt(2f) * GRADIENT_REACH
 
     /** The point on the line for [position]. */
     fun point(position: Float): Offset = origin + direction * (position * radius)
-
-    /** Where the handle for [position] is drawn: [point], kept inside the box. */
-    fun handlePoint(position: Float): Offset {
-        val at = point(position)
-        return Offset(at.x.coerceIn(inset, side - inset), at.y.coerceIn(inset, side - inset))
-    }
 
     /** How far along the line [at] is, as a position that may be outside 0 to 1. */
     fun projection(at: Offset): Float {
@@ -130,7 +129,7 @@ private fun nearestStop(
     reach: Float,
 ): Int? =
     stops.indices
-        .map { it to (geometry.handlePoint(stops[it].position) - at).getDistance() }
+        .map { it to (geometry.point(stops[it].position) - at).getDistance() }
         .filter { it.second <= reach }
         .minWithOrNull(compareBy<Pair<Int, Float>>({ it.second }, { if (it.first == selected) 1 else 0 }))
         ?.first
@@ -152,6 +151,8 @@ private fun GradientBox(
     onSelect: (Int) -> Unit = {},
     onChange: ((List<ColorStop>) -> Unit)? = null,
 ) {
+    // An editable box has room round it for its handles, which can sit outside the box itself.
+    val margin = if (onChange == null) 0.dp else HANDLE_MARGIN
     // The gesture below must outlive the recompositions its own changes cause.
     val latestStops by rememberUpdatedState(stops)
     val latestSelected by rememberUpdatedState(selected)
@@ -164,14 +165,13 @@ private fun GradientBox(
     Canvas(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
             .semantics { contentDescription = description }
             .then(
                 if (onChange == null) Modifier else Modifier.pointerInput(corner) {
                     val reach = HANDLE_REACH.toPx()
-                    val inset = HANDLE_INSET.toPx()
+                    val marginPx = margin.toPx()
                     awaitEachGesture {
-                        val geometry = DiagonalGeometry(size.width.toFloat(), corner, inset)
+                        val geometry = DiagonalGeometry(size.width - 2 * marginPx, corner, marginPx)
                         val down = awaitFirstDown(requireUnconsumed = false)
                         var active = nearestStop(latestStops, latestSelected, geometry, down.position, reach)
                             ?: return@awaitEachGesture
@@ -197,17 +197,21 @@ private fun GradientBox(
                 },
             ),
     ) {
-        val geometry = DiagonalGeometry(size.width, corner, HANDLE_INSET.toPx())
-        drawRect(Color.Gray)
-        drawCircle(
-            brush = Brush.radialGradient(
-                colorStops = SheetGradient.expand(stops).map { it.position to Color(it.color) }.toTypedArray(),
-                center = geometry.origin,
+        val geometry = DiagonalGeometry(size.width - 2 * margin.toPx(), corner, margin.toPx())
+        val box = Rect(Offset(geometry.margin, geometry.margin), Size(geometry.side, geometry.side))
+        // Only the gradient is cut to the box; the handles are drawn over its edge.
+        clipPath(Path().apply { addRoundRect(RoundRect(box, CornerRadius(12.dp.toPx()))) }) {
+            drawRect(Color.Gray, box.topLeft, box.size)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colorStops = SheetGradient.expand(stops).map { it.position to Color(it.color) }.toTypedArray(),
+                    center = geometry.origin,
+                    radius = geometry.radius,
+                ),
                 radius = geometry.radius,
-            ),
-            radius = geometry.radius,
-            center = geometry.origin,
-        )
+                center = geometry.origin,
+            )
+        }
         if (onChange == null) return@Canvas
         drawLine(
             color = Color.White.copy(alpha = 0.7f),
@@ -218,7 +222,7 @@ private fun GradientBox(
         )
         // The selected handle last, so it is on top of any it is stacked with.
         stops.indices.sortedBy { it == selected }.forEach { index ->
-            drawHandle(textMeasurer, accent, index + 1, stops[index], geometry.handlePoint(stops[index].position), index == selected)
+            drawHandle(textMeasurer, accent, index + 1, stops[index], geometry.point(stops[index].position), index == selected)
         }
     }
 }
@@ -288,24 +292,16 @@ private fun GradientEditorSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
         ) {
-            Text(stringResource(R.string.bg_editor_title), style = MaterialTheme.typography.titleMedium)
             GradientBox(
                 stops, corner,
                 modifier = Modifier
-                    .padding(top = 12.dp)
-                    .widthIn(max = 320.dp)
+                    .widthIn(max = 360.dp)
                     .fillMaxWidth()
                     .align(Alignment.CenterHorizontally),
                 selected = index,
                 onSelect = { selected = it },
                 onChange = onChange,
             )
-            Text(
-                stringResource(R.string.bg_hint),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-
             Text(
                 stringResource(R.string.stop_title, index + 1, stops.size, (stop.position * 100).roundToInt()),
                 style = MaterialTheme.typography.titleSmall,
