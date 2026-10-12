@@ -29,7 +29,7 @@ it, then adjust it:
 - **Corner ring**: holds the app you are in now. You can change its width, or hide the app and keep
   only the space.
 - **Distance from the edge** to where the fan starts.
-- **Background gradient**: a strip shows the current gradient, from the corner on the left to the outer edge on the right. **Edit background gradient** opens a bottom sheet with a marker for each colour stop. Tap a marker to select it, then set its position (0 to 100% of the way out) and colour with the sliders. **Add colour stop** puts a new one in the widest gap, in the colour already there; **Remove this stop** deletes the selected one. Up to eight stops. A single stop gives one flat colour. The default is black at the corner fading to transparent at the edge, and a gradient saved by an older version carries over.
+- **Background gradient**: a small square shows the fan background as it will be drawn, a quarter circle in the chosen corner. **Edit background gradient** opens a bottom sheet with a larger square and a handle for each colour stop. Drag a handle along the diagonal through the square to move that stop out from the corner (the far end of the line is the outer edge), and tap a handle to select it and set its colour with the sliders. **Add colour stop** puts a new one in the widest gap, in the colour already there; **Remove this stop** deletes the selected one. Up to eight stops. A single stop gives one flat colour. The default is black at the corner fading to transparent at the edge, and a gradient saved by an older version carries over.
 
 Icons fill ring 1 first, then the next ring out. The fan lists as many apps as all the rings hold.
 The defaults are three rings of 3, 5 and 8 items.

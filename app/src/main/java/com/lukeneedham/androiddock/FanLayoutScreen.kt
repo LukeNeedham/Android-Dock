@@ -114,7 +114,7 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 },
                 valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
             )
-            BackgroundGradientRow(stops) {
+            BackgroundGradientRow(stops, corner) {
                 stops = it
                 DockPrefs.setSheetStops(context, it)
             }
