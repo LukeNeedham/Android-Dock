@@ -71,6 +71,7 @@ import kotlin.math.sin
 @Composable
 internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
+    val corner = DockPrefs.getCorner(context)
     var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
     var showCurrent by remember { mutableStateOf(DockPrefs.getShowCurrent(context)) }
     val currentWidth = inner.coerceAtLeast(DockPrefs.currentWidthMin(showCurrent))
@@ -84,7 +85,7 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
     var edgeColor by remember { mutableIntStateOf(DockPrefs.getColor(context, DockPrefs.ColorSetting.SHEET_EDGE)) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
-        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, showCurrent = showCurrent, onRowTap = { selectedRow = it })
+        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selectedRow, sheetColor, edgeColor, corner = corner, showCurrent = showCurrent, onRowTap = { selectedRow = it })
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -96,7 +97,7 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Text(stringResource(R.string.slider_padding_bottom, bottomPad), modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.slider_padding, stringResource(corner.verticalEdge), bottomPad), modifier = Modifier.padding(top = 16.dp))
             Slider(
                 value = bottomPad.toFloat(),
                 onValueChange = {
@@ -105,7 +106,7 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 },
                 valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
             )
-            Text(stringResource(R.string.slider_padding_side, sidePad), modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.slider_padding, stringResource(corner.horizontalEdge), sidePad), modifier = Modifier.padding(top = 16.dp))
             Slider(
                 value = sidePad.toFloat(),
                 onValueChange = {
@@ -147,7 +148,7 @@ private val PLACEHOLDER_COLORS = listOf(
 
 /**
  * The fan as the sheet would draw it with every row full: the same geometry as [DockActivity],
- * but with a coloured circle for each app. The selected ring is tinted white, and tapping a ring selects it. Sits in the bottom-right of a box, like the screen
+ * but with a coloured circle for each app. The selected ring is tinted white, and tapping a ring selects it. Sits in the chosen corner of a box, like the screen
  * corner.
  */
 @Composable
@@ -159,6 +160,7 @@ internal fun FanPreview(
     selectedRow: Int?,
     sheetColor: Int,
     edgeColor: Int,
+    corner: DockPrefs.Corner = DockPrefs.Corner.BOTTOM_RIGHT,
     showCurrent: Boolean = true,
     thumbnailDp: Int? = null,
     onRowTap: ((Int) -> Unit)? = null,
@@ -183,13 +185,22 @@ internal fun FanPreview(
         val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
         Canvas(
             modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(backgroundDp.dp))
-                .align(Alignment.BottomEnd)
+                .align(
+                    when (corner) {
+                        DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
+                        DockPrefs.Corner.BOTTOM_LEFT -> Alignment.BottomStart
+                        DockPrefs.Corner.TOP_LEFT -> Alignment.TopStart
+                        DockPrefs.Corner.TOP_RIGHT -> Alignment.TopEnd
+                    },
+                )
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
-                .pointerInput(onRowTap != null, allRows, radiusDp, bottomPad, sidePad) {
+                .pointerInput(onRowTap != null, allRows, radiusDp, bottomPad, sidePad, corner) {
                     if (onRowTap == null) return@pointerInput
                     detectTapGestures { tap ->
-                        val distance = hypot(size.width - sidePad * density - tap.x, size.height - bottomPad * density - tap.y)
+                        val centreX = if (corner.end) size.width - sidePad * density else sidePad * density
+                        val centreY = if (corner.bottom) size.height - bottomPad * density else bottomPad * density
+                        val distance = hypot(centreX - tap.x, centreY - tap.y)
                         val scale = radiusDp * density / (total * density)
                         var edge = 0f
                         allRows.forEachIndexed { index, row ->
@@ -205,15 +216,25 @@ internal fun FanPreview(
             val dp = density
             // The screen's corner, which the background is centred on, and the corner moved in by
             // the padding, which the rings are centred on.
-            val screenCorner = Offset(size.width, size.height)
-            val corner = Offset(size.width - sidePad * dp, size.height - bottomPad * dp)
+            // dirX and dirY point from the screen's corner into the screen.
+            val dirX = if (corner.end) -1f else 1f
+            val dirY = if (corner.bottom) -1f else 1f
+            val screenCorner = Offset(if (corner.end) size.width else 0f, if (corner.bottom) size.height else 0f)
+            val ringCentre = Offset(screenCorner.x + dirX * sidePad * dp, screenCorner.y + dirY * bottomPad * dp)
+            // The square of side r that has the given corner point as its corner of the screen.
+            fun quarter(origin: Offset, r: Float) = androidx.compose.ui.geometry.Rect(
+                if (corner.end) origin.x - r else origin.x,
+                if (corner.bottom) origin.y - r else origin.y,
+                if (corner.end) origin.x else origin.x + r,
+                if (corner.bottom) origin.y else origin.y + r,
+            )
             val radius = radiusDp * dp
             val backgroundRadius = backgroundDp * dp
             val fit = if (thumbnailDp != null) thumbnailDp / backgroundDp else 1f
             withTransform({
                 scale(fit, fit, pivot = screenCorner)
                 // The quarter the background fills, before it is scaled.
-                clipRect(screenCorner.x - backgroundRadius, screenCorner.y - backgroundRadius, screenCorner.x, screenCorner.y)
+                quarter(screenCorner, backgroundRadius).let { clipRect(it.left, it.top, it.right, it.bottom) }
             }) {
             val scale = radius / (total * dp)
 
@@ -239,11 +260,12 @@ internal fun FanPreview(
                 val centreRadius = (start + end) / 2
                 if (rowIndex == selectedRow) {
                     // Only the quarter the rings fill, not the padding.
-                    clipRect(corner.x - radius, corner.y - radius, corner.x, corner.y) {
+                    val fill = quarter(ringCentre, radius)
+                    clipRect(fill.left, fill.top, fill.right, fill.bottom) {
                         drawCircle(
                             color = Color.White.copy(alpha = 0.2f),
                             radius = centreRadius,
-                            center = corner,
+                            center = ringCentre,
                             style = Stroke(width = end - start),
                         )
                     }
@@ -281,7 +303,7 @@ internal fun FanPreview(
                         // do not depend on how many icons the rows before it hold.
                         color = PLACEHOLDER_COLORS[(index * 5 + slot) % PLACEHOLDER_COLORS.size],
                         radius = size / 2,
-                        center = Offset(corner.x - centreRadius * cos(angle), corner.y - centreRadius * sin(angle)),
+                        center = Offset(ringCentre.x + dirX * centreRadius * cos(angle), ringCentre.y + dirY * centreRadius * sin(angle)),
                     )
                 }
             }

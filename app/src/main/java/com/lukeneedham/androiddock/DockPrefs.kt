@@ -11,22 +11,42 @@ object DockPrefs {
     /**
      * The numbers that place the trigger, all in dp. In gesture navigation the system
      * claims a strip along the bottom edge for its swipe-up gesture, so a target inside that
-     * strip loses the touch as soon as the finger moves up. Raising it with [BOTTOM_OFFSET]
-     * gets it clear.
+     * strip loses the touch as soon as the finger moves up. Raising it with [VERTICAL_OFFSET]
+     * gets it clear. The offsets are measured from the screen edges of the chosen [Corner].
      */
     enum class Setting(val key: String, val default: Int, val min: Int) {
-        RIGHT_OFFSET("right_offset_dp", 0, 0),
-        BOTTOM_OFFSET("bottom_offset_dp", 0, 0),
+        HORIZONTAL_OFFSET("right_offset_dp", 0, 0),
+        VERTICAL_OFFSET("bottom_offset_dp", 0, 0),
         WIDTH("width_dp", 31, 16),
         HEIGHT("height_dp", 24, 16),
         ;
 
         fun max(context: Context): Int = when (this) {
-            RIGHT_OFFSET -> context.resources.displayMetrics.run { (widthPixels / density).toInt() }
-            BOTTOM_OFFSET -> 160
+            HORIZONTAL_OFFSET -> context.resources.displayMetrics.run { (widthPixels / density).toInt() }
+            VERTICAL_OFFSET -> 160
             WIDTH -> 240
             HEIGHT -> 240
         }
+    }
+
+    /**
+     * The screen corner the trigger and the fan sit in. Every distance (the trigger's offsets and
+     * the fan's padding) is measured from the two edges that meet there.
+     */
+    enum class Corner(val bottom: Boolean, val end: Boolean, val label: Int, val verticalEdge: Int, val horizontalEdge: Int) {
+        BOTTOM_RIGHT(true, true, R.string.corner_bottom_right, R.string.edge_bottom, R.string.edge_right),
+        BOTTOM_LEFT(true, false, R.string.corner_bottom_left, R.string.edge_bottom, R.string.edge_left),
+        TOP_LEFT(false, false, R.string.corner_top_left, R.string.edge_top, R.string.edge_left),
+        TOP_RIGHT(false, true, R.string.corner_top_right, R.string.edge_top, R.string.edge_right),
+    }
+
+    const val CORNER_KEY = "corner"
+
+    fun getCorner(context: Context): Corner =
+        Corner.entries.firstOrNull { it.name == prefs(context).getString(CORNER_KEY, null) } ?: Corner.BOTTOM_RIGHT
+
+    fun setCorner(context: Context, corner: Corner) {
+        prefs(context).edit().putString(CORNER_KEY, corner.name).apply()
     }
 
     fun prefs(context: Context): SharedPreferences =
@@ -57,7 +77,7 @@ object DockPrefs {
 
     /**
      * One circular row of icons: how many it holds, and its width in dp, measured along the
-     * bottom edge. The rows' widths add up to the sheet's radius, and the icons in a row are
+     * screen edge. The rows' widths add up to the sheet's radius, and the icons in a row are
      * sized to the room it has.
      */
     data class Row(val count: Int, val widthDp: Int)
@@ -199,7 +219,7 @@ object DockPrefs {
         prefs(context).edit().putInt(ONBOARDING_KEY, count).apply()
     }
 
-    fun isSettingKey(key: String?) = Setting.entries.any { it.key == key }
+    fun isSettingKey(key: String?) = key == CORNER_KEY || Setting.entries.any { it.key == key }
 
     fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }
 }

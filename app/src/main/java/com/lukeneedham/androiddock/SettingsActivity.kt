@@ -12,7 +12,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -230,6 +235,13 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .padding(top = 24.dp),
         ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
+        var corner by remember { mutableStateOf(DockPrefs.getCorner(context)) }
+        SectionHeader(R.string.corner_title, R.string.corner_description)
+        CornerPicker(corner) {
+            corner = it
+            DockPrefs.setCorner(context, it)
+        }
+
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
             onClick = { navigate(Route.Trigger) },
@@ -256,6 +268,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 showCurrent = DockPrefs.getShowCurrent(context),
                 sheetColor = sheetColor,
                 edgeColor = edgeColor,
+                corner = corner,
                 thumbnailDp = 96,
                 modifier = Modifier.padding(start = 16.dp),
             )
@@ -278,6 +291,55 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             ) { Text(stringResource(R.string.debug_open)) }
         }
         NavBarSpacer()
+    }
+}
+
+/**
+ * The four screen corners as a box with a labelled button in each of its corners. The selected
+ * corner is highlighted and carries a tick.
+ */
+@Composable
+private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
+    val outline = MaterialTheme.colorScheme.outline
+    Box(
+        modifier = Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth()
+            .height(140.dp)
+            .border(1.dp, outline, RoundedCornerShape(12.dp))
+            .padding(6.dp),
+    ) {
+        DockPrefs.Corner.entries.forEach { corner ->
+            val isSelected = corner == selected
+            val shape = RoundedCornerShape(8.dp)
+            val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(
+                        when (corner) {
+                            DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
+                            DockPrefs.Corner.BOTTOM_LEFT -> Alignment.BottomStart
+                            DockPrefs.Corner.TOP_LEFT -> Alignment.TopStart
+                            DockPrefs.Corner.TOP_RIGHT -> Alignment.TopEnd
+                        },
+                    )
+                    .clip(shape)
+                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(corner) })
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                Text(stringResource(corner.label), color = content)
+                if (isSelected) {
+                    Icon(
+                        painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = content,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -324,10 +386,10 @@ internal fun SectionHeader(title: Int, description: Int?) {
 
 /** A labelled slider that saves its value as it moves; the running service applies it live. */
 @Composable
-internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: Int) {
+internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: @Composable (Int) -> String) {
     var value by remember { mutableIntStateOf(DockPrefs.get(context, setting)) }
     Text(
-        stringResource(label, value),
+        label(value),
         modifier = Modifier.padding(top = 16.dp),
     )
     Slider(

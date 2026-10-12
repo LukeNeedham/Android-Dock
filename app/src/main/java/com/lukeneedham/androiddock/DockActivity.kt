@@ -35,7 +35,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * Hosts the corner sheet of open apps: a quarter circle in the bottom-right corner of the screen.
+ * Hosts the corner sheet of open apps: a quarter circle in the chosen corner of the screen.
  * The app icons run along its arc. Has no other UI: the activity is transparent, and when the
  * sheet goes away the whole task is removed, so the app never lingers in the system task switcher.
  *
@@ -45,21 +45,27 @@ import kotlin.math.sin
 class DockActivity : AppCompatActivity() {
 
     /**
-     * A quarter circle centred on the bottom-right corner of its own bounds. It starts at the
+     * A quarter circle centred on the [corner] of its own bounds. It starts at the
      * screen's edges: the padding only moves the rings and icons in, not this background.
      */
     private class SheetBackgroundView(
         context: Context,
         private val cornerColor: Int,
         private val edgeColor: Int,
+        private val corner: DockPrefs.Corner,
     ) : View(context) {
+        private val atRight = corner.end
+        private val atBottom = corner.bottom
+        private fun cx() = if (atRight) width.toFloat() else 0f
+        private fun cy() = if (atBottom) height.toFloat() else 0f
+
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = cornerColor }
 
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             super.onSizeChanged(w, h, oldw, oldh)
             // Fades from the corner to the sheet's outer edge.
             paint.shader =
-                RadialGradient(w.toFloat(), h.toFloat(), w.toFloat(), cornerColor, edgeColor, Shader.TileMode.CLAMP)
+                RadialGradient(cx(), cy(), w.toFloat(), cornerColor, edgeColor, Shader.TileMode.CLAMP)
         }
 
         /**
@@ -69,13 +75,13 @@ class DockActivity : AppCompatActivity() {
         @SuppressLint("ClickableViewAccessibility")
         override fun onTouchEvent(event: MotionEvent): Boolean {
             if (event.actionMasked == MotionEvent.ACTION_DOWN &&
-                hypot(width - event.x, height - event.y) > width
+                hypot(cx() - event.x, cy() - event.y) > width
             ) return false
             return super.onTouchEvent(event)
         }
 
         override fun onDraw(canvas: Canvas) {
-            canvas.drawCircle(width.toFloat(), height.toFloat(), width.toFloat(), paint)
+            canvas.drawCircle(cx(), cy(), width.toFloat(), paint)
         }
     }
 
@@ -90,11 +96,15 @@ class DockActivity : AppCompatActivity() {
         private val sidePad: Int,
         private val bottomPad: Int,
         private val ringRadius: Float,
+        private val corner: DockPrefs.Corner,
     ) : View(context) {
         @SuppressLint("ClickableViewAccessibility")
         override fun onTouchEvent(event: MotionEvent): Boolean {
             if (event.actionMasked == MotionEvent.ACTION_DOWN &&
-                hypot(width - sidePad - event.x, height - bottomPad - event.y) > ringRadius
+                hypot(
+                    (if (corner.end) width - sidePad else sidePad) - event.x,
+                    (if (corner.bottom) height - bottomPad else bottomPad) - event.y,
+                ) > ringRadius
             ) return false
             return super.onTouchEvent(event)
         }
@@ -215,6 +225,7 @@ class DockActivity : AppCompatActivity() {
         // Tapping outside the quarter circle closes the sheet.
         val root = FrameLayout(this).apply { setOnClickListener { closeSheet() } }
 
+        val corner = DockPrefs.getCorner(this)
         val screenWidth = resources.displayMetrics.widthPixels
         // The corner space for the app on screen counts as a row of one, ahead of the user's rows.
         val rows = listOf(DockPrefs.Row(1, DockPrefs.getCurrentWidth(this))) + DockPrefs.getRows(this)
@@ -229,13 +240,13 @@ class DockActivity : AppCompatActivity() {
         // Everything in the sheet lives in this square, so one scale animates the lot, about the
         // corner.
         val sheetView = FrameLayout(this).apply {
-            pivotX = extent.toFloat()
-            pivotY = extent.toFloat()
+            pivotX = if (corner.end) extent.toFloat() else 0f
+            pivotY = if (corner.bottom) extent.toFloat() else 0f
             scaleX = 0f
             scaleY = 0f
         }
         sheet = sheetView
-        root.addView(sheetView, FrameLayout.LayoutParams(extent, extent, Gravity.BOTTOM or Gravity.END))
+        root.addView(sheetView, FrameLayout.LayoutParams(extent, extent, corner.gravity()))
         sheetView.post {
             // A tap to close can land before this first frame; do not grow what is closing.
             if (closing) return@post
@@ -248,14 +259,14 @@ class DockActivity : AppCompatActivity() {
 
         // Clickable so a tap on the empty part of the sheet does not fall through and close it.
         sheetView.addView(
-            SheetBackgroundView(this, sheetColor, edgeColor).apply { isClickable = true },
+            SheetBackgroundView(this, sheetColor, edgeColor, corner).apply { isClickable = true },
             FrameLayout.LayoutParams(extent, extent),
         )
 
         // Row 0, the corner ring: a tap anywhere in it closes the sheet, even where no app is shown.
         val cornerRadius = rows[0].widthDp.dp * radius.toFloat() / rows.sumOf { it.widthDp.dp }
         sheetView.addView(
-            CornerRingView(this, sidePad, bottomPad, cornerRadius).apply { setOnClickListener { closeSheet() } },
+            CornerRingView(this, sidePad, bottomPad, cornerRadius, corner).apply { setOnClickListener { closeSheet() } },
             FrameLayout.LayoutParams(extent, extent),
         )
 
@@ -374,6 +385,7 @@ class DockActivity : AppCompatActivity() {
      * nothing, as on the home screen or in actions mode. [entries] fill the other rows.
      */
     private fun showEntries(root: ViewGroup, current: Entry?, entries: List<Entry>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
+        val corner = DockPrefs.getCorner(this)
         if (entries.isEmpty()) {
             addAppView(
                 root,
@@ -385,10 +397,9 @@ class DockActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams(
                     (radius * 0.45f).toInt(),
                     ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.BOTTOM or Gravity.END,
+                    corner.gravity(),
                 ).apply {
-                    rightMargin = (radius * 0.35f).toInt()
-                    bottomMargin = (radius * 0.35f).toInt()
+                    setCornerMargins(corner, (radius * 0.35f).toInt(), (radius * 0.35f).toInt())
                 },
             )
             if (current == null) return
@@ -476,9 +487,8 @@ class DockActivity : AppCompatActivity() {
                             }
                         }
                     },
-                    FrameLayout.LayoutParams(size, size, Gravity.BOTTOM or Gravity.END).apply {
-                        rightMargin = (sidePad + cx - size / 2f).toInt()
-                        bottomMargin = (bottomPad + cy - size / 2f).toInt()
+                    FrameLayout.LayoutParams(size, size, corner.gravity()).apply {
+                        setCornerMargins(corner, (sidePad + cx - size / 2f).toInt(), (bottomPad + cy - size / 2f).toInt())
                     },
                 )
             }
@@ -488,6 +498,15 @@ class DockActivity : AppCompatActivity() {
     private fun launch(app: RecentApps.App) {
         closeSheet(haptic = false)
         RecentApps.launch(this, app)
+    }
+
+    private fun DockPrefs.Corner.gravity() =
+        (if (bottom) Gravity.BOTTOM else Gravity.TOP) or (if (end) Gravity.RIGHT else Gravity.LEFT)
+
+    /** Sets the margins from the two screen edges that meet at [corner]. */
+    private fun FrameLayout.LayoutParams.setCornerMargins(corner: DockPrefs.Corner, horizontal: Int, vertical: Int) {
+        if (corner.end) rightMargin = horizontal else leftMargin = horizontal
+        if (corner.bottom) bottomMargin = vertical else topMargin = vertical
     }
 
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
