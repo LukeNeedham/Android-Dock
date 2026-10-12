@@ -12,8 +12,9 @@ android {
         applicationId = "com.lukeneedham.androiddock"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.1"
+        // The release workflow passes these in; everything else (PR builds, local builds) keeps the defaults.
+        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("releaseVersionName").orNull ?: "0.1.1"
     }
 
     // A fixed debug key, committed to the repo. CI builds on a fresh machine each time, which would
@@ -26,11 +27,22 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // The real release key, which only exists on the release workflow, from repo secrets. Without
+        // it a release build is left unsigned, so nothing can be shipped with the wrong key.
+        System.getenv("RELEASE_KEYSTORE_FILE")?.let { keystore ->
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
