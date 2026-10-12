@@ -5,9 +5,9 @@ plugins {
 }
 
 // The version comes from the git tags, which are the single source of truth: a release is made by
-// tagging a commit `vMAJOR.MINOR.PATCH`.
+// tagging a commit `MAJOR.MINOR.PATCH` (no `v` prefix).
 //  - On a tagged commit the version name is the tag, e.g. 0.3.0.
-//  - Anywhere else it is `git describe`, e.g. 0.3.0-5-gabc1234 (five commits after v0.3.0), and with
+//  - Anywhere else it is `git describe`, e.g. 0.3.0-5-gabc1234 (five commits after 0.3.0), and with
 //    no tag at all (or no tags fetched, as on CI's shallow PR checkouts) it is 0.0.0-dev.
 // The version code is major*10000 + minor*100 + patch of the nearest tag (1 with none), so it only
 // rises with releases and an untagged build never outranks the next release.
@@ -22,14 +22,15 @@ fun git(vararg args: String): String? = try {
     null
 }
 
-val releaseTagGlob = "v[0-9]*.[0-9]*.[0-9]*"
+val releaseTagGlob = "[0-9]*.[0-9]*.[0-9]*"
 val nearestTag = git("describe", "--tags", "--abbrev=0", "--match", releaseTagGlob)
 val gitVersionName = nearestTag
-    ?.let { git("describe", "--tags", "--match", releaseTagGlob)?.removePrefix("v") }
+    ?.let { git("describe", "--tags", "--match", releaseTagGlob) }
     ?: "0.0.0-dev"
 val gitVersionCode = nearestTag
-    ?.removePrefix("v")?.split('.')?.map { it.toInt() }
-    ?.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+    ?.let { Regex("""(\d+)\.(\d+)\.(\d+)""").matchEntire(it) }
+    ?.destructured
+    ?.let { (major, minor, patch) -> major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt() }
     ?: 1
 
 android {

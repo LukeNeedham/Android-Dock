@@ -1,4 +1,4 @@
-# Publishes a permanent, signed release build with the APK attached. It tags the commit v<version>,
+# Publishes a permanent, signed release build with the APK attached. It tags the commit <version>,
 # and the Gradle build reads the app's version from that tag. Run it from the Actions tab
 # (or the GitHub mobile app), on main, and give the version, e.g. 0.3.0.
 #
@@ -39,8 +39,8 @@ jobs:
             echo "::error::Version must look like 0.3.0, got '$VERSION'"
             exit 1
           fi
-          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
-            echo "::error::Tag v$VERSION already exists. Pick a new version."
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" > /dev/null; then
+            echo "::error::Tag $VERSION already exists. Pick a new version."
             exit 1
           fi
 
@@ -51,8 +51,8 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          git tag "v$VERSION"
-          git push origin "refs/tags/v$VERSION"
+          git tag "$VERSION"
+          git push origin "refs/tags/$VERSION"
 
       - uses: actions/setup-java@v4
         with:
@@ -92,8 +92,8 @@ jobs:
         run: |
           cp app/build/outputs/apk/release/app-release.apk Android-Dock.apk
           if [ -n "$NOTES" ]; then notes=(--notes "$NOTES"); else notes=(--generate-notes); fi
-          gh release create "v$VERSION" Android-Dock.apk \
-            --title "v$VERSION (alpha)" \
+          gh release create "$VERSION" Android-Dock.apk \
+            --title "$VERSION (alpha)" \
             --latest \
             "${notes[@]}"
 
@@ -101,4 +101,4 @@ jobs:
         if: failure() && steps.tag.outcome == 'success'
         env:
           VERSION: ${{ inputs.version }}
-        run: git push origin --delete "refs/tags/v$VERSION"
+        run: git push origin --delete "refs/tags/$VERSION"
