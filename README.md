@@ -113,13 +113,17 @@ and a download link is posted as a PR comment. See `.github/workflows/`.
 ## Releases
 
 A release is a permanent, signed build for testers, published by the **Release** workflow
-(Actions tab > Release > Run workflow, on `main`). Give it a version such as `0.3.0`. It builds the
-release APK, signs it with the key in the repo secrets (`RELEASE_KEYSTORE_BASE64`,
-`RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`), tags `0.3.0` and attaches
-the APK as `Android-Dock.apk`. The app's version name and code are read from that git tag (no `v` prefix) by
-`app/build.gradle.kts` (`0.3.0` becomes code 300); an untagged build is named like `0.3.0-5-gabc1234`
-(or `0.0.0-dev` where no tags are fetched, as on PR builds) and keeps the nearest tag's code. The newest release is always at
+(Actions tab > Release > Run workflow, on `main`). Give it a version such as `0.3.0`. The workflow
+and the Gradle script behind it are shared with other projects and live in
+[ci-workflows](https://github.com/LukeNeedham/ci-workflows) (always from `main`, unversioned). It
+tags `0.3.0` (no `v`), builds the release APK, signs it with the key in the repo secrets
+(`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`),
+and publishes a normal release with the APK as `Android-Dock.apk`. The newest release is always at
 `https://github.com/LukeNeedham/Android-Dock/releases/latest/download/Android-Dock.apk`.
+
+The app's version name and code are read from the git tag by `app/build.gradle.kts` through the
+shared script (`0.3.0` becomes code 300). An untagged build is named like `0.3.0-5-gabc1234` (or
+`0.0.0-dev` where no tags are fetched, as on PR builds) and keeps the nearest tag's code.
 
 Releases are signed with a different key from the debug builds on pull requests, so a tester moving
 from a PR build to a release uninstalls once. Later releases update in place.

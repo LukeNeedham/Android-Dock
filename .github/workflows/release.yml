@@ -1,12 +1,7 @@
-# Publishes a permanent, signed release build with the APK attached. It tags the commit <version>,
-# and the Gradle build reads the app's version from that tag. Run it from the Actions tab
-# (or the GitHub mobile app), on main, and give the version, e.g. 0.3.0.
-#
-# Needs four repo secrets (Settings > Secrets and variables > Actions):
-#   RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
-#
-# The release is a normal one (not a pre-release), so delete_prereleases.yml leaves it alone and
-# /releases/latest/download/Android-Dock.apk always points at the newest.
+# Publishes a permanent, signed release (tag + APK). Run it from the Actions tab on main, with a
+# version such as 0.3.0. The steps live in the shared ci-workflows repo.
+# Needs four repo secrets: RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS,
+# RELEASE_KEY_PASSWORD. Setup guide: https://github.com/LukeNeedham/ci-workflows/blob/main/docs/setup.md
 name: Release
 
 on:
@@ -27,78 +22,8 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check the version
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          if [[ ! "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo "::error::Version must look like 0.3.0, got '$VERSION'"
-            exit 1
-          fi
-          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" > /dev/null; then
-            echo "::error::Tag $VERSION already exists. Pick a new version."
-            exit 1
-          fi
-
-      # The Gradle build takes the version name and code from the tag on the commit it builds, so
-      # the commit is tagged first. The tag is removed again if anything below fails.
-      - name: Tag this commit
-        id: tag
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          git tag "$VERSION"
-          git push origin "refs/tags/$VERSION"
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: '17'
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - name: Restore the signing key
-        env:
-          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Secret RELEASE_KEYSTORE_BASE64 is not set"
-            exit 1
-          fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          echo "RELEASE_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
-
-      - name: Build the release APK
-        env:
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon
-
-      - name: Check the APK is signed
-        run: |
-          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
-          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
-
-      - name: Publish the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
-          NOTES: ${{ inputs.notes }}
-        run: |
-          cp app/build/outputs/apk/release/app-release.apk Android-Dock.apk
-          if [ -n "$NOTES" ]; then notes=(--notes "$NOTES"); else notes=(--generate-notes); fi
-          gh release create "$VERSION" Android-Dock.apk \
-            --title "$VERSION (alpha)" \
-            --latest \
-            "${notes[@]}"
-
-      - name: Remove the tag if the release failed
-        if: failure() && steps.tag.outcome == 'success'
-        env:
-          VERSION: ${{ inputs.version }}
-        run: git push origin --delete "refs/tags/$VERSION"
+    uses: LukeNeedham/ci-workflows/.github/workflows/android_release.yml@main
+    with:
+      version: ${{ inputs.version }}
+      notes: ${{ inputs.notes }}
+    secrets: inherit
