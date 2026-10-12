@@ -1,0 +1,29 @@
+# Publishes a permanent, signed release (tag + APK). Run it from the Actions tab on main, with a
+# version such as 0.3.0. The steps live in the shared ci-workflows repo.
+# Needs four repo secrets: RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS,
+# RELEASE_KEY_PASSWORD. Setup guide: https://github.com/LukeNeedham/ci-workflows/blob/main/docs/setup.md
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, as major.minor.patch (e.g. 0.3.0)'
+        required: true
+        type: string
+      notes:
+        description: 'Release notes (leave empty to list the merged PRs)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write       # create the tag and the release
+
+jobs:
+  release:
+    uses: LukeNeedham/ci-workflows/.github/workflows/android_release.yml@main
+    with:
+      version: ${{ inputs.version }}
+      notes: ${{ inputs.notes }}
+    secrets: inherit

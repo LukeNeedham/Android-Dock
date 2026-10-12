@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// Version name and code (from the git tags) and release signing (from the environment) come from the
+// shared script in ci-workflows. See docs/setup.md there.
+apply(from = "https://raw.githubusercontent.com/LukeNeedham/ci-workflows/main/gradle/android-release.gradle")
+
 android {
     namespace = "com.lukeneedham.androiddock"
     compileSdk = 36
@@ -12,8 +16,6 @@ android {
         applicationId = "com.lukeneedham.androiddock"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.1"
     }
 
     // A fixed debug key, committed to the repo. CI builds on a fresh machine each time, which would
