@@ -89,7 +89,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** The pages of the settings app. */
-internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log }
+internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log, FanBackground }
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -175,6 +175,7 @@ private fun AppNavigation(resumes: Int) {
                     Route.Settings -> SettingsScreen(resumes) { backStack.add(it) }
                     Route.Trigger -> TriggerScreen(back)
                     Route.FanLayout -> FanLayoutScreen(back)
+                    Route.FanBackground -> FanBackgroundScreen(back)
                     Route.Blacklist -> BlacklistScreen(back)
                     Route.Debug -> DebugScreen(back) { backStack.add(it) }
                     Route.Log -> LogScreen(back)
@@ -251,8 +252,8 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         ) { Text(stringResource(R.string.trigger_open)) }
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
-        // Read again on every return here, and updated at once when the gradient is edited below.
-        var stops by remember(resumes) { mutableStateOf(if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT) }
+        // Read again on every return here.
+        val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             FilledTonalButton(
                 onClick = { navigate(Route.FanLayout) },
@@ -272,10 +273,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 modifier = Modifier.padding(start = 16.dp),
             )
         }
-        BackgroundGradientRow(stops, corner) {
-            stops = it
-            DockPrefs.setSheetStops(context, it)
-        }
+        BackgroundGradientRow(stops, corner) { navigate(Route.FanBackground) }
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         FilledTonalButton(
