@@ -283,6 +283,9 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         }
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
+        // Read again on every return here.
+        val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0
+        Text(stringResource(R.string.blacklist_count, hiddenCount), modifier = Modifier.padding(top = 8.dp))
         FilledTonalButton(
             onClick = { navigate(Route.Blacklist) },
             modifier = Modifier

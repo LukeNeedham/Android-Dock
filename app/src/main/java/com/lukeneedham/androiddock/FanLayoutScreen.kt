@@ -196,9 +196,9 @@ private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart
     val cornerLabel = stringResource(R.string.row_current_title)
     val ringLabels = (0 until ringCount).map { stringResource(R.string.row_title, it + 1) }
     val parts = buildList {
-        add(FanPart.Ring(-1) to cornerLabel)
         add(FanPart.BottomMargin to bottomLabel)
         add(FanPart.SideMargin to sideLabel)
+        add(FanPart.Ring(-1) to cornerLabel)
         ringLabels.forEachIndexed { i, label -> add(FanPart.Ring(i) to label) }
     }
     FlowRow(

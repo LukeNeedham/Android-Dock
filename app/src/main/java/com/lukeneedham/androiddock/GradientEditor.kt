@@ -172,7 +172,21 @@ private fun GradientBox(
         val box = Rect(Offset(geometry.margin, geometry.margin), Size(geometry.side, geometry.side))
         // Only the gradient is cut to the box; the handles are drawn over its edge.
         clipPath(Path().apply { addRoundRect(RoundRect(box, CornerRadius(12.dp.toPx()))) }) {
-            drawRect(Color.Gray, box.topLeft, box.size)
+            // Black and white squares, so that a see-through colour can be told from a solid one.
+            val cell = 8.dp.toPx()
+            var row = 0
+            var y = box.top
+            while (y < box.bottom) {
+                var col = 0
+                var x = box.left
+                while (x < box.right) {
+                    drawRect(if ((row + col) % 2 == 0) Color.White else Color.Black, Offset(x, y), Size(minOf(cell, box.right - x), minOf(cell, box.bottom - y)))
+                    x += cell
+                    col++
+                }
+                y += cell
+                row++
+            }
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = SheetGradient.expand(stops).map { it.position to Color(it.color) }.toTypedArray(),
