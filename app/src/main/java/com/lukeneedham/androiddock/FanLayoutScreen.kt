@@ -586,4 +586,3 @@ private fun RowsEditor(
     }
     Spacer(Modifier.height(24.dp))
 }
-}
