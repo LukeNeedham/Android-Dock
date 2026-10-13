@@ -10,7 +10,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -94,11 +99,6 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
-            Text(
-                stringResource(R.string.rows_description),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
             PartList(rows.size, corner, selected, onSelect = { selected = it })
             RowsEditor(
                 context, rows, selected, corner,
@@ -144,11 +144,11 @@ internal sealed interface FanPart {
     data object SideMargin : FanPart
 }
 
-private val MIN_TOUCH = 48.dp
-private val GRIP_LENGTH = 40.dp
-private val GRIP_THICKNESS = 14.dp
+/** How thick the bars for the margins are, beside the preview. */
+private val MARGIN_BAR = 50.dp
 
-/** Every part that can be selected, in a row that scrolls: tapping one selects it. */
+/** Every part that can be selected, wrapped so that all are in view: tapping one selects it. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart, onSelect: (FanPart) -> Unit) {
     val bottomLabel = stringResource(R.string.part_margin, stringResource(corner.verticalEdge)).replaceFirstChar { it.uppercase() }
@@ -161,9 +161,10 @@ private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart
         add(FanPart.BottomMargin to bottomLabel)
         add(FanPart.SideMargin to sideLabel)
     }
-    Row(
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
     ) {
         parts.forEach { (part, label) ->
             val on = part == selected
@@ -213,9 +214,12 @@ internal fun FanPreview(
 ) {
     BoxWithConstraints(
         modifier = modifier
-            .then(if (thumbnailDp != null) Modifier.size(thumbnailDp.dp).clip(RoundedCornerShape(8.dp)) else Modifier.fillMaxWidth())
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .then(if (thumbnailDp != null) Modifier.size(thumbnailDp.dp).clip(RoundedCornerShape(8.dp)) else Modifier.fillMaxWidth()),
     ) {
+        // The bars for the margins sit outside the preview, beside the corner's two edges.
+        val interactive = onSelect != null && thumbnailDp == null
+        val bar = if (interactive) MARGIN_BAR else 0.dp
+        val previewWidth = maxWidth - bar
         // Row 0, flush against the corner, holds a single icon: the app on screen, or nothing when
         // that is hidden. It is drawn like every other ring.
         val ringZero = if (inner > 0) listOf(DockPrefs.Row(if (showCurrent) 1 else 0, inner)) else emptyList()
@@ -224,12 +228,20 @@ internal fun FanPreview(
         val total = allRows.sumOf { it.widthDp }
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
-        else min(total.toFloat(), maxWidth.value * 0.9f).coerceAtLeast(1f)
+        else min(total.toFloat(), previewWidth.value * 0.9f).coerceAtLeast(1f)
         // The rings are centred on the corner moved in by the padding, but the background is
         // centred on the corner itself, and reaches far enough to hold the outermost ring.
         val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
+        val insetStart = if (!corner.end) bar else 0.dp
+        val insetTop = if (!corner.bottom) bar else 0.dp
+        Box(
+            modifier = Modifier
+                .padding(start = insetStart, top = insetTop, end = if (corner.end) bar else 0.dp, bottom = if (corner.bottom) bar else 0.dp)
+                .then(if (thumbnailDp != null) Modifier.fillMaxSize() else Modifier)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
         Canvas(
-            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(maxWidth).height(backgroundDp.dp))
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(previewWidth).height(backgroundDp.dp))
                 .align(
                     when (corner) {
                         DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
@@ -243,13 +255,7 @@ internal fun FanPreview(
                 .pointerInput(onSelect != null, allRows, radiusDp, bottomPad, sidePad, corner) {
                     if (onSelect == null) return@pointerInput
                     detectTapGestures { tap ->
-                        // The margins can be nothing wide, so their grips are tapped first, and
-                        // are at least a finger wide.
-                        val grips = gripCentres(size.width.toFloat(), size.height.toFloat(), density, corner, radiusDp, bottomPad, sidePad)
-                        val half = MIN_TOUCH.toPx() / 2
-                        fun hit(c: Offset) = kotlin.math.abs(tap.x - c.x) <= half && kotlin.math.abs(tap.y - c.y) <= half
-                        if (hit(grips.first)) { onSelect(FanPart.BottomMargin); return@detectTapGestures }
-                        if (hit(grips.second)) { onSelect(FanPart.SideMargin); return@detectTapGestures }
+                        // The space of a margin selects it, even though it can be thin.
                         val inBottomBand = if (corner.bottom) tap.y >= size.height - bottomPad * density else tap.y <= bottomPad * density
                         val inSideBand = if (corner.end) tap.x >= size.width - sidePad * density else tap.x <= sidePad * density
                         if (inBottomBand && bottomPad > 0) { onSelect(FanPart.BottomMargin); return@detectTapGestures }
@@ -364,58 +370,65 @@ internal fun FanPreview(
                 }
             }
             }
-            if (onSelect != null) drawMarginGrips(corner, radiusDp, bottomPad, sidePad, selected)
+            // The selected margin is tinted, like the selected ring.
+            val tint = Color.White.copy(alpha = 0.2f)
+            if (selected == FanPart.BottomMargin && bottomPad > 0) {
+                drawRect(tint, Offset(0f, if (corner.bottom) size.height - bottomPad * dp else 0f), androidx.compose.ui.geometry.Size(size.width, bottomPad * dp))
+            }
+            if (selected == FanPart.SideMargin && sidePad > 0) {
+                drawRect(tint, Offset(if (corner.end) size.width - sidePad * dp else 0f, 0f), androidx.compose.ui.geometry.Size(sidePad * dp, size.height))
+            }
+        }
+        } // the box that holds the canvas
+        if (onSelect != null && interactive) {
+            val bottomLabel = stringResource(R.string.part_margin, stringResource(corner.verticalEdge)).replaceFirstChar { it.uppercase() }
+            val sideLabel = stringResource(R.string.part_margin, stringResource(corner.horizontalEdge)).replaceFirstChar { it.uppercase() }
+            // The bottom bar spans the preview's width and the side bar its height, on the far
+            // side of the preview from the corner's edge they edit.
+            MarginBar(
+                bottomLabel, selected == FanPart.BottomMargin, vertical = false, onClick = { onSelect(FanPart.BottomMargin) },
+                modifier = Modifier
+                    .align(if (corner.bottom) Alignment.BottomStart else Alignment.TopStart)
+                    .offset(x = insetStart)
+                    .width(previewWidth)
+                    .height(bar),
+            )
+            MarginBar(
+                sideLabel, selected == FanPart.SideMargin, vertical = true, onClick = { onSelect(FanPart.SideMargin) },
+                modifier = Modifier
+                    .align(if (corner.end) Alignment.TopEnd else Alignment.TopStart)
+                    .offset(y = insetTop)
+                    .width(bar)
+                    .height(backgroundDp.dp),
+            )
         }
     }
-}
-
-/** Centres of the bottom and side margin grips, in the canvas's pixels. */
-private fun gripCentres(width: Float, height: Float, density: Float, corner: DockPrefs.Corner, radiusDp: Float, bottomPad: Int, sidePad: Int): Pair<Offset, Offset> {
-    val gripLength = GRIP_LENGTH.value * density
-    val thickness = GRIP_THICKNESS.value * density
-    // Halfway along the fan's reach, and in the middle of the margin or, when that is thin, inside the canvas.
-    val along = radiusDp * density / 2
-    val bottomDepth = max(bottomPad * density / 2, thickness / 2)
-    val sideDepth = max(sidePad * density / 2, thickness / 2)
-    val x = (if (corner.end) width - along else along).coerceIn(gripLength / 2, width - gripLength / 2)
-    val y = (if (corner.bottom) height - along else along).coerceIn(gripLength / 2, height - gripLength / 2)
-    val bottom = Offset(x, if (corner.bottom) height - bottomDepth else bottomDepth)
-    val side = Offset(if (corner.end) width - sideDepth else sideDepth, y)
-    return bottom to side
 }
 
 /**
- * Shows that the margins exist and can be tapped: a band over each one, as thick as the margin,
- * and a grip on it. The selected one is brighter.
+ * A bar beside the preview that selects a margin, as thick as a finger and filled, so it reads as a
+ * button. [vertical] bars stand at the side, and turn their label to run along them.
  */
-private fun DrawScope.drawMarginGrips(corner: DockPrefs.Corner, radiusDp: Float, bottomPad: Int, sidePad: Int, selected: FanPart?) {
-    val (bottom, side) = gripCentres(size.width, size.height, density, corner, radiusDp, bottomPad, sidePad)
-    val gripLength = GRIP_LENGTH.toPx()
-    val thickness = GRIP_THICKNESS.toPx()
-    fun band(horizontal: Boolean, pad: Int, grip: Offset, on: Boolean) {
-        val depth = pad * density
-        val tint = Color.White.copy(alpha = if (on) 0.4f else 0.15f)
-        if (depth > 0f) {
-            if (horizontal) drawRect(tint, Offset(0f, if (corner.bottom) size.height - depth else 0f), androidx.compose.ui.geometry.Size(size.width, depth))
-            else drawRect(tint, Offset(if (corner.end) size.width - depth else 0f, 0f), androidx.compose.ui.geometry.Size(depth, size.height))
-        }
-        val w = if (horizontal) gripLength else thickness
-        val h = if (horizontal) thickness else gripLength
-        val topLeft = Offset(grip.x - w / 2, grip.y - h / 2)
-        val sz = androidx.compose.ui.geometry.Size(w, h)
-        val round = androidx.compose.ui.geometry.CornerRadius(thickness / 2)
-        drawRoundRect(if (on) Color.White else Color.White.copy(alpha = 0.6f), topLeft, sz, round)
-        drawRoundRect(Color.Black.copy(alpha = 0.5f), topLeft, sz, round, style = Stroke(width = 1.5f * density))
-        // Two short lines along the grip, so it reads as something to hold.
-        for (i in -1..1 step 2) {
-            val o = i * thickness / 5
-            val a = if (horizontal) Offset(grip.x - gripLength / 4, grip.y + o) else Offset(grip.x + o, grip.y - gripLength / 4)
-            val b = if (horizontal) Offset(grip.x + gripLength / 4, grip.y + o) else Offset(grip.x + o, grip.y + gripLength / 4)
-            drawLine(Color.Black.copy(alpha = 0.5f), a, b, strokeWidth = 1.5f * density)
-        }
+@Composable
+private fun MarginBar(label: String, selected: Boolean, vertical: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) colors.primary else colors.secondaryContainer)
+            .clickable(onClick = onClick),
+    ) {
+        Text(
+            // The arrow points along the distance it changes; turned with the label, it still does.
+            "↕  $label",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) colors.onPrimary else colors.onSecondaryContainer,
+            maxLines = 1,
+            softWrap = false,
+            modifier = if (vertical) Modifier.wrapContentSize(unbounded = true).rotate(-90f) else Modifier,
+        )
     }
-    band(true, bottomPad, bottom, selected == FanPart.BottomMargin)
-    band(false, sidePad, side, selected == FanPart.SideMargin)
 }
 
 /**
