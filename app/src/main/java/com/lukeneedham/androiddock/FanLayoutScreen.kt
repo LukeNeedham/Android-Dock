@@ -30,7 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -79,6 +79,7 @@ import kotlin.math.sin
 @Composable
 internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val corner = DockPrefs.getCorner(context)
     var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
     var showCurrent by remember { mutableStateOf(DockPrefs.getShowCurrent(context)) }
@@ -92,7 +93,14 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
     var stops by remember { mutableStateOf(DockPrefs.getSheetStops(context)) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
-        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selected, stops, corner = corner, showCurrent = showCurrent, onSelect = { selected = it })
+        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selected, stops, corner = corner, showCurrent = showCurrent, onSelect = { selected = it },
+            onAddRow = if (rows.size < DockPrefs.ROWS_MAX) ({
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                rows.add(DockPrefs.newRow())
+                selected = FanPart.Ring(rows.lastIndex)
+                DockPrefs.setRows(context, rows.toList())
+            }) else null,
+        )
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -142,6 +150,21 @@ internal sealed interface FanPart {
 
     /** The gap between the fan and the corner's vertical edge. */
     data object SideMargin : FanPart
+}
+
+private const val PLUS_RADIUS_DP = 16f
+private const val PLUS_GAP_DP = 8f
+
+/**
+ * Where the add-ring button sits, in pixels: on the line the rings' first icons lie on, just
+ * beyond the outermost ring, and kept inside the canvas.
+ */
+private fun plusCentre(width: Float, height: Float, density: Float, corner: DockPrefs.Corner, radiusDp: Float, bottomPad: Int, sidePad: Int): Offset {
+    val r = PLUS_RADIUS_DP * density
+    val dirX = if (corner.end) -1f else 1f
+    val x = (if (corner.end) width - sidePad * density else sidePad * density) + dirX * (radiusDp * density + PLUS_GAP_DP * density + r)
+    val y = if (corner.bottom) height - bottomPad * density else bottomPad * density
+    return Offset(x.coerceIn(r, width - r), y.coerceIn(r, height - r))
 }
 
 /** How thick the bars for the margins are, beside the preview. */
@@ -210,6 +233,7 @@ internal fun FanPreview(
     showCurrent: Boolean = true,
     thumbnailDp: Int? = null,
     onSelect: ((FanPart) -> Unit)? = null,
+    onAddRow: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -227,8 +251,12 @@ internal fun FanPreview(
         // As in the sheet: the rows' widths, row 0's included, make the radius, shrunk to fit the width.
         val total = allRows.sumOf { it.widthDp }
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
+        // The add button needs room beyond the outermost ring.
+        val reach = previewWidth.value * 0.9f - if (onAddRow != null && interactive) PLUS_RADIUS_DP * 2 + PLUS_GAP_DP else 0f
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
-        else min(total.toFloat(), previewWidth.value * 0.9f).coerceAtLeast(1f)
+        else min(total.toFloat(), reach).coerceAtLeast(1f)
+        val plusColor = MaterialTheme.colorScheme.primary
+        val onPlusColor = MaterialTheme.colorScheme.onPrimary
         // The rings are centred on the corner moved in by the padding, but the background is
         // centred on the corner itself, and reaches far enough to hold the outermost ring.
         val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
@@ -252,9 +280,16 @@ internal fun FanPreview(
                 )
                 // The circles are centred on the corner, so without this they spill out of the quarter.
                 .clipToBounds()
-                .pointerInput(onSelect != null, allRows, radiusDp, bottomPad, sidePad, corner) {
+                .pointerInput(onSelect != null, onAddRow != null, allRows, radiusDp, bottomPad, sidePad, corner) {
                     if (onSelect == null) return@pointerInput
                     detectTapGestures { tap ->
+                        if (onAddRow != null) {
+                            val plus = plusCentre(size.width.toFloat(), size.height.toFloat(), density, corner, radiusDp, bottomPad, sidePad)
+                            if (hypot(tap.x - plus.x, tap.y - plus.y) <= PLUS_RADIUS_DP * density) {
+                                onAddRow()
+                                return@detectTapGestures
+                            }
+                        }
                         // The space of a margin selects it, even though it can be thin.
                         val inBottomBand = if (corner.bottom) tap.y >= size.height - bottomPad * density else tap.y <= bottomPad * density
                         val inSideBand = if (corner.end) tap.x >= size.width - sidePad * density else tap.x <= sidePad * density
@@ -369,6 +404,15 @@ internal fun FanPreview(
                     )
                 }
             }
+            }
+            if (onAddRow != null && interactive) {
+                val plus = plusCentre(size.width, size.height, dp, corner, radiusDp, bottomPad, sidePad)
+                val r = PLUS_RADIUS_DP * dp
+                drawCircle(plusColor, r, plus)
+                val arm = r * 0.5f
+                val stroke = 2.5f * dp
+                drawLine(onPlusColor, Offset(plus.x - arm, plus.y), Offset(plus.x + arm, plus.y), strokeWidth = stroke)
+                drawLine(onPlusColor, Offset(plus.x, plus.y - arm), Offset(plus.x, plus.y + arm), strokeWidth = stroke)
             }
             // The selected margin is tinted, like the selected ring.
             val tint = Color.White.copy(alpha = 0.2f)
@@ -540,15 +584,6 @@ private fun RowsEditor(
         }
     }
     }
-    if (rows.size < DockPrefs.ROWS_MAX) {
-        FilledTonalButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                rows.add(DockPrefs.newRow())
-                onSelect(FanPart.Ring(rows.lastIndex))
-                save()
-            },
-            modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
-        ) { Text(stringResource(R.string.row_add)) }
-    }
+    Spacer(Modifier.height(24.dp))
+}
 }
