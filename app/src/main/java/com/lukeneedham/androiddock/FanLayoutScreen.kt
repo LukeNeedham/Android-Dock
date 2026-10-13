@@ -10,6 +10,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
@@ -251,10 +254,17 @@ internal fun FanPreview(
         // As in the sheet: the rows' widths, row 0's included, make the radius, shrunk to fit the width.
         val total = allRows.sumOf { it.widthDp }
         // A thumbnail draws the whole fan at full size and shrinks it to fit its box.
-        // The add button needs room beyond the outermost ring.
-        val reach = previewWidth.value * 0.9f - if (onAddRow != null && interactive) PLUS_RADIUS_DP * 2 + PLUS_GAP_DP else 0f
+        // Life-size: the same radius the sheet gets on this screen, which is not shrunk to fit the
+        // preview.
+        val screenWidth = LocalConfiguration.current.screenWidthDp
         val radiusDp = if (thumbnailDp != null) total.toFloat().coerceAtLeast(1f)
-        else min(total.toFloat(), reach).coerceAtLeast(1f)
+        else min(total.toFloat(), screenWidth * 0.9f).coerceAtLeast(1f)
+        // The fan, its margin and the add button may be wider than the room beside the bars, and
+        // then the preview scrolls sideways.
+        val neededDp = radiusDp + sidePad + if (onAddRow != null && interactive) PLUS_RADIUS_DP * 2 + PLUS_GAP_DP else 0f
+        val canvasWidth = max(previewWidth.value, neededDp).dp
+        val scroll = rememberScrollState()
+        if (interactive && corner.end) LaunchedEffect(scroll.maxValue) { scroll.scrollTo(scroll.maxValue) }
         val plusColor = MaterialTheme.colorScheme.primary
         val onPlusColor = MaterialTheme.colorScheme.onPrimary
         // The rings are centred on the corner moved in by the padding, but the background is
@@ -266,10 +276,11 @@ internal fun FanPreview(
             modifier = Modifier
                 .padding(start = insetStart, top = insetTop, end = if (corner.end) bar else 0.dp, bottom = if (corner.bottom) bar else 0.dp)
                 .then(if (thumbnailDp != null) Modifier.fillMaxSize() else Modifier)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(if (interactive) Modifier.horizontalScroll(scroll) else Modifier),
         ) {
         Canvas(
-            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(previewWidth).height(backgroundDp.dp))
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(canvasWidth).height(backgroundDp.dp))
                 .align(
                     when (corner) {
                         DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
