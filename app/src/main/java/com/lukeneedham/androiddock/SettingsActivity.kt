@@ -251,13 +251,14 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         ) { Text(stringResource(R.string.trigger_open)) }
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
+        // Read again on every return here, and updated at once when the gradient is edited below.
+        var stops by remember(resumes) { mutableStateOf(if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT) }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             FilledTonalButton(
                 onClick = { navigate(Route.FanLayout) },
                 modifier = Modifier.weight(1f),
             ) { Text(stringResource(R.string.fan_layout_open)) }
             // A small, read-only picture of the fan as it is now, refreshed on every return here.
-            val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
             FanPreview(
                 inner = if (resumes >= 0) DockPrefs.getCurrentWidth(context) else 0,
                 bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
@@ -270,6 +271,10 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 thumbnailDp = 96,
                 modifier = Modifier.padding(start = 16.dp),
             )
+        }
+        BackgroundGradientRow(stops, corner) {
+            stops = it
+            DockPrefs.setSheetStops(context, it)
         }
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)

@@ -93,7 +93,8 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
     // The part of the fan the controls edit, chosen in the preview or the list above the controls,
     // and tinted in the preview.
     var selected by remember { mutableStateOf<FanPart>(FanPart.Ring(0)) }
-    var stops by remember { mutableStateOf(DockPrefs.getSheetStops(context)) }
+    // The background is edited on the main page; here it only shows behind the fan.
+    val stops = remember { DockPrefs.getSheetStops(context) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
         FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selected, stops, corner = corner, showCurrent = showCurrent, onSelect = { selected = it },
@@ -134,10 +135,6 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                     DockPrefs.setShowCurrent(context, it)
                 },
             ) { selected = it }
-            BackgroundGradientRow(stops, corner) {
-                stops = it
-                DockPrefs.setSheetStops(context, it)
-            }
             NavBarSpacer()
         }
     }
@@ -159,15 +156,14 @@ private const val PLUS_RADIUS_DP = 16f
 private const val PLUS_GAP_DP = 8f
 
 /**
- * Where the add-ring button sits, in pixels: on the line the rings' first icons lie on, just
- * beyond the outermost ring, and kept inside the canvas.
+ * Where the add-ring button sits, in pixels: halfway down the preview, just beyond the outermost
+ * ring, and kept inside the canvas.
  */
-private fun plusCentre(width: Float, height: Float, density: Float, corner: DockPrefs.Corner, radiusDp: Float, bottomPad: Int, sidePad: Int): Offset {
+private fun plusCentre(width: Float, height: Float, density: Float, corner: DockPrefs.Corner, radiusDp: Float, sidePad: Int): Offset {
     val r = PLUS_RADIUS_DP * density
     val dirX = if (corner.end) -1f else 1f
     val x = (if (corner.end) width - sidePad * density else sidePad * density) + dirX * (radiusDp * density + PLUS_GAP_DP * density + r)
-    val y = if (corner.bottom) height - bottomPad * density else bottomPad * density
-    return Offset(x.coerceIn(r, width - r), y.coerceIn(r, height - r))
+    return Offset(x.coerceIn(r, width - r), height / 2)
 }
 
 /** How thick the bars for the margins are, beside the preview. */
@@ -265,8 +261,9 @@ internal fun FanPreview(
         val canvasWidth = max(previewWidth.value, neededDp).dp
         val scroll = rememberScrollState()
         if (interactive && corner.end) LaunchedEffect(scroll.maxValue) { scroll.scrollTo(scroll.maxValue) }
-        val plusColor = MaterialTheme.colorScheme.primary
-        val onPlusColor = MaterialTheme.colorScheme.onPrimary
+        // The margins and their bars share their colours, so each pair reads as one block.
+        val marginColor = MaterialTheme.colorScheme.secondaryContainer
+        val marginSelectedColor = MaterialTheme.colorScheme.primary
         // The rings are centred on the corner moved in by the padding, but the background is
         // centred on the corner itself, and reaches far enough to hold the outermost ring.
         val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
@@ -295,7 +292,7 @@ internal fun FanPreview(
                     if (onSelect == null) return@pointerInput
                     detectTapGestures { tap ->
                         if (onAddRow != null) {
-                            val plus = plusCentre(size.width.toFloat(), size.height.toFloat(), density, corner, radiusDp, bottomPad, sidePad)
+                            val plus = plusCentre(size.width.toFloat(), size.height.toFloat(), density, corner, radiusDp, sidePad)
                             if (hypot(tap.x - plus.x, tap.y - plus.y) <= PLUS_RADIUS_DP * density) {
                                 onAddRow()
                                 return@detectTapGestures
@@ -417,21 +414,20 @@ internal fun FanPreview(
             }
             }
             if (onAddRow != null && interactive) {
-                val plus = plusCentre(size.width, size.height, dp, corner, radiusDp, bottomPad, sidePad)
+                val plus = plusCentre(size.width, size.height, dp, corner, radiusDp, sidePad)
                 val r = PLUS_RADIUS_DP * dp
-                drawCircle(plusColor, r, plus)
+                drawCircle(Color.White, r, plus)
                 val arm = r * 0.5f
                 val stroke = 2.5f * dp
-                drawLine(onPlusColor, Offset(plus.x - arm, plus.y), Offset(plus.x + arm, plus.y), strokeWidth = stroke)
-                drawLine(onPlusColor, Offset(plus.x, plus.y - arm), Offset(plus.x, plus.y + arm), strokeWidth = stroke)
+                drawLine(Color.Black, Offset(plus.x - arm, plus.y), Offset(plus.x + arm, plus.y), strokeWidth = stroke)
+                drawLine(Color.Black, Offset(plus.x, plus.y - arm), Offset(plus.x, plus.y + arm), strokeWidth = stroke)
             }
-            // The selected margin is tinted, like the selected ring.
-            val tint = Color.White.copy(alpha = 0.2f)
-            if (selected == FanPart.BottomMargin && bottomPad > 0) {
-                drawRect(tint, Offset(0f, if (corner.bottom) size.height - bottomPad * dp else 0f), androidx.compose.ui.geometry.Size(size.width, bottomPad * dp))
-            }
-            if (selected == FanPart.SideMargin && sidePad > 0) {
-                drawRect(tint, Offset(if (corner.end) size.width - sidePad * dp else 0f, 0f), androidx.compose.ui.geometry.Size(sidePad * dp, size.height))
+            // The margins, in the colour of their bars, so that a bar and its margin are one block.
+            if (interactive) {
+                val bottomColor = if (selected == FanPart.BottomMargin) marginSelectedColor else marginColor
+                val sideColor = if (selected == FanPart.SideMargin) marginSelectedColor else marginColor
+                drawRect(bottomColor, Offset(0f, if (corner.bottom) size.height - bottomPad * dp else 0f), androidx.compose.ui.geometry.Size(size.width, bottomPad * dp))
+                drawRect(sideColor, Offset(if (corner.end) size.width - sidePad * dp else 0f, 0f), androidx.compose.ui.geometry.Size(sidePad * dp, size.height))
             }
         }
         } // the box that holds the canvas
@@ -441,7 +437,7 @@ internal fun FanPreview(
             // The bottom bar spans the preview's width and the side bar its height, on the far
             // side of the preview from the corner's edge they edit.
             MarginBar(
-                bottomLabel, selected == FanPart.BottomMargin, vertical = false, onClick = { onSelect(FanPart.BottomMargin) },
+                bottomLabel, selected == FanPart.BottomMargin, marginColor, marginSelectedColor, vertical = false, onClick = { onSelect(FanPart.BottomMargin) },
                 modifier = Modifier
                     .align(if (corner.bottom) Alignment.BottomStart else Alignment.TopStart)
                     .offset(x = insetStart)
@@ -449,7 +445,7 @@ internal fun FanPreview(
                     .height(bar),
             )
             MarginBar(
-                sideLabel, selected == FanPart.SideMargin, vertical = true, onClick = { onSelect(FanPart.SideMargin) },
+                sideLabel, selected == FanPart.SideMargin, marginColor, marginSelectedColor, vertical = true, onClick = { onSelect(FanPart.SideMargin) },
                 modifier = Modifier
                     .align(if (corner.end) Alignment.TopEnd else Alignment.TopStart)
                     .offset(y = insetTop)
@@ -461,17 +457,16 @@ internal fun FanPreview(
 }
 
 /**
- * A bar beside the preview that selects a margin, as thick as a finger and filled, so it reads as a
- * button. [vertical] bars stand at the side, and turn their label to run along them.
+ * The fixed part of a margin: a bar beside the preview, as thick as a finger, with square corners and
+ * the colour of the margin it adjoins, so the two read as one block that the bar makes easy to tap. [vertical] bars stand at the side, and turn their label to run along them.
  */
 @Composable
-private fun MarginBar(label: String, selected: Boolean, vertical: Boolean, onClick: () -> Unit, modifier: Modifier) {
+private fun MarginBar(label: String, selected: Boolean, color: Color, selectedColor: Color, vertical: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) colors.primary else colors.secondaryContainer)
+            .background(if (selected) selectedColor else color)
             .clickable(onClick = onClick),
     ) {
         Text(
