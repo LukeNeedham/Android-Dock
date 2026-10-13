@@ -31,8 +31,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -167,6 +174,16 @@ private fun plusCentre(width: Float, height: Float, density: Float, corner: Dock
     return Offset(x.coerceIn(r, width - r), height / 2)
 }
 
+/** Sliders on this page have a white accent. */
+@Composable
+private fun whiteSliderColors() = SliderDefaults.colors(
+    thumbColor = Color.White,
+    activeTrackColor = Color.White,
+    inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+    activeTickColor = Color.Black.copy(alpha = 0.4f),
+    inactiveTickColor = Color.White.copy(alpha = 0.5f),
+)
+
 /** How thick the bars for the margins are, beside the preview. */
 private val MARGIN_BAR = 50.dp
 
@@ -180,9 +197,9 @@ private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart
     val ringLabels = (0 until ringCount).map { stringResource(R.string.row_title, it + 1) }
     val parts = buildList {
         add(FanPart.Ring(-1) to cornerLabel)
-        ringLabels.forEachIndexed { i, label -> add(FanPart.Ring(i) to label) }
         add(FanPart.BottomMargin to bottomLabel)
         add(FanPart.SideMargin to sideLabel)
+        ringLabels.forEachIndexed { i, label -> add(FanPart.Ring(i) to label) }
     }
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -195,10 +212,10 @@ private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart
             Text(
                 label,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (on) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(if (on) Color.White.copy(alpha = 0.2f).compositeOver(base) else base)
+                    .background(if (on) Color.White else base)
                     .clickable { onSelect(part) }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             )
@@ -267,7 +284,7 @@ internal fun FanPreview(
         // a translucent white over it.
         val highlight = Color.White.copy(alpha = 0.2f)
         val barColor = MaterialTheme.colorScheme.surfaceVariant
-        val barSelectedColor = highlight.compositeOver(barColor)
+        val barSelectedColor = Color.White
         // The rings are centred on the corner moved in by the padding, but the background is
         // centred on the corner itself, and reaches far enough to hold the outermost ring.
         val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
@@ -281,7 +298,7 @@ internal fun FanPreview(
                 .then(if (interactive) Modifier.horizontalScroll(scroll) else Modifier),
         ) {
         Canvas(
-            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(canvasWidth).height(backgroundDp.dp))
+            modifier = (if (thumbnailDp != null) Modifier.size(thumbnailDp.dp) else Modifier.width(canvasWidth).height((radiusDp + bottomPad).dp))
                 .align(
                     when (corner) {
                         DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
@@ -456,7 +473,7 @@ internal fun FanPreview(
                     .align(if (corner.end) Alignment.TopEnd else Alignment.TopStart)
                     .offset(y = insetTop)
                     .width(bar)
-                    .height(backgroundDp.dp),
+                    .height((radiusDp + bottomPad).dp),
             )
         }
     }
@@ -479,7 +496,7 @@ private fun MarginBar(label: String, selected: Boolean, color: Color, selectedCo
             // The arrow points along the distance it changes; turned with the label, it still does.
             "↕  $label",
             style = MaterialTheme.typography.labelLarge,
-            color = colors.onSurfaceVariant,
+            color = if (selected) Color.Black else colors.onSurfaceVariant,
             maxLines = 1,
             softWrap = false,
             modifier = if (vertical) Modifier.wrapContentSize(unbounded = true).rotate(-90f) else Modifier,
@@ -516,13 +533,13 @@ private fun RowsEditor(
         val bottom = selectedPart == FanPart.BottomMargin
         Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-                val edge = stringResource(if (bottom) corner.verticalEdge else corner.horizontalEdge)
                 val pad = if (bottom) bottomPad else sidePad
-                Text(stringResource(R.string.slider_padding, edge, pad), modifier = Modifier.padding(top = 12.dp))
+                Text(stringResource(R.string.slider_padding, pad), modifier = Modifier.padding(top = 12.dp))
                 Slider(
                     value = pad.toFloat(),
                     onValueChange = { if (bottom) onBottomPad(it.toInt()) else onSidePad(it.toInt()) },
                     valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
+                    colors = whiteSliderColors(),
                 )
             }
         }
@@ -531,7 +548,7 @@ private fun RowsEditor(
         Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    Checkbox(checked = showCurrent, onCheckedChange = onShowCurrent)
+                    Checkbox(checked = showCurrent, onCheckedChange = onShowCurrent, colors = CheckboxDefaults.colors(checkedColor = Color.White, checkmarkColor = Color.Black))
                     Text(stringResource(R.string.row_show_current))
                 }
                 Text(stringResource(R.string.row_width, currentWidth))
@@ -539,6 +556,7 @@ private fun RowsEditor(
                     value = currentWidth.toFloat(),
                     onValueChange = { onCurrentWidth(it.toInt()) },
                     valueRange = DockPrefs.currentWidthMin(showCurrent).toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
+                    colors = whiteSliderColors(),
                 )
             }
         }
@@ -547,18 +565,7 @@ private fun RowsEditor(
     val row = rows[index]
     Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Spacer(Modifier.weight(1f))
-                IconButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        rows.removeAt(index)
-                        onSelect(FanPart.Ring(index.coerceAtMost(rows.lastIndex)))
-                        save()
-                    },
-                    enabled = rows.size > 1,
-                ) { Text("✕", modifier = Modifier.semantics { contentDescription = delete }) }
-            }
+            Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.row_count, row.count))
             Slider(
                 value = row.count.toFloat(),
@@ -569,6 +576,7 @@ private fun RowsEditor(
                 },
                 valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
                 steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
+                colors = whiteSliderColors(),
             )
             Text(stringResource(R.string.row_width, row.widthDp))
             Slider(
@@ -578,7 +586,28 @@ private fun RowsEditor(
                     save()
                 },
                 valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
+                colors = whiteSliderColors(),
             )
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    rows.removeAt(index)
+                    onSelect(FanPart.Ring(index.coerceAtMost(rows.lastIndex)))
+                    save()
+                },
+                enabled = rows.size > 1,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black,
+                    disabledContainerColor = Color.White.copy(alpha = 0.3f),
+                    disabledContentColor = Color.Black.copy(alpha = 0.5f),
+                ),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
+            ) {
+                Icon(painterResource(R.drawable.ic_delete), contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text(delete)
+            }
         }
     }
     }

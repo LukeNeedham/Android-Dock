@@ -25,6 +25,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -308,7 +309,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
 @Composable
 private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
     val outline = MaterialTheme.colorScheme.outline
-    Box(
+    Column(
         modifier = Modifier
             .padding(top = 8.dp)
             .fillMaxWidth()
@@ -316,34 +317,48 @@ private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner
             .border(1.dp, outline, RoundedCornerShape(12.dp))
             .padding(6.dp),
     ) {
-        DockPrefs.Corner.entries.forEach { corner ->
-            val isSelected = corner == selected
-            val shape = RoundedCornerShape(8.dp)
-            val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .align(
-                        when (corner) {
-                            DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
-                            DockPrefs.Corner.BOTTOM_LEFT -> Alignment.BottomStart
-                            DockPrefs.Corner.TOP_LEFT -> Alignment.TopStart
-                            DockPrefs.Corner.TOP_RIGHT -> Alignment.TopEnd
-                        },
-                    )
-                    .clip(shape)
-                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(corner) })
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-            ) {
-                Text(stringResource(corner.label), color = content)
-                if (isSelected) {
-                    Icon(
-                        painterResource(R.drawable.ic_check),
-                        contentDescription = null,
-                        tint = content,
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+        // Each corner's whole quarter of the box is the click area; the button drawn in it stays small.
+        listOf(
+            listOf(DockPrefs.Corner.TOP_LEFT, DockPrefs.Corner.TOP_RIGHT),
+            listOf(DockPrefs.Corner.BOTTOM_LEFT, DockPrefs.Corner.BOTTOM_RIGHT),
+        ).forEach { line ->
+            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                line.forEach { corner ->
+                    val isSelected = corner == selected
+                    val shape = RoundedCornerShape(8.dp)
+                    val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(corner) }),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .align(
+                                    when (corner) {
+                                        DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
+                                        DockPrefs.Corner.BOTTOM_LEFT -> Alignment.BottomStart
+                                        DockPrefs.Corner.TOP_LEFT -> Alignment.TopStart
+                                        DockPrefs.Corner.TOP_RIGHT -> Alignment.TopEnd
+                                    },
+                                )
+                                .clip(shape)
+                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                        ) {
+                            Text(stringResource(corner.label), color = content)
+                            if (isSelected) {
+                                Icon(
+                                    painterResource(R.drawable.ic_check),
+                                    contentDescription = null,
+                                    tint = content,
+                                    modifier = Modifier.padding(start = 6.dp),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

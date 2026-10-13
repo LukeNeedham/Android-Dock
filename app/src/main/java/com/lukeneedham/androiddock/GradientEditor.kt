@@ -283,7 +283,7 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             ) {
                 FilledTonalButton(
                     onClick = {
@@ -292,6 +292,7 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                         onChange(added)
                     },
                     enabled = stops.size < SheetGradient.STOPS_MAX,
+                    modifier = Modifier.weight(1f),
                 ) { Text(stringResource(R.string.stop_add)) }
                 OutlinedButton(
                     onClick = {
@@ -299,6 +300,7 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                         onChange(SheetGradient.removed(stops, index))
                     },
                     enabled = stops.size > 1,
+                    modifier = Modifier.weight(1f),
                 ) { Text(stringResource(R.string.stop_remove)) }
             }
             NavBarSpacer()
