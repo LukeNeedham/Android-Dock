@@ -518,12 +518,7 @@ private fun RowsEditor(
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 val edge = stringResource(if (bottom) corner.verticalEdge else corner.horizontalEdge)
                 val pad = if (bottom) bottomPad else sidePad
-                Text(
-                    stringResource(R.string.part_margin, edge).replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-                Text(stringResource(R.string.slider_padding, edge, pad))
+                Text(stringResource(R.string.slider_padding, edge, pad), modifier = Modifier.padding(top = 12.dp))
                 Slider(
                     value = pad.toFloat(),
                     onValueChange = { if (bottom) onBottomPad(it.toInt()) else onSidePad(it.toInt()) },
@@ -535,12 +530,7 @@ private fun RowsEditor(
         // The corner ring: its width, and whether it shows the app on screen. Nothing else.
         Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-                Text(
-                    stringResource(R.string.row_current_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     Checkbox(checked = showCurrent, onCheckedChange = onShowCurrent)
                     Text(stringResource(R.string.row_show_current))
                 }
@@ -558,11 +548,7 @@ private fun RowsEditor(
     Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.row_title, index + 1),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f),
-                )
+                Spacer(Modifier.weight(1f))
                 IconButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
