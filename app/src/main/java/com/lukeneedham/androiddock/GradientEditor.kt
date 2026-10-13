@@ -56,31 +56,6 @@ import androidx.core.graphics.ColorUtils
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-/**
- * The fan's background on the main page: a small square showing the gradient as the fan will
- * draw it, and a button that opens the page that edits it.
- */
-@Composable
-internal fun BackgroundGradientRow(
-    stops: List<ColorStop>,
-    corner: DockPrefs.Corner,
-    onEdit: () -> Unit,
-) {
-    Column(modifier = Modifier.padding(top = 16.dp)) {
-        Text(stringResource(R.string.bg_title))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 8.dp),
-        ) {
-            GradientBox(stops, corner, Modifier.size(112.dp))
-            FilledTonalButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.bg_edit))
-            }
-        }
-    }
-}
-
 private val HANDLE_RADIUS = 11.dp
 private val SELECTED_HANDLE_RADIUS = 15.dp
 private val HANDLE_REACH = 36.dp

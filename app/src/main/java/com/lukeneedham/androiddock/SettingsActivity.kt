@@ -255,11 +255,18 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         // Read again on every return here.
         val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            FilledTonalButton(
-                onClick = { navigate(Route.FanLayout) },
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(R.string.fan_layout_open)) }
-            // A small, read-only picture of the fan as it is now, refreshed on every return here.
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = { navigate(Route.FanLayout) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.fan_layout_open)) }
+                FilledTonalButton(
+                    onClick = { navigate(Route.FanBackground) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.bg_edit)) }
+            }
+            // A small, read-only picture of the fan as it is now, background and layout together,
+            // refreshed on every return here.
             FanPreview(
                 inner = if (resumes >= 0) DockPrefs.getCurrentWidth(context) else 0,
                 bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
@@ -269,11 +276,10 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 showCurrent = DockPrefs.getShowCurrent(context),
                 stops = stops,
                 corner = corner,
-                thumbnailDp = 96,
+                thumbnailDp = 112,
                 modifier = Modifier.padding(start = 16.dp),
             )
         }
-        BackgroundGradientRow(stops, corner) { navigate(Route.FanBackground) }
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         FilledTonalButton(
