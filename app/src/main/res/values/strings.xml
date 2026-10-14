@@ -67,7 +67,7 @@
     <string name="color_blue">Blue: %1$d</string>
     <string name="color_alpha">Opacity: %1$d</string>
     <string name="sheet_title_loading">Loading apps…</string>
-    <string name="sheet_title_section">Fan layout</string>
+    <string name="sheet_title_section">Fan</string>
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>
     <string name="row_current_title">Corner</string>
