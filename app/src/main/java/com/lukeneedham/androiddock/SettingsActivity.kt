@@ -25,6 +25,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -89,7 +90,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** The pages of the settings app. */
-internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log }
+internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log, FanBackground }
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -175,6 +176,7 @@ private fun AppNavigation(resumes: Int) {
                     Route.Settings -> SettingsScreen(resumes) { backStack.add(it) }
                     Route.Trigger -> TriggerScreen(back)
                     Route.FanLayout -> FanLayoutScreen(back)
+                    Route.FanBackground -> FanBackgroundScreen(back)
                     Route.Blacklist -> BlacklistScreen(back)
                     Route.Debug -> DebugScreen(back) { backStack.add(it) }
                     Route.Log -> LogScreen(back)
@@ -251,34 +253,44 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         ) { Text(stringResource(R.string.trigger_open)) }
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
+        // Read again on every return here.
+        val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            FilledTonalButton(
-                onClick = { navigate(Route.FanLayout) },
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(R.string.fan_layout_open)) }
-            // A small, read-only picture of the fan as it is now, refreshed on every return here.
-            val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = { navigate(Route.FanLayout) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.fan_layout_open)) }
+                FilledTonalButton(
+                    onClick = { navigate(Route.FanBackground) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.bg_edit)) }
+            }
+            // A small, read-only picture of the fan as it is now, background and layout together,
+            // refreshed on every return here.
             FanPreview(
                 inner = if (resumes >= 0) DockPrefs.getCurrentWidth(context) else 0,
                 bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
                 sidePad = DockPrefs.getPadding(context, DockPrefs.Padding.SIDE),
                 rows = if (resumes >= 0) DockPrefs.getRows(context) else emptyList(),
-                selectedRow = null,
+                selected = null,
                 showCurrent = DockPrefs.getShowCurrent(context),
                 stops = stops,
                 corner = corner,
-                thumbnailDp = 96,
+                thumbnailDp = 112,
                 modifier = Modifier.padding(start = 16.dp),
             )
         }
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
+        // Read again on every return here.
+        val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0
         FilledTonalButton(
             onClick = { navigate(Route.Blacklist) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
-        ) { Text(stringResource(R.string.blacklist_open)) }
+        ) { Text(stringResource(R.string.blacklist_open, hiddenCount)) }
 
         if (isDebuggable) {
             FilledTonalButton(
@@ -299,7 +311,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
 @Composable
 private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
     val outline = MaterialTheme.colorScheme.outline
-    Box(
+    Column(
         modifier = Modifier
             .padding(top = 8.dp)
             .fillMaxWidth()
@@ -307,34 +319,48 @@ private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner
             .border(1.dp, outline, RoundedCornerShape(12.dp))
             .padding(6.dp),
     ) {
-        DockPrefs.Corner.entries.forEach { corner ->
-            val isSelected = corner == selected
-            val shape = RoundedCornerShape(8.dp)
-            val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .align(
-                        when (corner) {
-                            DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
-                            DockPrefs.Corner.BOTTOM_LEFT -> Alignment.BottomStart
-                            DockPrefs.Corner.TOP_LEFT -> Alignment.TopStart
-                            DockPrefs.Corner.TOP_RIGHT -> Alignment.TopEnd
-                        },
-                    )
-                    .clip(shape)
-                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(corner) })
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-            ) {
-                Text(stringResource(corner.label), color = content)
-                if (isSelected) {
-                    Icon(
-                        painterResource(R.drawable.ic_check),
-                        contentDescription = null,
-                        tint = content,
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+        // Each corner's whole quarter of the box is the click area; the button drawn in it stays small.
+        listOf(
+            listOf(DockPrefs.Corner.TOP_LEFT, DockPrefs.Corner.TOP_RIGHT),
+            listOf(DockPrefs.Corner.BOTTOM_LEFT, DockPrefs.Corner.BOTTOM_RIGHT),
+        ).forEach { line ->
+            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                line.forEach { corner ->
+                    val isSelected = corner == selected
+                    val shape = RoundedCornerShape(8.dp)
+                    val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(corner) }),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .align(
+                                    when (corner) {
+                                        DockPrefs.Corner.BOTTOM_RIGHT -> Alignment.BottomEnd
+                                        DockPrefs.Corner.BOTTOM_LEFT -> Alignment.BottomStart
+                                        DockPrefs.Corner.TOP_LEFT -> Alignment.TopStart
+                                        DockPrefs.Corner.TOP_RIGHT -> Alignment.TopEnd
+                                    },
+                                )
+                                .clip(shape)
+                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                        ) {
+                            Text(stringResource(corner.label), color = content)
+                            if (isSelected) {
+                                Icon(
+                                    painterResource(R.drawable.ic_check),
+                                    contentDescription = null,
+                                    tint = content,
+                                    modifier = Modifier.padding(start = 6.dp),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

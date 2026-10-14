@@ -14,13 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,6 +41,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -57,33 +55,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
-
-/**
- * The fan's background on the layout page: a small square showing the gradient as the fan will
- * draw it, and a button that opens [GradientEditorSheet].
- */
-@Composable
-internal fun BackgroundGradientRow(
-    stops: List<ColorStop>,
-    corner: DockPrefs.Corner,
-    onChange: (List<ColorStop>) -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.padding(top = 16.dp)) {
-        Text(stringResource(R.string.bg_title))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 8.dp),
-        ) {
-            GradientBox(stops, corner, Modifier.size(112.dp))
-            FilledTonalButton(onClick = { open = true }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.bg_edit))
-            }
-        }
-    }
-    if (open) GradientEditorSheet(stops, corner, onChange) { open = false }
-}
 
 private val HANDLE_RADIUS = 11.dp
 private val SELECTED_HANDLE_RADIUS = 15.dp
@@ -201,7 +172,21 @@ private fun GradientBox(
         val box = Rect(Offset(geometry.margin, geometry.margin), Size(geometry.side, geometry.side))
         // Only the gradient is cut to the box; the handles are drawn over its edge.
         clipPath(Path().apply { addRoundRect(RoundRect(box, CornerRadius(12.dp.toPx()))) }) {
-            drawRect(Color.Gray, box.topLeft, box.size)
+            // Black and white squares, so that a see-through colour can be told from a solid one.
+            val cell = 8.dp.toPx()
+            var row = 0
+            var y = box.top
+            while (y < box.bottom) {
+                var col = 0
+                var x = box.left
+                while (x < box.right) {
+                    drawRect(if ((row + col) % 2 == 0) Color.White else Color.Black, Offset(x, y), Size(minOf(cell, box.right - x), minOf(cell, box.bottom - y)))
+                    x += cell
+                    col++
+                }
+                y += cell
+                row++
+            }
             drawCircle(
                 brush = Brush.radialGradient(
                     colorStops = SheetGradient.expand(stops).map { it.position to Color(it.color) }.toTypedArray(),
@@ -267,30 +252,29 @@ private fun DrawScope.drawHandle(
 }
 
 /**
- * The bottom sheet that edits the background gradient: the gradient in a box with a handle for each
- * stop to drag along the diagonal, then the selected stop's colour, and buttons to add and remove
+ * The page that edits the background gradient: the gradient in a box with a handle for each stop
+ * to drag along the diagonal, then the selected stop's colour, and buttons to add and remove
  * stops. One stop makes the background a single flat colour. Every change is saved as it is made.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GradientEditorSheet(
-    stops: List<ColorStop>,
-    corner: DockPrefs.Corner,
-    onChange: (List<ColorStop>) -> Unit,
-    onDismiss: () -> Unit,
-) {
+internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
+    val context = LocalContext.current
+    val corner = DockPrefs.getCorner(context)
+    var stops by remember { mutableStateOf(DockPrefs.getSheetStops(context)) }
+    val onChange = { new: List<ColorStop> ->
+        stops = new
+        DockPrefs.setSheetStops(context, new)
+    }
     var selected by remember { mutableIntStateOf(0) }
     val index = selected.coerceIn(0, stops.lastIndex)
     val stop = stops[index]
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    ) {
+    SubPage(R.string.bg_title, onBack) {
         Column(
             modifier = Modifier
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 8.dp),
         ) {
             GradientBox(
                 stops, corner,
@@ -313,7 +297,7 @@ private fun GradientEditorSheet(
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             ) {
                 FilledTonalButton(
                     onClick = {
@@ -322,6 +306,7 @@ private fun GradientEditorSheet(
                         onChange(added)
                     },
                     enabled = stops.size < SheetGradient.STOPS_MAX,
+                    modifier = Modifier.weight(1f),
                 ) { Text(stringResource(R.string.stop_add)) }
                 OutlinedButton(
                     onClick = {
@@ -329,8 +314,10 @@ private fun GradientEditorSheet(
                         onChange(SheetGradient.removed(stops, index))
                     },
                     enabled = stops.size > 1,
+                    modifier = Modifier.weight(1f),
                 ) { Text(stringResource(R.string.stop_remove)) }
             }
+            NavBarSpacer()
         }
     }
 }
