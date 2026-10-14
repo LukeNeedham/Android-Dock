@@ -75,7 +75,6 @@
     <string name="slider_padding">Margin: %1$d</string>
     <string name="blacklist_title">Hidden apps</string>
     <string name="blacklist_description">These apps never show on the sheet, and a double tap never switches to them.</string>
-    <string name="blacklist_count">Hidden apps: %1$d</string>
     <string name="blacklist_empty">No hidden apps.</string>
     <string name="blacklist_add">Hide an app</string>
     <string name="blacklist_remove">Show again</string>
@@ -96,6 +95,6 @@
     <string name="action_screenshot">Screenshot</string>
     <string name="action_power">Power menu</string>
     <string name="action_flashlight">Flashlight</string>
-    <string name="blacklist_open">Edit hidden apps</string>
+    <string name="blacklist_open">Edit hidden apps (%1$d)</string>
     <string name="part_margin">%1$s margin</string>
 </resources>
