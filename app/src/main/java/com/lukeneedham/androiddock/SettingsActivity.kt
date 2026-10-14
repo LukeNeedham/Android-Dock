@@ -148,17 +148,30 @@ private fun AppNavigation(resumes: Int) {
 
     // Until setup is done the app is only the onboarding flow, one page per step.
     val context = LocalContext.current
-    var optionalDone by remember { mutableIntStateOf(DockPrefs.getOptionalStepsDone(context)) }
-    val step = if (resumes >= 0) OnboardingStep.current(context, optionalDone) else null
+    var introSeen by remember { mutableStateOf(DockPrefs.getIntroSeen(context)) }
+    var finished by remember { mutableStateOf(DockPrefs.getOnboardingFinished(context)) }
+    // How far through trying the fan the user is; the permission steps are re-checked on every resume.
+    var tryStep by rememberSaveable { mutableStateOf(OnboardingStep.OpenFan) }
+    val step = if (resumes >= 0) OnboardingStep.current(context, introSeen, finished, tryStep) else null
     if (step != null) {
-        val moveTo = { done: Int ->
-            optionalDone = done
-            DockPrefs.setOptionalStepsDone(context, done)
-        }
         OnboardingFlow(
             step,
-            onStepDone = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal + 1) },
-            onStepBack = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal - 1) },
+            onNext = {
+                when (step) {
+                    OnboardingStep.Intro -> {
+                        introSeen = true
+                        DockPrefs.setIntroSeen(context)
+                    }
+                    OnboardingStep.OpenFan -> tryStep = OnboardingStep.CloseFan
+                    OnboardingStep.CloseFan -> tryStep = OnboardingStep.Done
+                    OnboardingStep.Done -> {
+                        finished = true
+                        DockPrefs.setOnboardingFinished(context)
+                    }
+                    else -> {}
+                }
+            },
+            onSkipTrial = { tryStep = OnboardingStep.Done },
         )
         return
     }
@@ -206,11 +219,6 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             .padding(24.dp),
     ) {
         Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
-        Text(
-            stringResource(R.string.onboarding_all_set),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 8.dp),
-        )
         PermissionStatus(
             title = R.string.status_accessibility_title,
             ok = SetupState.isAccessibilityEnabled(context),

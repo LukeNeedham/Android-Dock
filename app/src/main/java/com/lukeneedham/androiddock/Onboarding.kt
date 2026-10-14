@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.slideInHorizontally
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -27,76 +27,79 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /**
- * The onboarding steps, in order. The first two are required and are checked against the system
- * every time, so they come back if a permission is lost. The rest are optional: the user moves
- * past each with Next or Skip, and that progress is remembered.
+ * The onboarding steps, in order. The intro is shown once. The two permission steps are checked
+ * against the system every time, so they come back if a permission is lost. After them the user
+ * tries the fan once: [OpenFan] waits for it to open, [CloseFan] for it to close, and [Done] ends it.
  */
-internal enum class OnboardingStep(val required: Boolean) {
-    Accessibility(true),
-    UsageAccess(true),
-    FanLayout(false),
-    Trigger(false),
-    Blacklist(false),
+internal enum class OnboardingStep {
+    Intro,
+    Accessibility,
+    UsageAccess,
+    OpenFan,
+    CloseFan,
+    Done,
     ;
 
     companion object {
-        /** The step to show now, or null when all setup is done and the app can open. */
-        fun current(context: Context, optionalDone: Int): OnboardingStep? = when {
+        /**
+         * The step to show now, or null when onboarding is over and the app can open. [tryStep] is
+         * how far through the fan trial the user is: the [OpenFan], [CloseFan] or [Done] step.
+         */
+        fun current(context: Context, introSeen: Boolean, finished: Boolean, tryStep: OnboardingStep): OnboardingStep? = when {
+            !introSeen -> Intro
             !SetupState.isAccessibilityEnabled(context) -> Accessibility
             !SetupState.isUsageAccessGranted(context) -> UsageAccess
-            optionalDone < DockPrefs.OPTIONAL_STEPS -> entries[FanLayout.ordinal + optionalDone]
-            else -> null
+            finished -> null
+            else -> tryStep
         }
     }
 }
 
 /**
- * The page for [step], sliding in from the right (and the old one out to the left) when moving
- * forwards, and the other way round when moving back. [onStepDone] moves past an optional step;
- * [onStepBack] returns from one to the optional step before it.
+ * The page for [step], sliding in from the right and the old one out to the left. [onNext] moves
+ * on from the step; the pages that wait for the fan to open or close call it themselves.
  */
 @Composable
-internal fun OnboardingFlow(step: OnboardingStep, onStepDone: () -> Unit, onStepBack: () -> Unit) {
-    val canGoBack = step.ordinal > OnboardingStep.FanLayout.ordinal
-    BackHandler(enabled = canGoBack, onBack = onStepBack)
+internal fun OnboardingFlow(step: OnboardingStep, onNext: () -> Unit, onSkipTrial: () -> Unit) {
     AnimatedContent(
         targetState = step,
         transitionSpec = {
-            val forwards = targetState.ordinal > initialState.ordinal
-            val direction = if (forwards) 1 else -1
-            (slideInHorizontally { width -> width * direction } togetherWith
-                slideOutHorizontally { width -> -width * direction })
+            (slideInHorizontally { width -> width } togetherWith slideOutHorizontally { width -> -width })
                 .using(SizeTransform(clip = false))
         },
         label = "onboarding",
     ) { page ->
-        OnboardingPage(page, onStepDone, if (page.ordinal > OnboardingStep.FanLayout.ordinal) onStepBack else null)
+        OnboardingPage(page, onNext, onSkipTrial)
     }
 }
 
 @Composable
-private fun OnboardingPage(step: OnboardingStep, onStepDone: () -> Unit, onBack: (() -> Unit)?) {
-    val header: @Composable () -> Unit = { OnboardingHeader(step) }
-    val footer: @Composable () -> Unit = { OptionalFooter(step, onStepDone) }
+private fun OnboardingPage(step: OnboardingStep, onNext: () -> Unit, onSkipTrial: () -> Unit) {
     when (step) {
-        OnboardingStep.Accessibility -> PermissionPage(step, R.string.step_accessibility_title) {
+        OnboardingStep.Intro -> IntroPage(onNext)
+        OnboardingStep.Accessibility -> StepPage(step, R.string.step_accessibility_title) {
             val context = LocalContext.current
             Text(stringResource(R.string.step_accessibility_description), style = MaterialTheme.typography.bodyLarge)
-            Text(
-                stringResource(R.string.step_accessibility_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 16.dp),
-            )
             Button(
                 onClick = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             ) { Text(stringResource(R.string.step_accessibility_action)) }
+            Text(
+                stringResource(R.string.step_accessibility_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 24.dp),
+            )
             TextButton(
                 onClick = {
                     context.startActivity(
@@ -109,7 +112,7 @@ private fun OnboardingPage(step: OnboardingStep, onStepDone: () -> Unit, onBack:
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.step_app_info_action)) }
         }
-        OnboardingStep.UsageAccess -> PermissionPage(step, R.string.step_usage_title) {
+        OnboardingStep.UsageAccess -> StepPage(step, R.string.step_usage_title) {
             val context = LocalContext.current
             Text(stringResource(R.string.step_usage_description), style = MaterialTheme.typography.bodyLarge)
             Button(
@@ -117,13 +120,48 @@ private fun OnboardingPage(step: OnboardingStep, onStepDone: () -> Unit, onBack:
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             ) { Text(stringResource(R.string.step_usage_action)) }
         }
-        OnboardingStep.FanLayout -> FanLayoutScreen(onBack, footer, header)
-        OnboardingStep.Trigger -> TriggerScreen(onBack, footer, header)
-        OnboardingStep.Blacklist -> BlacklistScreen(onBack, footer, header)
+        OnboardingStep.OpenFan -> {
+            WhenFan(open = true, onNext)
+            StepPage(step, R.string.step_open_title) {
+                val corner = stringResource(DockPrefs.getCorner(LocalContext.current).label).lowercase()
+                Text(stringResource(R.string.step_open_description, corner), style = MaterialTheme.typography.bodyLarge)
+                TextButton(onClick = onSkipTrial, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) {
+                    Text(stringResource(R.string.onboarding_skip))
+                }
+            }
+        }
+        OnboardingStep.CloseFan -> {
+            WhenFan(open = false, onNext)
+            StepPage(step, R.string.step_close_title) {
+                Text(stringResource(R.string.step_close_description), style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+        OnboardingStep.Done -> StepPage(step, R.string.step_done_title) {
+            Text(stringResource(R.string.step_done_description), style = MaterialTheme.typography.bodyLarge)
+            listOf(
+                R.string.position_title,
+                R.string.fan_layout_title,
+                R.string.bg_title,
+                R.string.blacklist_title,
+            ).forEach { Text("•  " + stringResource(it), modifier = Modifier.padding(top = 8.dp, start = 8.dp)) }
+            Button(onClick = onNext, modifier = Modifier.fillMaxWidth().padding(top = 32.dp)) {
+                Text(stringResource(R.string.onboarding_finish))
+            }
+        }
     }
 }
 
-/** The banner on every onboarding page, so it is clear the user is setting the app up. */
+/** Calls [onReached] once the fan is open ([open]) or closed ([open] false). The fan opens over this app, so it is polled. */
+@Composable
+private fun WhenFan(open: Boolean, onReached: () -> Unit) {
+    val reached by rememberUpdatedState(onReached)
+    LaunchedEffect(open) {
+        while (DockActivity.isOpen != open) delay(100)
+        reached()
+    }
+}
+
+/** The banner on every onboarding page after the intro, so it is clear the user is setting the app up. */
 @Composable
 internal fun OnboardingHeader(step: OnboardingStep) {
     Column(
@@ -139,16 +177,16 @@ internal fun OnboardingHeader(step: OnboardingStep) {
             color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
         Text(
-            stepCount(step) + if (step.required) "" else " · " + stringResource(R.string.onboarding_optional),
+            stepCount(step),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }
 
-/** The page of a required permission step: the banner, the explanation and the button. */
+/** The page of one step: the banner, the title and the step's own [content]. */
 @Composable
-private fun PermissionPage(step: OnboardingStep, title: Int, content: @Composable () -> Unit) {
+private fun StepPage(step: OnboardingStep, title: Int, content: @Composable () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         OnboardingHeader(step)
         Column(
@@ -158,34 +196,64 @@ private fun PermissionPage(step: OnboardingStep, title: Int, content: @Composabl
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            if (step == OnboardingStep.Accessibility) {
-                Text(stringResource(R.string.onboarding_welcome), style = MaterialTheme.typography.bodyMedium)
-            }
             Text(
                 stringResource(title),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 8.dp),
             )
             content()
-            Text(
-                stringResource(R.string.onboarding_required_note),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 24.dp),
-            )
             NavBarSpacer()
         }
     }
 }
 
-/** Pinned under an optional step's own page: the Next button (Finish on the last). */
 @Composable
-private fun OptionalFooter(step: OnboardingStep, onStepDone: () -> Unit) {
-    val last = step == OnboardingStep.Blacklist
-    Button(onClick = onStepDone, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
-        Text(stringResource(if (last) R.string.onboarding_finish else R.string.onboarding_next))
+private fun stepCount(step: OnboardingStep) =
+    stringResource(R.string.onboarding_step_count, step.ordinal, OnboardingStep.entries.size - 1)
+
+/** The first page: what Fan is and how it works. Room is left between the points for demo GIFs later. */
+@Composable
+private fun IntroPage(onStart: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().topAndSideInsets()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+        ) {
+            Text(stringResource(R.string.intro_title), style = MaterialTheme.typography.headlineLarge)
+            Text(
+                stringResource(R.string.intro_summary),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            IntroPoint(R.string.intro_point_tap_title, R.string.intro_point_tap_body)
+            IntroPoint(R.string.intro_point_pick_title, R.string.intro_point_pick_body)
+            IntroPoint(R.string.intro_point_hold_title, R.string.intro_point_hold_body)
+        }
+        Column(modifier = Modifier.navigationBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
+            Text(
+                stringResource(R.string.intro_setup_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.intro_start))
+            }
+        }
     }
 }
 
 @Composable
-private fun stepCount(step: OnboardingStep) =
-    stringResource(R.string.onboarding_step_count, step.ordinal + 1, OnboardingStep.entries.size)
+private fun IntroPoint(title: Int, body: Int) {
+    Column(modifier = Modifier.padding(top = 28.dp)) {
+        Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
