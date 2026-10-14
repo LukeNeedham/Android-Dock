@@ -239,6 +239,16 @@ object DockPrefs {
         prefs(context).edit().putInt(ONBOARDING_KEY, count).apply()
     }
 
+    private const val INTRO_KEY = "onboarding_intro_seen"
+
+    /** Whether the intro page has been passed. Anyone already part-way through setup counts as having seen it. */
+    fun getIntroSeen(context: Context): Boolean =
+        prefs(context).getBoolean(INTRO_KEY, getOptionalStepsDone(context) > 0)
+
+    fun setIntroSeen(context: Context) {
+        prefs(context).edit().putBoolean(INTRO_KEY, true).apply()
+    }
+
     fun isSettingKey(key: String?) = key == CORNER_KEY || Setting.entries.any { it.key == key }
 
     fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }

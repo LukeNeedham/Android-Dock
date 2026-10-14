@@ -149,7 +149,8 @@ private fun AppNavigation(resumes: Int) {
     // Until setup is done the app is only the onboarding flow, one page per step.
     val context = LocalContext.current
     var optionalDone by remember { mutableIntStateOf(DockPrefs.getOptionalStepsDone(context)) }
-    val step = if (resumes >= 0) OnboardingStep.current(context, optionalDone) else null
+    var introSeen by remember { mutableStateOf(DockPrefs.getIntroSeen(context)) }
+    val step = if (resumes >= 0) OnboardingStep.current(context, introSeen, optionalDone) else null
     if (step != null) {
         val moveTo = { done: Int ->
             optionalDone = done
@@ -157,7 +158,11 @@ private fun AppNavigation(resumes: Int) {
         }
         OnboardingFlow(
             step,
-            onStepDone = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal + 1) },
+            onStepDone = if (step == OnboardingStep.Intro) {
+                { introSeen = true; DockPrefs.setIntroSeen(context) }
+            } else {
+                { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal + 1) }
+            },
             onStepBack = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal - 1) },
         )
         return

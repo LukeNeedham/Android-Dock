@@ -19,7 +19,16 @@
     <string name="onboarding_optional">Optional</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_finish">Finish</string>
-    <string name="onboarding_welcome">Fan opens from a trigger in the screen corner. Two quick permissions first.</string>
+    <string name="intro_title">Welcome to Fan</string>
+    <string name="intro_summary">Switch between your recent apps from a fan that opens in a corner of the screen.</string>
+    <string name="intro_point_tap_title">Tap the trigger</string>
+    <string name="intro_point_tap_body">A small strip in the corner opens the fan.</string>
+    <string name="intro_point_pick_title">Pick an app</string>
+    <string name="intro_point_pick_body">Your recent apps fan out. Tap one to switch to it.</string>
+    <string name="intro_point_hold_title">Long press for more</string>
+    <string name="intro_point_hold_body">Back, Home, Recents, screenshots and other quick actions.</string>
+    <string name="intro_setup_note">Setup takes two permissions and a few optional tweaks.</string>
+    <string name="intro_start">Get started</string>
     <string name="status_accessibility_title">Accessibility service</string>
     <string name="status_usage_title">App usage access</string>
     <string name="status_completed">Completed</string>
