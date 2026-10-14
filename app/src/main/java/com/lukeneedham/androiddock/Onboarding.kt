@@ -167,11 +167,6 @@ private fun PermissionPage(step: OnboardingStep, title: Int, content: @Composabl
                 modifier = Modifier.padding(top = 16.dp, bottom = 16.dp),
             )
             content()
-            Text(
-                stringResource(R.string.onboarding_required_note),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 24.dp),
-            )
             NavBarSpacer()
         }
     }
