@@ -35,6 +35,9 @@
     <string name="log_copy">Copy</string>
     <string name="log_clear">Clear</string>
     <string name="log_copied">Log copied</string>
+    <string name="corner_description">Which corner of the screen the trigger and the fan sit in.</string>
+    <string name="trigger_summary">The strip that opens the fan: its position, size and colour.</string>
+    <string name="fan_layout_summary">The rings of apps in the fan, and the background behind them.</string>
     <string name="corner_title">Screen corner</string>
     <string name="corner_bottom_right">Bottom right</string>
     <string name="corner_bottom_left">Bottom left</string>

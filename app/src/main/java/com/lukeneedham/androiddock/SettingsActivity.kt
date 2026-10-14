@@ -233,13 +233,13 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
         var corner by remember { mutableStateOf(DockPrefs.getCorner(context)) }
-        SectionHeader(R.string.corner_title, null)
+        SectionHeader(R.string.corner_title, R.string.corner_description)
         CornerPicker(corner) {
             corner = it
             DockPrefs.setCorner(context, it)
         }
 
-        SectionHeader(R.string.position_title, null)
+        SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
             onClick = { navigate(Route.Trigger) },
             modifier = Modifier
@@ -247,7 +247,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.trigger_open)) }
 
-        SectionHeader(R.string.sheet_title_section, null)
+        SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
         // Read again on every return here.
         val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
@@ -277,7 +277,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             )
         }
 
-        SectionHeader(R.string.blacklist_title, null)
+        SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         // Read again on every return here.
         val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0
         FilledTonalButton(
