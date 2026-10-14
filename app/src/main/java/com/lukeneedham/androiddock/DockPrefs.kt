@@ -228,25 +228,27 @@ object DockPrefs {
         prefs(context).edit().putStringSet(BLACKLIST_KEY, packages.toSet()).apply()
     }
 
-    /** How many of the optional onboarding steps (fan layout, trigger, blacklist) are finished. */
-    const val OPTIONAL_STEPS = 3
-    private const val ONBOARDING_KEY = "onboarding_optional_done"
-
-    fun getOptionalStepsDone(context: Context): Int =
-        prefs(context).getInt(ONBOARDING_KEY, 0).coerceIn(0, OPTIONAL_STEPS)
-
-    fun setOptionalStepsDone(context: Context, count: Int) {
-        prefs(context).edit().putInt(ONBOARDING_KEY, count).apply()
-    }
-
+    /** The old optional onboarding steps (fan layout, trigger, blacklist), whose progress still tells us who has set up before. */
+    private const val LEGACY_ONBOARDING_KEY = "onboarding_optional_done"
     private const val INTRO_KEY = "onboarding_intro_seen"
+    private const val FINISHED_KEY = "onboarding_finished"
 
-    /** Whether the intro page has been passed. Anyone already part-way through setup counts as having seen it. */
+    private fun legacyStepsDone(context: Context) = prefs(context).getInt(LEGACY_ONBOARDING_KEY, 0)
+
+    /** Whether the intro page has been passed. Anyone already part-way through the old setup counts as having seen it. */
     fun getIntroSeen(context: Context): Boolean =
-        prefs(context).getBoolean(INTRO_KEY, getOptionalStepsDone(context) > 0)
+        prefs(context).getBoolean(INTRO_KEY, legacyStepsDone(context) > 0)
 
     fun setIntroSeen(context: Context) {
         prefs(context).edit().putBoolean(INTRO_KEY, true).apply()
+    }
+
+    /** Whether onboarding is over. Anyone who finished the old setup has already been through it. */
+    fun getOnboardingFinished(context: Context): Boolean =
+        prefs(context).getBoolean(FINISHED_KEY, legacyStepsDone(context) >= 3)
+
+    fun setOnboardingFinished(context: Context) {
+        prefs(context).edit().putBoolean(FINISHED_KEY, true).apply()
     }
 
     fun isSettingKey(key: String?) = key == CORNER_KEY || Setting.entries.any { it.key == key }

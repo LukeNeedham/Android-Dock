@@ -148,22 +148,30 @@ private fun AppNavigation(resumes: Int) {
 
     // Until setup is done the app is only the onboarding flow, one page per step.
     val context = LocalContext.current
-    var optionalDone by remember { mutableIntStateOf(DockPrefs.getOptionalStepsDone(context)) }
     var introSeen by remember { mutableStateOf(DockPrefs.getIntroSeen(context)) }
-    val step = if (resumes >= 0) OnboardingStep.current(context, introSeen, optionalDone) else null
+    var finished by remember { mutableStateOf(DockPrefs.getOnboardingFinished(context)) }
+    // How far through trying the fan the user is; the permission steps are re-checked on every resume.
+    var tryStep by rememberSaveable { mutableStateOf(OnboardingStep.OpenFan) }
+    val step = if (resumes >= 0) OnboardingStep.current(context, introSeen, finished, tryStep) else null
     if (step != null) {
-        val moveTo = { done: Int ->
-            optionalDone = done
-            DockPrefs.setOptionalStepsDone(context, done)
-        }
         OnboardingFlow(
             step,
-            onStepDone = if (step == OnboardingStep.Intro) {
-                { introSeen = true; DockPrefs.setIntroSeen(context) }
-            } else {
-                { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal + 1) }
+            onNext = {
+                when (step) {
+                    OnboardingStep.Intro -> {
+                        introSeen = true
+                        DockPrefs.setIntroSeen(context)
+                    }
+                    OnboardingStep.OpenFan -> tryStep = OnboardingStep.CloseFan
+                    OnboardingStep.CloseFan -> tryStep = OnboardingStep.Done
+                    OnboardingStep.Done -> {
+                        finished = true
+                        DockPrefs.setOnboardingFinished(context)
+                    }
+                    else -> {}
+                }
             },
-            onStepBack = { moveTo(step.ordinal - OnboardingStep.FanLayout.ordinal - 1) },
+            onSkipTrial = { tryStep = OnboardingStep.Done },
         )
         return
     }
