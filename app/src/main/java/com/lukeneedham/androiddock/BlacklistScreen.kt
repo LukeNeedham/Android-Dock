@@ -59,7 +59,12 @@ internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            Text(stringResource(R.string.blacklist_description), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                stringResource(R.string.blacklist_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
             BlacklistEditor(context)
             NavBarSpacer()
         }
@@ -119,7 +124,12 @@ private fun BlacklistEditor(context: Context) {
         value = withContext(Dispatchers.IO) { hidden.toList().map { loadAppEntry(context, it) } }
     }
     if (hidden.isEmpty()) {
-        Text(stringResource(R.string.blacklist_empty), modifier = Modifier.padding(top = 8.dp))
+        Text(
+            stringResource(R.string.blacklist_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
     }
     entries.forEach { app ->
         AppRow(app) {
@@ -135,7 +145,7 @@ private fun BlacklistEditor(context: Context) {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             picking = true
         },
-        modifier = Modifier.padding(top = 8.dp),
+        modifier = Modifier.padding(top = 16.dp),
     ) { Text(stringResource(R.string.blacklist_add)) }
 
     if (picking) {
