@@ -18,7 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -56,7 +56,7 @@ internal fun SubPage(
     val hasFooter = footer != null
     Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
         header?.invoke()
-        TopAppBar(
+        CenterAlignedTopAppBar(
             // The header, when there is one, already sits under the status bar.
             windowInsets = if (header != null) WindowInsets(0) else TopAppBarDefaults.windowInsets,
             title = { Text(stringResource(title)) },

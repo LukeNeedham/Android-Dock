@@ -199,7 +199,7 @@ private fun GradientBox(
         }
         if (onChange == null) return@Canvas
         drawLine(
-            color = Color.White.copy(alpha = 0.7f),
+            color = accent,
             start = geometry.origin,
             end = geometry.point(1f),
             strokeWidth = 2.dp.toPx(),
