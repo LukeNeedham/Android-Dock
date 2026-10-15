@@ -74,8 +74,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import kotlin.math.PI
-import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
@@ -223,10 +221,8 @@ private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart
     }
 }
 
-private const val MAX_ICON_SIZE = 64
-private const val MIN_ICON_SIZE = DockPrefs.ICON_SIZE_MIN
-private const val ROW_SPACING = 1.2f
-private const val ICON_SPACING = 1.15f
+private const val MAX_ICON_SIZE = FanGeometry.MAX_ICON_SIZE_DP
+private const val MIN_ICON_SIZE = FanGeometry.MIN_ICON_SIZE_DP
 
 /** Distinct, fixed colours for the placeholder apps. */
 private val PLACEHOLDER_COLORS = listOf(
@@ -399,31 +395,15 @@ internal fun FanPreview(
 
                 if (row.count == 0) return@forEachIndexed
 
-                // The angles of the first and last icon, which cross over when the icons are too big
-                // for the ring: then the icon does not fit.
-                fun arc(size: Float): Pair<Float, Float> {
-                    val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
-                    return inset to (PI / 2).toFloat() - inset
-                }
-
                 val n = row.count
-                var size = min(MAX_ICON_SIZE * dp, (end - start) / ROW_SPACING)
-                while (size > MIN_ICON_SIZE * dp) {
-                    val (from, to) = arc(size)
-                    val fits = if (n == 1) to >= from else {
-                        val step = (to - from) / (n - 1)
-                        to > from && 2 * centreRadius * sin(step / 2) >= size * ICON_SPACING
-                    }
-                    if (fits) break
-                    size -= 1f
-                }
-                size = size.coerceAtLeast(MIN_ICON_SIZE * dp)
-                // Even the smallest icon is too big: put it on the diagonal.
-                val (from, to) = arc(size).let { (a, b) ->
-                    if (b >= a) a to b else (PI / 4).toFloat().let { it to it }
-                }
+                val placement = FanGeometry.place(
+                    start, end, n,
+                    maxSize = MAX_ICON_SIZE * dp,
+                    minSize = MIN_ICON_SIZE * dp,
+                )
+                val size = placement.size
                 repeat(n) { slot ->
-                    val angle = if (n == 1) (from + to) / 2 else from + (to - from) * slot / (n - 1)
+                    val angle = placement.angle(slot, n)
                     drawCircle(
                         // Each row starts from its own place in the palette, so the colours of a row
                         // do not depend on how many icons the rows before it hold.

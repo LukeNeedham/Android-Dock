@@ -1,12 +1,13 @@
 [versions]
-agp = "8.9.3"
-kotlin = "2.0.21"
-coreKtx = "1.15.0"
-appcompat = "1.7.0"
-material = "1.12.0"
-composeBom = "2025.11.01"
-activityCompose = "1.12.0"
-navigation3 = "1.0.1"
+agp = "9.4.1"
+kotlin = "2.4.21"
+coreKtx = "1.19.1"
+appcompat = "1.8.0"
+material = "1.14.0"
+composeBom = "2026.09.00"
+activityCompose = "1.13.0"
+# 1.2.0 needs minSdk 24; 1.1.7 is the newest that supports the app's minSdk 23.
+navigation3 = "1.1.7"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -21,5 +22,4 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

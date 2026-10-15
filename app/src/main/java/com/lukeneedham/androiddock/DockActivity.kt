@@ -28,7 +28,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
-import kotlin.math.asin
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -425,51 +424,32 @@ class DockActivity : AppCompatActivity() {
         val bottomPad = DockPrefs.getPadding(this, DockPrefs.Padding.BOTTOM).dp
         val sidePad = DockPrefs.getPadding(this, DockPrefs.Padding.SIDE).dp
         // Angles and radii are measured from the fan's centre, which is moved in from the corner
-        // by the padding. The icons of a row run from `from` (nearest the bottom) to `to` (nearest
-        // the side), measured as the angle up from the bottom. The first and last icon touch the
-        // two straight edges of the fan, and the rest are spread evenly between them.
-        data class Placement(val centreRadius: Float, val size: Int, val from: Float, val to: Float)
-
-        // The angles of the first and last icon, which cross over when the icons are too big for
-        // the ring: then the icon does not fit.
-        fun arc(centreRadius: Float, size: Int): Pair<Float, Float> {
-            val inset = asin((size / 2f / centreRadius).coerceAtMost(1f))
-            return inset to (Math.PI / 2).toFloat() - inset
-        }
-
-        val placed = rows.mapIndexed { i, _ ->
+        // by the padding. The icons of a row run from the angle nearest the bottom to the one
+        // nearest the side, see [FanGeometry].
+        val placed = rows.mapIndexed { i, row ->
             val (start, end) = bands[i]
-            val centreRadius = (start + end) / 2
             // A row is laid out as if it were full, whatever it holds.
-            val n = rows[i].count
-            var size = minOf(MAX_ICON_SIZE.dp.toFloat(), (end - start) / ROW_SPACING).toInt()
-            while (size > MIN_ICON_SIZE.dp && n > 0) {
-                val (from, to) = arc(centreRadius, size)
-                val fits = if (n == 1) to >= from else {
-                    val step = (to - from) / (n - 1)
-                    to > from && 2 * centreRadius * sin(step / 2) >= size * ICON_SPACING
-                }
-                if (fits) break
-                size--
-            }
-            size = size.coerceAtLeast(MIN_ICON_SIZE.dp)
-            // Even the smallest icon is too big: put it on the diagonal.
-            val (from, to) = arc(centreRadius, size).let { (a, b) ->
-                if (b >= a) a to b else (Math.PI / 4).toFloat().let { it to it }
-            }
-            Placement(centreRadius, size, from, to)
+            FanGeometry.place(
+                start, end, row.count,
+                maxSize = MAX_ICON_SIZE.dp.toFloat(),
+                minSize = MIN_ICON_SIZE.dp.toFloat(),
+                wholePixels = true,
+            )
         }
 
         var next = 0
         filled.forEachIndexed { i, held ->
             val count = rows[i].count
-            val (centreRadius, size, from, to) = placed[i]
+            val (start, end) = bands[i]
+            val centreRadius = (start + end) / 2
+            val placement = placed[i]
+            val size = placement.size.toInt()
             // The first slots of a row that is not full are filled, and the rest are left empty.
             repeat(held) { slot ->
                 val entry = if (i == 0) current!! else entries[next++]
                 // The most recent app is nearest the bottom edge, where the thumb that pressed the
                 // corner button is, and the oldest is at the top of the arc.
-                val angle = if (count == 1) (from + to) / 2 else from + (to - from) * slot / (count - 1)
+                val angle = placement.angle(slot, count)
                 val cx = centreRadius * cos(angle)
                 val cy = centreRadius * sin(angle)
                 addAppView(
@@ -556,9 +536,7 @@ class DockActivity : AppCompatActivity() {
 
         private const val ENTER_MS = 280L
         private const val EXIT_MS = 200L
-        private const val MAX_ICON_SIZE = 64
-        private const val MIN_ICON_SIZE = DockPrefs.ICON_SIZE_MIN
-        private const val ROW_SPACING = 1.2f
-        private const val ICON_SPACING = 1.15f
+        private const val MAX_ICON_SIZE = FanGeometry.MAX_ICON_SIZE_DP
+        private const val MIN_ICON_SIZE = FanGeometry.MIN_ICON_SIZE_DP
     }
 }
