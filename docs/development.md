@@ -3,7 +3,7 @@
 ## Project setup
 
 - Kotlin, single `app` module, package `com.lukeneedham.androiddock`.
-- `minSdk` 23, `targetSdk` 35, `compileSdk` 36. The floor is set by Compose and the libraries around
+- `minSdk` 23, `targetSdk` 37, `compileSdk` 37. The floor is set by Compose and the libraries around
   it, and by the trigger overlay and the flashlight.
 - Gradle Kotlin DSL with a version catalog (`gradle/libs.versions.toml`).
 

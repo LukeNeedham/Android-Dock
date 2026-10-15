@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -10,12 +9,12 @@ apply(from = "https://raw.githubusercontent.com/LukeNeedham/ci-workflows/main/gr
 
 android {
     namespace = "com.lukeneedham.androiddock"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.lukeneedham.androiddock"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 37
     }
 
     // A fixed debug key, committed to the repo. CI builds on a fresh machine each time, which would
@@ -32,7 +31,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 shrinks and obfuscates the code, and shrinkResources drops resources it no longer
+            // reaches. The activities and the accessibility service are kept by the rules that AAPT
+            // generates from the manifest; nothing else is looked up by name.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
@@ -43,10 +47,6 @@ android {
 
     buildFeatures {
         compose = true
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 }
 
