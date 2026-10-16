@@ -25,6 +25,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
+import com.lukeneedham.common.ui.ProvideDebugSettings
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -110,9 +111,12 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge()
         openCount++
         setContent {
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation(resumes)
+            // Every app wraps its content in ProvideDebugSettings, even without a debug setting to read.
+            ProvideDebugSettings {
+                MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        AppNavigation(resumes)
+                    }
                 }
             }
         }
