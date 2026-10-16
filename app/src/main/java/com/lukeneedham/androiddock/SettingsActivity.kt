@@ -85,12 +85,15 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
+import com.lukeneedham.common.ui.CrashesPage
+import com.lukeneedham.common.ui.DebugPage
+import com.lukeneedham.common.ui.LogsPage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** The pages of the settings app. */
-internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log, FanBackground }
+internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Logs, Crashes, FanBackground }
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -191,8 +194,13 @@ private fun AppNavigation(resumes: Int) {
                     Route.FanLayout -> FanLayoutScreen(back)
                     Route.FanBackground -> FanBackgroundScreen(back)
                     Route.Blacklist -> BlacklistScreen(back)
-                    Route.Debug -> DebugScreen(back) { backStack.add(it) }
-                    Route.Log -> LogScreen(back)
+                    Route.Debug -> DebugPage(
+                        onBack = back,
+                        onOpenLogs = { backStack.add(Route.Logs) },
+                        onOpenCrashes = { backStack.add(Route.Crashes) },
+                    )
+                    Route.Logs -> LogsPage(onBack = back)
+                    Route.Crashes -> CrashesPage(onBack = back)
                 }
             }
         },

@@ -1,20 +1,18 @@
 package com.lukeneedham.androiddock
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
+import com.lukeneedham.common.DebugKit
+import com.lukeneedham.common.DebugKitConfig
 
-/** Installs the crash handler, so a crash in any component leaves a trace in the debug log. */
+/**
+ * Starts the shared debug kit (logger and crash handler). This runs when the process is created,
+ * before any activity or the accessibility service, so everything that logs afterwards is covered.
+ */
 class DockApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            try {
-                DockLog.logCrash(this, thread, error)
-            } catch (_: Throwable) {
-                // Never let logging hide the crash itself.
-            }
-            // Rethrow to the system's handler, so the app still crashes as it would have.
-            if (previous != null) previous.uncaughtException(thread, error) else throw error
-        }
+        val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        DebugKit.init(DebugKitConfig(enabled = isDebuggable))
     }
 }

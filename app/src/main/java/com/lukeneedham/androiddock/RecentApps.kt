@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import com.lukeneedham.common.logger.Logger
 
 /** Works out which apps the user has recently had open, from the system's usage events. */
 object RecentApps {
@@ -69,7 +70,7 @@ object RecentApps {
             }
         }
         val closed = lastUsed.keys.filter { liveActivities[it].isNullOrEmpty() }
-        if (closed.isNotEmpty()) DockLog.log(context, "recent apps: left out closed apps $closed")
+        if (closed.isNotEmpty()) Logger.d("recent apps: left out closed apps $closed")
         lastUsed.keys.removeAll(closed.toSet())
         val launchers = packages
             .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
