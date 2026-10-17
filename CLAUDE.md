@@ -21,3 +21,5 @@ off after an update, that is expected: tell them to switch it back on.
 - Builds: the PR build comment from CI carries the APK link. When it updates, paste the link in the
   chat.
 - Nothing can be built locally in the cloud session (no Android plugins offline). CI is the build.
+
+Before starting work, check that `.claude/skills/lukeneedham-conventions` matches `skills/lukeneedham-conventions` on `main` of `LukeNeedham/ci-workflows`; if not, copy it over and include that in this work's PR. See that repo's `docs/skill.md`.
