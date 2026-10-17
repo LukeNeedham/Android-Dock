@@ -1,7 +1,6 @@
 package com.lukeneedham.androiddock
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -215,7 +214,6 @@ private fun AppNavigation(resumes: Int) {
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     // The fan opens over this page, so its state is polled; nothing else announces it.
     val fanOpen by produceState(DockActivity.isOpen) {
         while (true) {
@@ -312,7 +310,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.blacklist_open, hiddenCount)) }
 
-        if (isDebuggable) {
+        if (BuildConfig.DEBUG) {
             FilledTonalButton(
                 onClick = { navigate(Route.Debug) },
                 modifier = Modifier

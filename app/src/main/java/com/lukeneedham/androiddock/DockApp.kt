@@ -1,7 +1,6 @@
 package com.lukeneedham.androiddock
 
 import android.app.Application
-import android.content.pm.ApplicationInfo
 import com.lukeneedham.common.DebugKit
 import com.lukeneedham.common.DebugKitConfig
 
@@ -12,7 +11,6 @@ import com.lukeneedham.common.DebugKitConfig
 class DockApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        DebugKit.init(DebugKitConfig(enabled = isDebuggable))
+        DebugKit.init(DebugKitConfig(enabled = BuildConfig.DEBUG))
     }
 }
