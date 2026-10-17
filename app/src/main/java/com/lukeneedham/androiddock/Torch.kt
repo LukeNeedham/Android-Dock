@@ -3,6 +3,7 @@ package com.lukeneedham.androiddock
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
+import com.lukeneedham.common.logger.Logger
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -38,7 +39,7 @@ object Torch {
             } ?: return
             manager.setTorchMode(camera, !(states[camera] ?: false))
         } catch (e: Exception) {
-            DockLog.log(context, "could not toggle the torch: $e")
+            Logger.w("could not toggle the torch", e)
         }
     }
 

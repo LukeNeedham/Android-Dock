@@ -28,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
+import com.lukeneedham.common.logger.Logger
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -341,7 +342,7 @@ class DockActivity : AppCompatActivity() {
                 DockAccessibilityService.perform(AccessibilityService.GLOBAL_ACTION_RECENTS)
             })
             add(action(R.drawable.ic_action_fan_settings, R.string.action_settings) {
-                DockLog.log(this@DockActivity, "actions: opening settings")
+                Logger.i("actions: opening settings")
                 startActivity(Intent(this@DockActivity, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             })
             add(action(R.drawable.ic_action_settings, R.string.action_system_settings) {
@@ -376,7 +377,7 @@ class DockActivity : AppCompatActivity() {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         } catch (e: RuntimeException) {
-            DockLog.log(this, "could not open app info for ${app.packageName}: $e")
+            Logger.w("could not open app info for ${app.packageName}", e)
         }
     }
 

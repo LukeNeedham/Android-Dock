@@ -7,6 +7,7 @@ import android.os.Build
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import com.lukeneedham.common.logger.Logger
 import kotlin.math.abs
 
 /**
@@ -54,8 +55,7 @@ class CornerTouchView(context: Context) : View(context) {
             val location = IntArray(2)
             getLocationOnScreen(location)
             val screen = resources.displayMetrics
-            DockLog.log(
-                context,
+            Logger.i(
                 "corner view at x=${location[0]} y=${location[1]} size=${width}x$height " +
                     "screen=${screen.widthPixels}x${screen.heightPixels}",
             )

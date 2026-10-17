@@ -1,7 +1,6 @@
 package com.lukeneedham.androiddock
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -25,6 +24,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
+import com.lukeneedham.common.ui.ProvideDebugSettings
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,12 +85,15 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
+import com.lukeneedham.common.ui.CrashesPage
+import com.lukeneedham.common.ui.DebugPage
+import com.lukeneedham.common.ui.LogsPage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** The pages of the settings app. */
-internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Log, FanBackground }
+internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Logs, Crashes, FanBackground }
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -107,9 +110,12 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge()
         openCount++
         setContent {
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation(resumes)
+            // Every app wraps its content in ProvideDebugSettings, even without a debug setting to read.
+            ProvideDebugSettings {
+                MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        AppNavigation(resumes)
+                    }
                 }
             }
         }
@@ -191,8 +197,13 @@ private fun AppNavigation(resumes: Int) {
                     Route.FanLayout -> FanLayoutScreen(back)
                     Route.FanBackground -> FanBackgroundScreen(back)
                     Route.Blacklist -> BlacklistScreen(back)
-                    Route.Debug -> DebugScreen(back) { backStack.add(it) }
-                    Route.Log -> LogScreen(back)
+                    Route.Debug -> DebugPage(
+                        onBack = back,
+                        onOpenLogs = { backStack.add(Route.Logs) },
+                        onOpenCrashes = { backStack.add(Route.Crashes) },
+                    )
+                    Route.Logs -> LogsPage(onBack = back)
+                    Route.Crashes -> CrashesPage(onBack = back)
                 }
             }
         },
@@ -203,7 +214,6 @@ private fun AppNavigation(resumes: Int) {
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     // The fan opens over this page, so its state is polled; nothing else announces it.
     val fanOpen by produceState(DockActivity.isOpen) {
         while (true) {
@@ -300,7 +310,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .padding(top = 8.dp),
         ) { Text(stringResource(R.string.blacklist_open, hiddenCount)) }
 
-        if (isDebuggable) {
+        if (BuildConfig.DEBUG) {
             FilledTonalButton(
                 onClick = { navigate(Route.Debug) },
                 modifier = Modifier

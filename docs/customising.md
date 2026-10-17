@@ -41,4 +41,4 @@ one with **Hide an app** (searchable) and remove it with **Show again**.
 
 ## Debug
 
-At the bottom of the settings, **Debug Settings** opens the [debug log](development.md#debug-log).
+At the bottom of the settings, **Debug Settings** opens the [debug page](development.md#debug-log) (logs and crashes). Debug builds only.

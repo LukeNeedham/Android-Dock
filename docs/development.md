@@ -39,9 +39,17 @@ as on PR builds) and keeps the nearest tag's code.
 
 ## Debug log
 
-Settings > **Debug Settings** > **View debug log**. It records service start (with device and
-navigation mode), the trigger's position, sheet open and close, and crashes, in a file in the app's private
-storage that survives the process being killed. Use **Copy** to share it. Capped at about 256 KB.
+Debug builds only: Settings > **Debug Settings** opens the shared library's debug page, with **Logs** and
+**Crashes**. The log records service start (with device and navigation mode), the trigger's position and
+sheet open and close, in a file in the app's private storage that survives the process being killed. A
+crash is saved with the last 50 log lines. Text is selectable, so it can be copied. The log is trimmed at
+about 512,000 characters. The page also has an animation speed setting, which Fan does not use.
+
+All of it comes from `com.lukeneedham:common` (`Logger`, `DebugKit`, `DebugPage`, `LogsPage`,
+`CrashesPage`), published from [ci-workflows](https://github.com/LukeNeedham/ci-workflows/tree/main/common).
+Log with `Logger.i/d/w/e(...)`, which needs no `Context`. `DockApp` starts it with
+`DebugKit.init`, before the service or any activity can log. Crashes are saved in release builds too;
+there is just no page to read them on.
 
 ## Project layout
 

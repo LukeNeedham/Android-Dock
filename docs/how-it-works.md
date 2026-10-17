@@ -14,7 +14,7 @@ sheet.
 | `RecentApps` | Builds the recents list from `UsageStatsManager` events. Also launches an app. |
 | `DockPrefs` | All settings in `SharedPreferences`: corner, trigger geometry, colours, rows, hidden apps, dismissed apps. |
 | `SettingsActivity` | The only launcher entry. Onboarding checklist plus the settings pages (trigger, fan layout, hidden apps, debug). |
-| `DockLog` | A file-backed log that survives the process dying. |
+| `DockApp` | Starts the shared [`common`](https://github.com/LukeNeedham/ci-workflows/tree/main/common) library (`DebugKit.init`): its `Logger`, which writes to a file that survives the process dying, and its crash handler. |
 
 ## A tap, end to end
 
