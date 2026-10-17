@@ -8,7 +8,7 @@ composeBom = "2026.09.00"
 activityCompose = "1.13.0"
 # 1.2.0 needs minSdk 24; 1.1.7 is the newest that supports the app's minSdk 23.
 navigation3 = "1.1.7"
-common = "0.3.0"
+common = "0.4.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
