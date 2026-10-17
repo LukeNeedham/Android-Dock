@@ -11,6 +11,13 @@ off after an update, that is expected: tell them to switch it back on.
 
 ## Conventions
 
+- Logging and crash capture come from the shared `com.lukeneedham:common` library, started by
+  `DebugKit.init` in `DockApp`. Log with `Logger.i/d/w/e(...)` (no `Context` needed), never `Log` or
+  `println`. Do not add another crash handler or log file. The debug, logs and crashes pages are the
+  library's, wired into the `Route` enum in `SettingsActivity`.
+- `SettingsActivity` wraps its Compose content in `ProvideDebugSettings` (the library's single provider of debug
+  composition locals). Keep it wrapped, even though no debug setting is read yet, so a setting added to the library
+  later reaches the app with only a version bump.
 - Builds: the PR build comment from CI carries the APK link. When it updates, paste the link in the
   chat.
 - Nothing can be built locally in the cloud session (no Android plugins offline). CI is the build.

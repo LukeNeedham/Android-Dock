@@ -13,6 +13,7 @@ import android.view.Gravity
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import com.lukeneedham.common.logger.Logger
 
 /**
  * Places a [CornerTouchView] over the chosen corner of the screen, on top of the
@@ -36,8 +37,7 @@ class DockAccessibilityService : AccessibilityService() {
         instance = this
         Torch.track(this)
         val navMode = Settings.Secure.getInt(contentResolver, "navigation_mode", -1)
-        DockLog.log(
-            this,
+        Logger.i(
             "service connected sdk=${Build.VERSION.SDK_INT} device=${Build.MANUFACTURER} ${Build.MODEL} " +
                 "navigationMode=$navMode (0=3-button 1=2-button 2=gesture)",
         )
@@ -85,8 +85,7 @@ class DockAccessibilityService : AccessibilityService() {
         val params = cornerParams ?: return
         fillLayout(params)
         getSystemService(WindowManager::class.java).updateViewLayout(view, params)
-        DockLog.log(
-            this,
+        Logger.i(
             "trigger set to corner=${DockPrefs.getCorner(this).name.lowercase()} " + DockPrefs.Setting.entries.joinToString(" ") {
                 "${it.name.lowercase()}=${DockPrefs.get(this, it)}dp"
             },
@@ -118,14 +117,14 @@ class DockAccessibilityService : AccessibilityService() {
         Thread {
             val app = RecentApps.load(this, 1).firstOrNull()
             if (app == null) {
-                DockLog.log(this, "double tap: no previous app")
+                Logger.i("double tap: no previous app")
                 return@Thread
             }
             try {
                 RecentApps.launch(this, app)
-                DockLog.log(this, "double tap: switching to ${app.packageName}")
+                Logger.i("double tap: switching to ${app.packageName}")
             } catch (e: RuntimeException) {
-                DockLog.log(this, "could not switch to ${app.packageName}: $e")
+                Logger.w("could not switch to ${app.packageName}", e)
             }
         }.start()
     }
@@ -134,17 +133,17 @@ class DockAccessibilityService : AccessibilityService() {
     private fun openSheet() {
         if (DockActivity.isOpen) {
             DockActivity.close(haptic = false)
-            DockLog.log(this, "closing sheet")
+            Logger.i("closing sheet")
             return
         }
         DockActivity.altRequested = false
         DockActivity.starting = true
         try {
             startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            DockLog.log(this, "opening sheet")
+            Logger.i("opening sheet")
         } catch (e: RuntimeException) {
             DockActivity.starting = false
-            DockLog.log(this, "could not open sheet: $e")
+            Logger.w("could not open sheet", e)
         }
     }
 
@@ -157,18 +156,18 @@ class DockAccessibilityService : AccessibilityService() {
         Haptics.longPress(cornerView)
         if (DockActivity.isOpen) {
             DockActivity.showActions()
-            DockLog.log(this, "long press: showing actions")
+            Logger.i("long press: showing actions")
             return
         }
         DockActivity.altRequested = true
         DockActivity.starting = true
         try {
             startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            DockLog.log(this, "long press: opening actions")
+            Logger.i("long press: opening actions")
         } catch (e: RuntimeException) {
             DockActivity.starting = false
             DockActivity.altRequested = false
-            DockLog.log(this, "could not open actions: $e")
+            Logger.w("could not open actions", e)
         }
     }
 
@@ -183,7 +182,7 @@ class DockAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onUnbind(intent: Intent?): Boolean {
-        DockLog.log(this, "service unbound")
+        Logger.i("service unbound")
         if (instance === this) instance = null
         DockPrefs.prefs(this).unregisterOnSharedPreferenceChangeListener(prefsListener)
         removeCornerView()
