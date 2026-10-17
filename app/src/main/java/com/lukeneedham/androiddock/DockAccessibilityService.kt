@@ -16,18 +16,17 @@ import android.view.accessibility.AccessibilityEvent
 import com.lukeneedham.common.logger.Logger
 
 /**
- * Places a [CornerTouchView] over the chosen corner of the screen, on top of the
- * navigation bar. Its position and size come from [DockPrefs]. Touching it opens the sheet, and a long press opens the sheet
+ * Places a [CornerTouchView] for each trigger over the chosen corner of the screen, on top of the
+ * navigation bar. Each one's position, size and colour come from [DockPrefs]. Touching it opens the sheet, and a long press opens the sheet
  * in its actions mode (Home, Back, Recents, Fan settings).
  */
 class DockAccessibilityService : AccessibilityService() {
 
-    private var cornerView: CornerTouchView? = null
-    private var cornerParams: WindowManager.LayoutParams? = null
+    private val triggerViews = mutableListOf<CornerTouchView>()
+    private val triggerParams = mutableListOf<WindowManager.LayoutParams>()
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (DockPrefs.isSettingKey(key)) applyLayout()
-        if (DockPrefs.isColorKey(key)) cornerView?.applyColor()
+        if (DockPrefs.isTriggerKey(key)) syncTriggers()
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -41,12 +40,11 @@ class DockAccessibilityService : AccessibilityService() {
             "service connected sdk=${Build.VERSION.SDK_INT} device=${Build.MANUFACTURER} ${Build.MODEL} " +
                 "navigationMode=$navMode (0=3-button 1=2-button 2=gesture)",
         )
-        addCornerView()
+        syncTriggers()
         DockPrefs.prefs(this).registerOnSharedPreferenceChangeListener(prefsListener)
     }
 
-    private fun addCornerView() {
-        if (cornerView != null) return
+    private fun addTriggerView(index: Int) {
         val params = WindowManager.LayoutParams(
             0,
             0,
@@ -55,39 +53,47 @@ class DockAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
-        ).apply {
-        }
-        fillLayout(params)
-        val view = CornerTouchView(this).apply {
+        )
+        fillLayout(params, index)
+        val view = CornerTouchView(this, index).apply {
             onPress = ::onCornerPress
             onLongPress = ::openActions
         }
         getSystemService(WindowManager::class.java).addView(view, params)
-        cornerView = view
-        cornerParams = params
+        triggerViews.add(view)
+        triggerParams.add(params)
     }
 
     private fun dpToPx(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 
-    /** Sets the window's size and offsets, measured from the chosen corner, from the prefs. */
-    private fun fillLayout(params: WindowManager.LayoutParams) {
+    /** Sets a window's size and offsets, measured from the chosen corner, from the prefs of trigger [index]. */
+    private fun fillLayout(params: WindowManager.LayoutParams, index: Int) {
         val corner = DockPrefs.getCorner(this)
         params.gravity = (if (corner.bottom) Gravity.BOTTOM else Gravity.TOP) or
             (if (corner.end) Gravity.RIGHT else Gravity.LEFT)
-        params.width = dpToPx(DockPrefs.get(this, DockPrefs.Setting.WIDTH))
-        params.height = dpToPx(DockPrefs.get(this, DockPrefs.Setting.HEIGHT))
-        params.x = dpToPx(DockPrefs.get(this, DockPrefs.Setting.HORIZONTAL_OFFSET))
-        params.y = dpToPx(DockPrefs.get(this, DockPrefs.Setting.VERTICAL_OFFSET))
+        params.width = dpToPx(DockPrefs.get(this, DockPrefs.Setting.WIDTH, index))
+        params.height = dpToPx(DockPrefs.get(this, DockPrefs.Setting.HEIGHT, index))
+        params.x = dpToPx(DockPrefs.get(this, DockPrefs.Setting.HORIZONTAL_OFFSET, index))
+        params.y = dpToPx(DockPrefs.get(this, DockPrefs.Setting.VERTICAL_OFFSET, index))
     }
 
-    private fun applyLayout() {
-        val view = cornerView ?: return
-        val params = cornerParams ?: return
-        fillLayout(params)
-        getSystemService(WindowManager::class.java).updateViewLayout(view, params)
+    /** Brings the windows in line with the prefs: adds or removes triggers, then lays out and paints each. */
+    private fun syncTriggers() {
+        val wm = getSystemService(WindowManager::class.java)
+        val count = DockPrefs.getTriggerCount(this)
+        while (triggerViews.size > count) {
+            wm.removeView(triggerViews.removeAt(triggerViews.lastIndex))
+            triggerParams.removeAt(triggerParams.lastIndex)
+        }
+        while (triggerViews.size < count) addTriggerView(triggerViews.size)
+        triggerViews.forEachIndexed { i, view ->
+            fillLayout(triggerParams[i], i)
+            wm.updateViewLayout(view, triggerParams[i])
+            view.applyColor()
+        }
         Logger.i(
-            "trigger set to corner=${DockPrefs.getCorner(this).name.lowercase()} " + DockPrefs.Setting.entries.joinToString(" ") {
-                "${it.name.lowercase()}=${DockPrefs.get(this, it)}dp"
+            "triggers set to corner=${DockPrefs.getCorner(this).name.lowercase()} " + (0 until count).joinToString(" ") { i ->
+                "[$i " + DockPrefs.Setting.entries.joinToString(" ") { "${it.name.lowercase()}=${DockPrefs.get(this, it, i)}dp" } + "]"
             },
         )
     }
@@ -98,14 +104,14 @@ class DockAccessibilityService : AccessibilityService() {
      * A press opens or closes the sheet. A second press within the double-tap time instead
      * switches to the app used before the current one.
      */
-    private fun onCornerPress() {
+    private fun onCornerPress(view: CornerTouchView) {
         val now = SystemClock.uptimeMillis()
         val isDouble = now - lastPressAt <= ViewConfiguration.getDoubleTapTimeout()
         // The press itself gives the feedback, so the sheet closing from it does not.
         when {
-            isDouble -> Haptics.confirm(cornerView)
-            DockActivity.isOpen -> Haptics.tick(cornerView)
-            else -> Haptics.tap(cornerView)
+            isDouble -> Haptics.confirm(view)
+            DockActivity.isOpen -> Haptics.tick(view)
+            else -> Haptics.tap(view)
         }
         // A third press starts a new tap rather than a second double tap.
         lastPressAt = if (isDouble) 0L else now
@@ -152,8 +158,8 @@ class DockAccessibilityService : AccessibilityService() {
      * already opened the sheet, which is switched over; if that press closed an open sheet
      * instead, the sheet is opened again, showing the actions.
      */
-    private fun openActions() {
-        Haptics.longPress(cornerView)
+    private fun openActions(view: CornerTouchView) {
+        Haptics.longPress(view)
         if (DockActivity.isOpen) {
             DockActivity.showActions()
             Logger.i("long press: showing actions")
@@ -171,10 +177,10 @@ class DockAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun removeCornerView() {
-        cornerView?.let { getSystemService(WindowManager::class.java).removeView(it) }
-        cornerView = null
-        cornerParams = null
+    private fun removeTriggerViews() {
+        triggerViews.forEach { getSystemService(WindowManager::class.java).removeView(it) }
+        triggerViews.clear()
+        triggerParams.clear()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
@@ -185,7 +191,7 @@ class DockAccessibilityService : AccessibilityService() {
         Logger.i("service unbound")
         if (instance === this) instance = null
         DockPrefs.prefs(this).unregisterOnSharedPreferenceChangeListener(prefsListener)
-        removeCornerView()
+        removeTriggerViews()
         return super.onUnbind(intent)
     }
 

@@ -54,7 +54,10 @@
     <string name="edge_left">left</string>
     <string name="edge_right">right</string>
     <string name="position_title">Trigger</string>
-    <string name="position_description">Raise the trigger a little if swiping up from it opens Recents. Long press it for quick actions.</string>
+    <string name="trigger_name">Trigger %1$d</string>
+    <string name="trigger_add">Add trigger</string>
+    <string name="trigger_remove">Remove trigger %1$d</string>
+    <string name="position_description">Pick a trigger to adjust it. Raise it a little if swiping up from it opens Recents. Long press it for quick actions.</string>
     <string name="trigger_open">Edit trigger</string>
     <string name="slider_edge">Distance from the %1$s edge: %2$d</string>
     <string name="slider_width">Width: %1$d</string>

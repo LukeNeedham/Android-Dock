@@ -52,11 +52,54 @@ object DockPrefs {
     fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    fun get(context: Context, setting: Setting): Int =
-        prefs(context).getInt(setting.key, setting.default)
+    /**
+     * The triggers: any number, at least one. The first keeps the keys the app always used, so
+     * a user's existing trigger carries over; trigger `n` stores its settings under the same key
+     * with `_n` added.
+     */
+    private const val TRIGGER_COUNT_KEY = "trigger_count"
+    const val TRIGGERS_MAX = 6
 
-    fun set(context: Context, setting: Setting, value: Int) {
-        prefs(context).edit().putInt(setting.key, value).apply()
+    private fun triggerKey(key: String, index: Int) = if (index == 0) key else "${key}_$index"
+
+    fun getTriggerCount(context: Context): Int =
+        prefs(context).getInt(TRIGGER_COUNT_KEY, 1).coerceIn(1, TRIGGERS_MAX)
+
+    /** Adds a trigger beside the last one, so it does not start hidden under it. Returns its index. */
+    fun addTrigger(context: Context): Int {
+        val index = getTriggerCount(context)
+        val last = index - 1
+        val beside = (get(context, Setting.HORIZONTAL_OFFSET, last) + get(context, Setting.WIDTH, last))
+            .coerceAtMost(Setting.HORIZONTAL_OFFSET.max(context))
+        prefs(context).edit()
+            .apply { Setting.entries.forEach { remove(triggerKey(it.key, index)) } }
+            .apply { ColorSetting.entries.forEach { remove(triggerKey(it.key, index)) } }
+            .putInt(triggerKey(Setting.HORIZONTAL_OFFSET.key, index), beside)
+            .putInt(TRIGGER_COUNT_KEY, index + 1)
+            .apply()
+        return index
+    }
+
+    /** Removes a trigger; the ones after it move up. The last trigger cannot be removed. */
+    fun removeTrigger(context: Context, index: Int) {
+        val count = getTriggerCount(context)
+        if (count <= 1 || index !in 0 until count) return
+        val prefs = prefs(context)
+        val editor = prefs.edit()
+        for (i in index until count - 1) {
+            Setting.entries.forEach { editor.putInt(triggerKey(it.key, i), get(context, it, i + 1)) }
+            ColorSetting.entries.forEach { editor.putInt(triggerKey(it.key, i), getColor(context, it, i + 1)) }
+        }
+        Setting.entries.forEach { editor.remove(triggerKey(it.key, count - 1)) }
+        ColorSetting.entries.forEach { editor.remove(triggerKey(it.key, count - 1)) }
+        editor.putInt(TRIGGER_COUNT_KEY, count - 1).apply()
+    }
+
+    fun get(context: Context, setting: Setting, trigger: Int = 0): Int =
+        prefs(context).getInt(triggerKey(setting.key, trigger), setting.default)
+
+    fun set(context: Context, setting: Setting, value: Int, trigger: Int = 0) {
+        prefs(context).edit().putInt(triggerKey(setting.key, trigger), value).apply()
     }
 
     /** The colours the user can change, stored as ARGB ints. */
@@ -88,11 +131,11 @@ object DockPrefs {
         prefs(context).edit().putString(SHEET_STOPS_KEY, SheetGradient.encode(stops)).apply()
     }
 
-    fun getColor(context: Context, setting: ColorSetting): Int =
-        prefs(context).getInt(setting.key, setting.default)
+    fun getColor(context: Context, setting: ColorSetting, trigger: Int = 0): Int =
+        prefs(context).getInt(triggerKey(setting.key, trigger), setting.default)
 
-    fun setColor(context: Context, setting: ColorSetting, value: Int) {
-        prefs(context).edit().putInt(setting.key, value).apply()
+    fun setColor(context: Context, setting: ColorSetting, value: Int, trigger: Int = 0) {
+        prefs(context).edit().putInt(triggerKey(setting.key, trigger), value).apply()
     }
 
     /**
@@ -251,7 +294,10 @@ object DockPrefs {
         prefs(context).edit().putBoolean(FINISHED_KEY, true).apply()
     }
 
-    fun isSettingKey(key: String?) = key == CORNER_KEY || Setting.entries.any { it.key == key }
-
-    fun isColorKey(key: String?) = ColorSetting.entries.any { it.key == key }
+    /** Whether [key] is a trigger's setting (of any trigger), or the trigger count or corner. */
+    fun isTriggerKey(key: String?): Boolean {
+        if (key == CORNER_KEY || key == TRIGGER_COUNT_KEY) return true
+        val base = key?.replace(Regex("_\\d+$"), "") ?: return false
+        return Setting.entries.any { it.key == base } || ColorSetting.entries.any { it.key == base }
+    }
 }

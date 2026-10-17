@@ -11,22 +11,22 @@ import com.lukeneedham.common.logger.Logger
 import kotlin.math.abs
 
 /**
- * The trigger over the chosen corner of the screen, on top of the navigation bar.
+ * Trigger number [trigger] over the chosen corner of the screen, on top of the navigation bar.
  *
  * The window that receives ACTION_DOWN also receives every later event of that gesture, so this
  * view is where the whole press-drag-release gesture is observed, in raw screen coordinates.
  */
 @SuppressLint("ViewConstructor")
-class CornerTouchView(context: Context) : View(context) {
+class CornerTouchView(context: Context, private val trigger: Int) : View(context) {
 
     /** Called when a finger goes down on the view. */
-    var onPress: (() -> Unit)? = null
+    var onPress: ((CornerTouchView) -> Unit)? = null
 
     /** Called when the finger has stayed down on the view for the system's long-press time. */
-    var onLongPress: (() -> Unit)? = null
+    var onLongPress: ((CornerTouchView) -> Unit)? = null
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-    private val longPress = Runnable { onLongPress?.invoke() }
+    private val longPress = Runnable { onLongPress?.invoke(this) }
 
     private var downX = 0f
     private var downY = 0f
@@ -37,7 +37,7 @@ class CornerTouchView(context: Context) : View(context) {
 
     /** Paints the trigger in the colour the user picked. */
     fun applyColor() {
-        setBackgroundColor(DockPrefs.getColor(context, DockPrefs.ColorSetting.BUTTON))
+        setBackgroundColor(DockPrefs.getColor(context, DockPrefs.ColorSetting.BUTTON, trigger))
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -68,7 +68,7 @@ class CornerTouchView(context: Context) : View(context) {
             MotionEvent.ACTION_DOWN -> {
                 downX = event.rawX
                 downY = event.rawY
-                onPress?.invoke()
+                onPress?.invoke(this)
                 postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
             }
             MotionEvent.ACTION_MOVE ->

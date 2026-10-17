@@ -9,7 +9,9 @@ or top right. All distances are measured from the two edges that meet at that co
 
 ## Trigger
 
-"Customise trigger" sets:
+"Customise trigger" lists your triggers. You start with one; **Add trigger** adds more and
+**Remove trigger** deletes the selected one (the last trigger cannot be removed). Every trigger
+works the same way but is set up on its own: tap its name to choose it, then set:
 
 - **Distance** from each of the two edges, in dp.
 - **Width** and **height**, in dp.
