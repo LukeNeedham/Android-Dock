@@ -13,6 +13,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
@@ -44,7 +45,6 @@ import androidx.compose.ui.unit.dp
 internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val corner = DockPrefs.getCorner(context)
     var count by remember { mutableIntStateOf(DockPrefs.getTriggerCount(context)) }
     var selected by remember { mutableIntStateOf(0) }
     // Bumped when a trigger is removed, as the one after it then takes its index.
@@ -97,6 +97,12 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                 ) { Text(stringResource(R.string.trigger_remove, selected + 1)) }
             }
             key(selected, generation) {
+                var corner by remember { mutableStateOf(DockPrefs.getCorner(context, selected)) }
+                SectionHeader(R.string.corner_title, R.string.corner_description)
+                CornerPicker(corner) {
+                    corner = it
+                    DockPrefs.setCorner(context, it, selected)
+                }
                 DockPrefs.Setting.entries.forEach { setting ->
                     val label: @Composable (Int) -> String = when (setting) {
                         DockPrefs.Setting.HORIZONTAL_OFFSET -> { v -> stringResource(R.string.slider_edge, stringResource(corner.horizontalEdge), v) }

@@ -17,7 +17,7 @@ import kotlin.math.abs
  * view is where the whole press-drag-release gesture is observed, in raw screen coordinates.
  */
 @SuppressLint("ViewConstructor")
-class CornerTouchView(context: Context, private val trigger: Int) : View(context) {
+class CornerTouchView(context: Context, val trigger: Int) : View(context) {
 
     /** Called when a finger goes down on the view. */
     var onPress: ((CornerTouchView) -> Unit)? = null

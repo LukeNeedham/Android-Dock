@@ -2,17 +2,15 @@
 
 Open **Fan** from the launcher to reach the settings.
 
-## Screen corner
-
-Choose which corner the trigger and the fan sit in: bottom right (default), bottom left, top left
-or top right. All distances are measured from the two edges that meet at that corner.
-
 ## Trigger
 
 "Customise trigger" lists your triggers. You start with one; **Add trigger** adds more and
 **Remove trigger** deletes the selected one (the last trigger cannot be removed). Every trigger
 works the same way but is set up on its own: tap its name to choose it, then set:
 
+- **Screen corner** it sits in: bottom right (default), bottom left, top left or top right. The
+  fan opens in the corner of the trigger you press; its layout is the same for every trigger.
+  All distances are measured from the two edges that meet at that corner.
 - **Distance** from each of the two edges, in dp.
 - **Width** and **height**, in dp.
 - **Colour and opacity** of the trigger (red, green, blue, opacity).

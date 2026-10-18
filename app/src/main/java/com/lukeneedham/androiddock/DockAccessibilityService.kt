@@ -68,7 +68,7 @@ class DockAccessibilityService : AccessibilityService() {
 
     /** Sets a window's size and offsets, measured from the chosen corner, from the prefs of trigger [index]. */
     private fun fillLayout(params: WindowManager.LayoutParams, index: Int) {
-        val corner = DockPrefs.getCorner(this)
+        val corner = DockPrefs.getCorner(this, index)
         params.gravity = (if (corner.bottom) Gravity.BOTTOM else Gravity.TOP) or
             (if (corner.end) Gravity.RIGHT else Gravity.LEFT)
         params.width = dpToPx(DockPrefs.get(this, DockPrefs.Setting.WIDTH, index))
@@ -92,19 +92,23 @@ class DockAccessibilityService : AccessibilityService() {
             view.applyColor()
         }
         Logger.i(
-            "triggers set to corner=${DockPrefs.getCorner(this).name.lowercase()} " + (0 until count).joinToString(" ") { i ->
-                "[$i " + DockPrefs.Setting.entries.joinToString(" ") { "${it.name.lowercase()}=${DockPrefs.get(this, it, i)}dp" } + "]"
+            "triggers set: " + (0 until count).joinToString(" ") { i ->
+                "[$i corner=${DockPrefs.getCorner(this, i).name.lowercase()} " + DockPrefs.Setting.entries.joinToString(" ") { "${it.name.lowercase()}=${DockPrefs.get(this, it, i)}dp" } + "]"
             },
         )
     }
 
     private var lastPressAt = 0L
 
+    /** The trigger whose press is being handled, which the sheet opens in the corner of. */
+    private var pressedTrigger = 0
+
     /**
      * A press opens or closes the sheet. A second press within the double-tap time instead
      * switches to the app used before the current one.
      */
     private fun onCornerPress(view: CornerTouchView) {
+        pressedTrigger = view.trigger
         val now = SystemClock.uptimeMillis()
         val isDouble = now - lastPressAt <= ViewConfiguration.getDoubleTapTimeout()
         // The press itself gives the feedback, so the sheet closing from it does not.
@@ -143,6 +147,7 @@ class DockAccessibilityService : AccessibilityService() {
             return
         }
         DockActivity.altRequested = false
+        DockActivity.requestedTrigger = pressedTrigger
         DockActivity.starting = true
         try {
             startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -160,12 +165,14 @@ class DockAccessibilityService : AccessibilityService() {
      */
     private fun openActions(view: CornerTouchView) {
         Haptics.longPress(view)
+        pressedTrigger = view.trigger
         if (DockActivity.isOpen) {
             DockActivity.showActions()
             Logger.i("long press: showing actions")
             return
         }
         DockActivity.altRequested = true
+        DockActivity.requestedTrigger = pressedTrigger
         DockActivity.starting = true
         try {
             startActivity(Intent(this, DockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

@@ -138,6 +138,7 @@ class DockActivity : AppCompatActivity() {
             finishAndRemoveTask()
             return
         }
+        trigger = requestedTrigger
         current = this
         WindowCompat.setDecorFitsSystemWindows(window, false)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -145,6 +146,9 @@ class DockActivity : AppCompatActivity() {
         })
         setContentView(buildContent())
     }
+
+    /** The trigger that opened this sheet; the sheet is in its corner. */
+    private var trigger = 0
 
     /** The square holding the whole sheet; it scales about the screen corner. */
     private var sheet: View? = null
@@ -200,6 +204,12 @@ class DockActivity : AppCompatActivity() {
         closing = false
         view.removeCallbacks(forceFinish)
         view.animate().cancel()
+        if (requestedTrigger != trigger) {
+            // Another trigger asked, so the sheet belongs in a different corner: build it afresh.
+            trigger = requestedTrigger
+            setContentView(buildContent())
+            return
+        }
         view.animate()
             .scaleX(1f).scaleY(1f)
             .setDuration(ENTER_MS)
@@ -228,7 +238,7 @@ class DockActivity : AppCompatActivity() {
         // Tapping outside the quarter circle closes the sheet.
         val root = FrameLayout(this).apply { setOnClickListener { closeSheet() } }
 
-        val corner = DockPrefs.getCorner(this)
+        val corner = DockPrefs.getCorner(this, trigger)
         val screenWidth = resources.displayMetrics.widthPixels
         // The corner space for the app on screen counts as a row of one, ahead of the user's rows.
         val rows = listOf(DockPrefs.Row(1, DockPrefs.getCurrentWidth(this))) + DockPrefs.getRows(this)
@@ -388,7 +398,7 @@ class DockActivity : AppCompatActivity() {
      * nothing, as on the home screen or in actions mode. [entries] fill the other rows.
      */
     private fun showEntries(root: ViewGroup, current: Entry?, entries: List<Entry>, rows: List<DockPrefs.Row>, radius: Int, textColor: Int) {
-        val corner = DockPrefs.getCorner(this)
+        val corner = DockPrefs.getCorner(this, trigger)
         if (entries.isEmpty()) {
             addAppView(
                 root,
@@ -518,6 +528,10 @@ class DockActivity : AppCompatActivity() {
          */
         @Volatile
         var altRequested = false
+
+        /** The trigger the sheet that is up, or about to be, was opened from; it picks the corner. */
+        @Volatile
+        var requestedTrigger = 0
 
         /** Switches the sheet that is up, or about to be, to its actions. */
         fun showActions() {

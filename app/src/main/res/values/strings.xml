@@ -41,7 +41,7 @@
     <string name="onboarding_header">Setting up Fan</string>
     <string name="debug_open">Debug Settings</string>
     <string name="status_open">Open settings</string>
-    <string name="corner_description">Which corner of the screen the trigger and the fan sit in.</string>
+    <string name="corner_description">Which corner of the screen this trigger sits in. The fan opens in the corner of the trigger you press.</string>
     <string name="trigger_summary">The strip that opens the fan: its position, size and colour.</string>
     <string name="fan_layout_summary">The rings of apps in the fan, and the background behind them.</string>
     <string name="corner_title">Screen corner</string>

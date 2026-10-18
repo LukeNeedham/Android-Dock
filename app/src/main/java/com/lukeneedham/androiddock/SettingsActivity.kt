@@ -246,6 +246,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                     DockActivity.close(haptic = false)
                 } else {
                     DockActivity.altRequested = false
+                    DockActivity.requestedTrigger = 0
                     DockActivity.starting = true
                     context.startActivity(Intent(context, DockActivity::class.java))
                 }
@@ -254,13 +255,6 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .fillMaxWidth()
                 .padding(top = 24.dp),
         ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
-
-        var corner by remember { mutableStateOf(DockPrefs.getCorner(context)) }
-        SectionHeader(R.string.corner_title, R.string.corner_description)
-        CornerPicker(corner) {
-            corner = it
-            DockPrefs.setCorner(context, it)
-        }
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
@@ -294,7 +288,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 selected = null,
                 showCurrent = DockPrefs.getShowCurrent(context),
                 stops = stops,
-                corner = corner,
+                corner = if (resumes >= 0) DockPrefs.getCorner(context) else DockPrefs.Corner.BOTTOM_RIGHT,
                 thumbnailDp = 112,
                 modifier = Modifier.padding(start = 16.dp),
             )
@@ -327,7 +321,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
  * corner is highlighted and carries a tick.
  */
 @Composable
-private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
+internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
     val outline = MaterialTheme.colorScheme.outline
     Column(
         modifier = Modifier

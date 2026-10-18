@@ -30,8 +30,9 @@ object DockPrefs {
     }
 
     /**
-     * The screen corner the trigger and the fan sit in. Every distance (the trigger's offsets and
-     * the fan's padding) is measured from the two edges that meet there.
+     * A screen corner. Each trigger sits in one, and the fan opens in the corner of the trigger that
+     * was pressed. Every distance (the trigger's offsets and the fan's padding) is measured from
+     * the two edges that meet there.
      */
     enum class Corner(val bottom: Boolean, val end: Boolean, val label: Int, val verticalEdge: Int, val horizontalEdge: Int) {
         BOTTOM_RIGHT(true, true, R.string.corner_bottom_right, R.string.edge_bottom, R.string.edge_right),
@@ -42,11 +43,11 @@ object DockPrefs {
 
     const val CORNER_KEY = "corner"
 
-    fun getCorner(context: Context): Corner =
-        Corner.entries.firstOrNull { it.name == prefs(context).getString(CORNER_KEY, null) } ?: Corner.BOTTOM_RIGHT
+    fun getCorner(context: Context, trigger: Int = 0): Corner =
+        Corner.entries.firstOrNull { it.name == prefs(context).getString(triggerKey(CORNER_KEY, trigger), null) } ?: Corner.BOTTOM_RIGHT
 
-    fun setCorner(context: Context, corner: Corner) {
-        prefs(context).edit().putString(CORNER_KEY, corner.name).apply()
+    fun setCorner(context: Context, corner: Corner, trigger: Int = 0) {
+        prefs(context).edit().putString(triggerKey(CORNER_KEY, trigger), corner.name).apply()
     }
 
     fun prefs(context: Context): SharedPreferences =
@@ -65,7 +66,7 @@ object DockPrefs {
     fun getTriggerCount(context: Context): Int =
         prefs(context).getInt(TRIGGER_COUNT_KEY, 1).coerceIn(1, TRIGGERS_MAX)
 
-    /** Adds a trigger beside the last one, so it does not start hidden under it. Returns its index. */
+    /** Adds a trigger beside the last one, in its corner, so it does not start hidden under it. Returns its index. */
     fun addTrigger(context: Context): Int {
         val index = getTriggerCount(context)
         val last = index - 1
@@ -74,7 +75,9 @@ object DockPrefs {
         prefs(context).edit()
             .apply { Setting.entries.forEach { remove(triggerKey(it.key, index)) } }
             .apply { ColorSetting.entries.forEach { remove(triggerKey(it.key, index)) } }
+            .remove(triggerKey(CORNER_KEY, index))
             .putInt(triggerKey(Setting.HORIZONTAL_OFFSET.key, index), beside)
+            .putString(triggerKey(CORNER_KEY, index), getCorner(context, last).name)
             .putInt(TRIGGER_COUNT_KEY, index + 1)
             .apply()
         return index
@@ -89,7 +92,9 @@ object DockPrefs {
         for (i in index until count - 1) {
             Setting.entries.forEach { editor.putInt(triggerKey(it.key, i), get(context, it, i + 1)) }
             ColorSetting.entries.forEach { editor.putInt(triggerKey(it.key, i), getColor(context, it, i + 1)) }
+            editor.putString(triggerKey(CORNER_KEY, i), getCorner(context, i + 1).name)
         }
+        editor.remove(triggerKey(CORNER_KEY, count - 1))
         Setting.entries.forEach { editor.remove(triggerKey(it.key, count - 1)) }
         ColorSetting.entries.forEach { editor.remove(triggerKey(it.key, count - 1)) }
         editor.putInt(TRIGGER_COUNT_KEY, count - 1).apply()
@@ -294,10 +299,10 @@ object DockPrefs {
         prefs(context).edit().putBoolean(FINISHED_KEY, true).apply()
     }
 
-    /** Whether [key] is a trigger's setting (of any trigger), or the trigger count or corner. */
+    /** Whether [key] is a trigger's setting (of any trigger), or the trigger count. */
     fun isTriggerKey(key: String?): Boolean {
-        if (key == CORNER_KEY || key == TRIGGER_COUNT_KEY) return true
+        if (key == TRIGGER_COUNT_KEY) return true
         val base = key?.replace(Regex("_\\d+$"), "") ?: return false
-        return Setting.entries.any { it.key == base } || ColorSetting.entries.any { it.key == base }
+        return base == CORNER_KEY || Setting.entries.any { it.key == base } || ColorSetting.entries.any { it.key == base }
     }
 }
