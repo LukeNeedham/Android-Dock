@@ -4,7 +4,7 @@ Open **Fan** from the launcher to reach the settings.
 
 ## Trigger
 
-"Customise trigger" lists your triggers. You start with one; **Add trigger** adds more and
+"Customise trigger" lists your triggers. You start with one; the **+** after the list adds more and
 **Remove trigger** deletes the selected one (the last trigger cannot be removed). Every trigger
 works the same way but is set up on its own: tap its name to choose it, then set:
 

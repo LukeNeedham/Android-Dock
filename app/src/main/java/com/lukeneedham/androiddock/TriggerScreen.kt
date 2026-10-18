@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -75,27 +79,35 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                     )
                 }
+                if (count < DockPrefs.TRIGGERS_MAX) {
+                    Icon(
+                        painterResource(R.drawable.ic_add),
+                        contentDescription = stringResource(R.string.trigger_add),
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF424242))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                selected = DockPrefs.addTrigger(context)
+                                count = DockPrefs.getTriggerCount(context)
+                            }
+                            .padding(8.dp),
+                    )
+                }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                FilledTonalButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        selected = DockPrefs.addTrigger(context)
-                        count = DockPrefs.getTriggerCount(context)
-                    },
-                    enabled = count < DockPrefs.TRIGGERS_MAX,
-                ) { Text(stringResource(R.string.trigger_add)) }
-                FilledTonalButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        DockPrefs.removeTrigger(context, selected)
-                        count = DockPrefs.getTriggerCount(context)
-                        selected = selected.coerceAtMost(count - 1)
-                        generation++
-                    },
-                    enabled = count > 1,
-                ) { Text(stringResource(R.string.trigger_remove, selected + 1)) }
-            }
+            FilledTonalButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    DockPrefs.removeTrigger(context, selected)
+                    count = DockPrefs.getTriggerCount(context)
+                    selected = selected.coerceAtMost(count - 1)
+                    generation++
+                },
+                enabled = count > 1,
+                modifier = Modifier.padding(top = 20.dp),
+            ) { Text(stringResource(R.string.trigger_remove, selected + 1)) }
             key(selected, generation) {
                 var corner by remember { mutableStateOf(DockPrefs.getCorner(context, selected)) }
                 SectionHeader(R.string.corner_title, R.string.corner_description)
