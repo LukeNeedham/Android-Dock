@@ -8,11 +8,11 @@ sheet.
 
 | Piece | Responsibility |
 |---|---|
-| `DockAccessibilityService` | Adds a `TYPE_ACCESSIBILITY_OVERLAY` window (a `CornerTouchView`) over the chosen corner, above the navigation bar. Turns presses into: open or close the sheet (tap), previous app (double tap), actions mode (long press). Also performs global actions (Back, Home, Recents, Screenshot, Power menu). |
+| `DockAccessibilityService` | Adds a `TYPE_ACCESSIBILITY_OVERLAY` window (a `CornerTouchView`) over each trigger's corner, above the navigation bar. Turns presses into: open or close the sheet (tap), previous app (double tap), actions mode (long press). Also performs global actions (Back, Home, Recents, Screenshot, Power menu). |
 | `CornerTouchView` | The trigger. Sees the whole press-drag-release gesture in raw coordinates and reports press and long press. Excludes itself from the system back gesture where it can. |
 | `DockActivity` | A transparent, `excludeFromRecents`, `singleInstance` activity that draws the sheet: a quarter-circle background and rings of icons. Closing it calls `finishAndRemoveTask()`, so it never shows up as a task. |
 | `RecentApps` | Builds the recents list from `UsageStatsManager` events. Also launches an app. |
-| `DockPrefs` | All settings in `SharedPreferences`: corner, trigger geometry, colours, rows, hidden apps, dismissed apps. |
+| `DockPrefs` | All settings in `SharedPreferences`: the triggers (each with its own corner, geometry, colour), rows, hidden apps, dismissed apps. |
 | `SettingsActivity` | The only launcher entry. Onboarding checklist plus the settings pages (trigger, fan layout, hidden apps, debug). |
 | `DockApp` | Starts the shared [`common`](https://github.com/LukeNeedham/ci-workflows/tree/main/common) library (`DebugKit.init`): its `Logger`, which writes to a file that survives the process dying, and its crash handler. |
 

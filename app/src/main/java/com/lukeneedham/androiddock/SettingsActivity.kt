@@ -246,6 +246,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                     DockActivity.close(haptic = false)
                 } else {
                     DockActivity.altRequested = false
+                    DockActivity.requestedTrigger = 0
                     DockActivity.starting = true
                     context.startActivity(Intent(context, DockActivity::class.java))
                 }
@@ -254,13 +255,6 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 .fillMaxWidth()
                 .padding(top = 24.dp),
         ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
-
-        var corner by remember { mutableStateOf(DockPrefs.getCorner(context)) }
-        SectionHeader(R.string.corner_title, R.string.corner_description)
-        CornerPicker(corner) {
-            corner = it
-            DockPrefs.setCorner(context, it)
-        }
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         FilledTonalButton(
@@ -294,7 +288,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 selected = null,
                 showCurrent = DockPrefs.getShowCurrent(context),
                 stops = stops,
-                corner = corner,
+                corner = if (resumes >= 0) DockPrefs.getCorner(context) else DockPrefs.Corner.BOTTOM_RIGHT,
                 thumbnailDp = 112,
                 modifier = Modifier.padding(start = 16.dp),
             )
@@ -327,7 +321,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
  * corner is highlighted and carries a tick.
  */
 @Composable
-private fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
+internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
     val outline = MaterialTheme.colorScheme.outline
     Column(
         modifier = Modifier
@@ -428,8 +422,8 @@ internal fun SectionHeader(title: Int, description: Int?) {
 
 /** A labelled slider that saves its value as it moves; the running service applies it live. */
 @Composable
-internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: @Composable (Int) -> String) {
-    var value by remember { mutableIntStateOf(DockPrefs.get(context, setting)) }
+internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: @Composable (Int) -> String, trigger: Int = 0) {
+    var value by remember(trigger) { mutableIntStateOf(DockPrefs.get(context, setting, trigger)) }
     Text(
         label(value),
         modifier = Modifier.padding(top = 16.dp),
@@ -438,7 +432,7 @@ internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: 
         value = value.toFloat(),
         onValueChange = {
             value = it.toInt()
-            DockPrefs.set(context, setting, value)
+            DockPrefs.set(context, setting, value, trigger)
         },
         valueRange = setting.min.toFloat()..setting.max(context).toFloat(),
     )
@@ -450,9 +444,10 @@ internal fun ColorSettingRow(
     context: Context,
     setting: DockPrefs.ColorSetting,
     label: Int,
+    trigger: Int = 0,
     onChange: (Int) -> Unit = {},
 ) {
-    var argb by remember { mutableIntStateOf(DockPrefs.getColor(context, setting)) }
+    var argb by remember(trigger) { mutableIntStateOf(DockPrefs.getColor(context, setting, trigger)) }
     var open by remember { mutableStateOf(false) }
 
     Row(
@@ -471,7 +466,7 @@ internal fun ColorSettingRow(
             argb = argb,
             onChange = {
                 argb = it
-                DockPrefs.setColor(context, setting, it)
+                DockPrefs.setColor(context, setting, it, trigger)
                 onChange(it)
             },
             onDismiss = { open = false },
