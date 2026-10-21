@@ -85,7 +85,13 @@ object RecentApps {
         val blacklist = DockPrefs.getBlacklist(context)
         if (mostUsed) {
             val week = usage.queryAndAggregateUsageStats(now - WEEK_MS, now)
+            // Services also log foreground time, so keep only apps with a launcher icon.
+            val withIcon = packages
+                .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+                .map { it.activityInfo.packageName }
+                .toSet()
             val top = week.entries
+                .filter { it.key in withIcon }
                 .filter { it.value.totalTimeInForeground > 0 && it.key != currentApp && it.key != context.packageName }
                 .filter { it.key !in launchers && it.key !in blacklist }
                 .sortedByDescending { it.value.totalTimeInForeground }
