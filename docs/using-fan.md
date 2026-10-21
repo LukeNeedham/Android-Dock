@@ -48,3 +48,6 @@ Android does not give ordinary apps the list of running apps. Fan builds it from
 - Apps you hide in settings never appear, and double tap never switches to them.
 - Fan's own screens are left out, except Fan's settings while they are open.
 - The number of apps shown is however many the rings hold.
+- With **Most used in the past week** on (main settings page), apps are ordered by foreground time over
+  the last 7 days instead of by recency, and only apps with a launcher icon are listed. Double tap
+  still switches to the previous app.

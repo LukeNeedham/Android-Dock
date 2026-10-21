@@ -83,32 +83,38 @@ object RecentApps {
         val current = currentApp?.takeIf { it !in launchers }?.let { appOf(packages, it) }
         val dismissed = DockPrefs.getDismissed(context)
         val blacklist = DockPrefs.getBlacklist(context)
+        // Per app: when it was last used, and what the list is ordered by (the same time, or
+        // foreground time over the last week).
+        val usedAt: Map<String, Long>
+        val rank: Map<String, Long>
         if (mostUsed) {
-            val week = usage.queryAndAggregateUsageStats(now - WEEK_MS, now)
             // Services also log foreground time, so keep only apps with a launcher icon.
             val withIcon = packages
                 .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
                 .map { it.activityInfo.packageName }
                 .toSet()
-            // ArrayMap reuses its entry objects, so copy each into a pair before collecting.
-            val top = week.map { (pkg, stats) -> pkg to stats.totalTimeInForeground }
-                .filter { (pkg, time) -> time > 0 && pkg in withIcon && pkg != currentApp && pkg != context.packageName }
-                .filter { (pkg, _) -> pkg !in launchers && pkg !in blacklist }
-                .sortedByDescending { it.second }
-                .asSequence()
-                .mapNotNull { appOf(packages, it.first) }
-                .take(limit)
-                .toList()
-            return Recents(current, top)
+            val used = HashMap<String, Long>()
+            val foreground = HashMap<String, Long>()
+            usage.queryAndAggregateUsageStats(now - WEEK_MS, now).forEach { (pkg, stats) ->
+                if (pkg in withIcon && pkg != context.packageName && stats.totalTimeInForeground > 0) {
+                    used[pkg] = stats.lastTimeUsed
+                    foreground[pkg] = stats.totalTimeInForeground
+                }
+            }
+            usedAt = used
+            rank = foreground
+        } else {
+            usedAt = lastUsed
+            rank = lastUsed
         }
-        val others = lastUsed.entries
+        val others = rank.keys
             // A blacklisted app still counts as the app on screen above; it is only never listed.
-            .filter { it.key != currentApp && it.key !in launchers && it.key !in blacklist }
+            .filter { it != currentApp && it !in launchers && it !in blacklist }
             // Dismissed by the user, and not used since.
-            .filter { it.value > (dismissed[it.key] ?: 0L) }
-            .sortedByDescending { it.value }
+            .filter { (usedAt[it] ?: 0L) > (dismissed[it] ?: 0L) }
+            .sortedByDescending { rank[it] }
             .asSequence()
-            .mapNotNull { (pkg, _) -> appOf(packages, pkg) }
+            .mapNotNull { appOf(packages, it) }
             .take(limit)
             .toList()
         return Recents(current, others)
