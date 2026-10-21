@@ -90,13 +90,13 @@ object RecentApps {
                 .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
                 .map { it.activityInfo.packageName }
                 .toSet()
-            val top = week.entries
-                .filter { it.key in withIcon }
-                .filter { it.value.totalTimeInForeground > 0 && it.key != currentApp && it.key != context.packageName }
-                .filter { it.key !in launchers && it.key !in blacklist }
-                .sortedByDescending { it.value.totalTimeInForeground }
+            // ArrayMap reuses its entry objects, so copy each into a pair before collecting.
+            val top = week.map { (pkg, stats) -> pkg to stats.totalTimeInForeground }
+                .filter { (pkg, time) -> time > 0 && pkg in withIcon && pkg != currentApp && pkg != context.packageName }
+                .filter { (pkg, _) -> pkg !in launchers && pkg !in blacklist }
+                .sortedByDescending { it.second }
                 .asSequence()
-                .mapNotNull { appOf(packages, it.key) }
+                .mapNotNull { appOf(packages, it.first) }
                 .take(limit)
                 .toList()
             return Recents(current, top)
