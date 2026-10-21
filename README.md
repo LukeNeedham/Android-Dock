@@ -3,10 +3,7 @@
 <img src="docs/fan-logo.svg" alt="Fan logo" width="96" align="right">
 
 Switch apps from anywhere, in one tap. Fan puts a small trigger in a corner of your screen. Tap
-it and a quarter-circle **fan** of your recent apps opens over whatever you were doing. Pick one
-and you are there.
-
-Fan is not an app you launch and use. After setup it stays out of the way until you call it.
+it to open a fan filled with your recent apps. Pick one and you're there.
 
 ## What you can do
 
@@ -29,7 +26,8 @@ Details: [Using Fan](docs/using-fan.md) · [Customising](docs/customising.md)
    and install it (Android 6.0 or newer).
 2. Open **Fan** once. It walks you through two permissions: the **accessibility service** (to
    see taps on the trigger) and **usage access** (to know which apps you used recently).
-3. Tap the trigger in the corner of your screen.
+3. Customise the fan and trigger to your heart's content
+4. Tap the trigger in the corner of your screen to open your fan!
 
 Step-by-step, including what to do if the accessibility switch is greyed out:
 [Setup](docs/setup.md)
@@ -48,8 +46,3 @@ Step-by-step, including what to do if the accessibility switch is greyed out:
 | [Known limitations](docs/known-limitations.md) | Accessibility reset on update, older Android versions, Google Play |
 | [How it works](docs/how-it-works.md) | Architecture: the overlay, the sheet, the recents list |
 | [Development](docs/development.md) | Building, CI, releases, project layout, the debug log |
-
-## Status
-
-An early but working prototype, built for sideloading. Google Play restricts accessibility
-services, so it is distributed through GitHub releases.
