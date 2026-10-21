@@ -82,6 +82,20 @@ object RecentApps {
         val current = currentApp?.takeIf { it !in launchers }?.let { appOf(packages, it) }
         val dismissed = DockPrefs.getDismissed(context)
         val blacklist = DockPrefs.getBlacklist(context)
+        if (DockPrefs.getMostUsed(context)) {
+            val week = usage.queryUsageStats(UsageStatsManager.INTERVAL_WEEKLY, now - WEEK_MS, now)
+                .groupBy { it.packageName }
+                .mapValues { (_, stats) -> stats.sumOf { it.totalTimeInForeground } }
+            val mostUsed = week.entries
+                .filter { it.value > 0 && it.key != currentApp && it.key != context.packageName }
+                .filter { it.key !in launchers && it.key !in blacklist }
+                .sortedByDescending { it.value }
+                .asSequence()
+                .mapNotNull { appOf(packages, it.key) }
+                .take(limit)
+                .toList()
+            return Recents(current, mostUsed)
+        }
         val others = lastUsed.entries
             // A blacklisted app still counts as the app on screen above; it is only never listed.
             .filter { it.key != currentApp && it.key !in launchers && it.key !in blacklist }
@@ -117,5 +131,6 @@ object RecentApps {
     private const val ACTIVITY_STOPPED = 23
     private const val ACTIVITY_DESTROYED = 24
 
+    private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
     private const val WINDOW_MS = 24L * 60 * 60 * 1000
 }

@@ -227,6 +227,15 @@ object DockPrefs {
         prefs(context).edit().putBoolean(SHOW_CURRENT_KEY, value).apply()
     }
 
+    /** Whether the fan lists apps by weekly foreground time instead of most recent use. */
+    private const val MOST_USED_KEY = "most_used"
+
+    fun getMostUsed(context: Context): Boolean = prefs(context).getBoolean(MOST_USED_KEY, false)
+
+    fun setMostUsed(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(MOST_USED_KEY, value).apply()
+    }
+
     /**
      * The clear space, in dp, between the screen edge and where the fan starts: the quarter circle
      * is centred on the corner moved in by these, so its curves only start after them.
