@@ -107,18 +107,28 @@ object RecentApps {
             usedAt = lastUsed
             rank = lastUsed
         }
-        val others = rank.keys
-            // A blacklisted app still counts as the app on screen above; it is only never listed.
-            .filter { it != currentApp && it !in launchers && it !in blacklist }
-            // Dismissed by the user, and not used since.
-            .filter { (usedAt[it] ?: 0L) > (dismissed[it] ?: 0L) }
-            .sortedByDescending { rank[it] }
+        val others = ranked(rank, usedAt, dismissed, excluded = launchers + blacklist + setOfNotNull(currentApp))
             .asSequence()
             .mapNotNull { appOf(packages, it) }
             .take(limit)
             .toList()
         return Recents(current, others)
     }
+
+    /**
+     * The packages of [rank], highest first, without the [excluded] ones and without those
+     * dismissed at or after they were last used ([usedAt]).
+     */
+    internal fun ranked(
+        rank: Map<String, Long>,
+        usedAt: Map<String, Long>,
+        dismissed: Map<String, Long>,
+        excluded: Set<String>,
+    ): List<String> = rank.keys
+        .filter { it !in excluded }
+        // Dismissed by the user, and not used since.
+        .filter { (usedAt[it] ?: 0L) > (dismissed[it] ?: 0L) }
+        .sortedByDescending { rank[it] }
 
     /** [pkg] as an [App], or null if it cannot be opened from the sheet. */
     private fun appOf(packages: PackageManager, pkg: String): App? {
