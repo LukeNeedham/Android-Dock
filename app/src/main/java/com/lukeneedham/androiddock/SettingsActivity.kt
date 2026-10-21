@@ -293,6 +293,16 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             )
         }
 
+        SectionHeader(R.string.order_title, R.string.order_description)
+        var mostUsed by remember { mutableStateOf(DockPrefs.getMostUsed(context)) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = mostUsed,
+                onCheckedChange = { mostUsed = it; DockPrefs.setMostUsed(context, it) },
+            )
+            Text(stringResource(R.string.order_most_used))
+        }
+
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         // Read again on every return here.
         val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0

@@ -118,15 +118,6 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 .padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
             PartList(rows.size, corner, selected, onSelect = { selected = it })
-            var mostUsed by remember { mutableStateOf(DockPrefs.getMostUsed(context)) }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
-                Checkbox(
-                    checked = mostUsed,
-                    onCheckedChange = { mostUsed = it; DockPrefs.setMostUsed(context, it) },
-                    colors = CheckboxDefaults.colors(checkedColor = Color.White, checkmarkColor = Color.Black),
-                )
-                Text(stringResource(R.string.order_most_used))
-            }
             RowsEditor(
                 context, rows, selected, corner,
                 bottomPad = bottomPad,

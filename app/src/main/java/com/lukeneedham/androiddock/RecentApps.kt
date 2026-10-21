@@ -26,7 +26,8 @@ object RecentApps {
      * The app on screen now, and up to [limit] of the most recently used apps from the last
      * day, most recent first, not counting the one on screen. Android gives no list of running
      * apps to ordinary apps, so this is built from usage events (needs usage access). Runs off
-     * the main thread.
+     * the main thread. With [mostUsed], the others are ranked by foreground time over the last
+     * week instead of by recency.
      *
      * The app on screen is not filtered by the blacklist or by dismissals, since it is open
      * whatever the user thinks of it. A launcher on screen means the home screen, so there is
@@ -38,7 +39,7 @@ object RecentApps {
      * The dock's own screens are left out, except the settings app, which counts as an app like
      * any other while it is open. The sheet and the accessibility service never count.
      */
-    fun loadRecents(context: Context, limit: Int): Recents {
+    fun loadRecents(context: Context, limit: Int, mostUsed: Boolean = false): Recents {
         if (!SetupState.isUsageAccessGranted(context)) return Recents(null, emptyList())
         val packages = context.packageManager
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -82,19 +83,17 @@ object RecentApps {
         val current = currentApp?.takeIf { it !in launchers }?.let { appOf(packages, it) }
         val dismissed = DockPrefs.getDismissed(context)
         val blacklist = DockPrefs.getBlacklist(context)
-        if (DockPrefs.getMostUsed(context)) {
-            val week = usage.queryUsageStats(UsageStatsManager.INTERVAL_WEEKLY, now - WEEK_MS, now)
-                .groupBy { it.packageName }
-                .mapValues { (_, stats) -> stats.sumOf { it.totalTimeInForeground } }
-            val mostUsed = week.entries
-                .filter { it.value > 0 && it.key != currentApp && it.key != context.packageName }
+        if (mostUsed) {
+            val week = usage.queryAndAggregateUsageStats(now - WEEK_MS, now)
+            val top = week.entries
+                .filter { it.value.totalTimeInForeground > 0 && it.key != currentApp && it.key != context.packageName }
                 .filter { it.key !in launchers && it.key !in blacklist }
-                .sortedByDescending { it.value }
+                .sortedByDescending { it.value.totalTimeInForeground }
                 .asSequence()
                 .mapNotNull { appOf(packages, it.key) }
                 .take(limit)
                 .toList()
-            return Recents(current, mostUsed)
+            return Recents(current, top)
         }
         val others = lastUsed.entries
             // A blacklisted app still counts as the app on screen above; it is only never listed.
