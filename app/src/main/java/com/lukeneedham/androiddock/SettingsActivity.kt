@@ -299,11 +299,14 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         SectionHeader(R.string.order_title, R.string.order_description)
         var sortType by remember { mutableStateOf(DockPrefs.getSortType(context)) }
         var sortMenuOpen by remember { mutableStateOf(false) }
-        Box {
+        Box(modifier = Modifier.padding(top = 8.dp)) {
             OutlinedButton(
                 onClick = { sortMenuOpen = true },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            ) { Text(stringResource(sortType.label)) }
+            ) {
+                Text(stringResource(sortType.label), modifier = Modifier.weight(1f))
+                Icon(painterResource(R.drawable.ic_arrow_drop_down), contentDescription = null)
+            }
             DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
                 DockPrefs.SortType.entries.forEach { option ->
                     DropdownMenuItem(
