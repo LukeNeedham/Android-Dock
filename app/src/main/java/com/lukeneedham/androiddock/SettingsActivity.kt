@@ -28,9 +28,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.listSaver
@@ -287,35 +284,16 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
 
         SectionHeader(R.string.order_title, R.string.order_description)
         var sortType by remember { mutableStateOf(DockPrefs.getSortType(context)) }
-        var sortMenuOpen by remember { mutableStateOf(false) }
-        Box(modifier = Modifier.padding(top = 8.dp)) {
-            AppButton(
-                style = AppButtonStyle.Secondary,
-                onClick = { sortMenuOpen = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                AppButtonLabel(stringResource(sortType.label), modifier = Modifier.weight(1f))
-                AppIcon(painterResource(R.drawable.ic_arrow_drop_down), contentDescription = null)
-            }
-            DropdownMenu(
-                expanded = sortMenuOpen,
-                onDismissRequest = { sortMenuOpen = false },
-                shape = RoundedCornerShape(12.dp),
-                containerColor = AppTheme.current.colors.menu,
-                tonalElevation = 0.dp,
-            ) {
-                DockPrefs.SortType.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { AppText(stringResource(option.label)) },
-                        onClick = {
-                            sortType = option
-                            DockPrefs.setSortType(context, option)
-                            sortMenuOpen = false
-                        },
-                    )
-                }
-            }
-        }
+        AppDropdown(
+            selected = sortType,
+            options = DockPrefs.SortType.entries,
+            labelOf = { stringResource(it.label) },
+            onSelect = {
+                sortType = it
+                DockPrefs.setSortType(context, it)
+            },
+            modifier = Modifier.padding(top = 8.dp),
+        )
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         // Read again on every return here.
@@ -454,14 +432,13 @@ internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: 
         label(value),
         modifier = Modifier.padding(top = 16.dp),
     )
-    Slider(
+    AppSlider(
         value = value.toFloat(),
         onValueChange = {
             value = it.toInt()
             DockPrefs.set(context, setting, value, trigger)
         },
         valueRange = setting.min.toFloat()..setting.max(context).toFloat(),
-        colors = appSliderColors(),
     )
 }
 
@@ -532,11 +509,10 @@ internal fun ColorSliders(argb: Int, onChange: (Int) -> Unit) {
     ).forEach { (name, shift) ->
         val value = (argb ushr shift) and 0xFF
         AppText(stringResource(name, value), modifier = Modifier.padding(top = 8.dp))
-        Slider(
+        AppSlider(
             value = value.toFloat(),
             onValueChange = { onChange((argb and (0xFF shl shift).inv()) or (it.toInt() shl shift)) },
             valueRange = 0f..255f,
-            colors = appSliderColors(),
         )
     }
 }
