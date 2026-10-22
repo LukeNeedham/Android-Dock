@@ -34,9 +34,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -294,13 +294,21 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         }
 
         SectionHeader(R.string.order_title, R.string.order_description)
-        var mostUsed by remember { mutableStateOf(DockPrefs.getMostUsed(context)) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = mostUsed,
-                onCheckedChange = { mostUsed = it; DockPrefs.setMostUsed(context, it) },
-            )
-            Text(stringResource(R.string.order_most_used))
+        var sortType by remember { mutableStateOf(DockPrefs.getSortType(context)) }
+        DockPrefs.SortType.entries.forEach { option ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = option == sortType,
+                        role = Role.RadioButton,
+                        onClick = { sortType = option; DockPrefs.setSortType(context, option) },
+                    ),
+            ) {
+                RadioButton(selected = option == sortType, onClick = null)
+                Text(stringResource(option.label), modifier = Modifier.padding(start = 8.dp))
+            }
         }
 
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)

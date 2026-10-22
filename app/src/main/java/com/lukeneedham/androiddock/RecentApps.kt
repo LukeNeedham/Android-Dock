@@ -26,8 +26,8 @@ object RecentApps {
      * The app on screen now, and up to [limit] of the most recently used apps from the last
      * day, most recent first, not counting the one on screen. Android gives no list of running
      * apps to ordinary apps, so this is built from usage events (needs usage access). Runs off
-     * the main thread. With [mostUsed], the others are ranked by foreground time over the last
-     * week instead of by recency.
+     * the main thread. With [sortType], the others are ordered by recency or by foreground time over the
+     * last 7 days.
      *
      * The app on screen is not filtered by the blacklist or by dismissals, since it is open
      * whatever the user thinks of it. A launcher on screen means the home screen, so there is
@@ -39,7 +39,7 @@ object RecentApps {
      * The dock's own screens are left out, except the settings app, which counts as an app like
      * any other while it is open. The sheet and the accessibility service never count.
      */
-    fun loadRecents(context: Context, limit: Int, mostUsed: Boolean = false): Recents {
+    fun loadRecents(context: Context, limit: Int, sortType: DockPrefs.SortType = DockPrefs.SortType.RECENT): Recents {
         if (!SetupState.isUsageAccessGranted(context)) return Recents(null, emptyList())
         val packages = context.packageManager
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -84,28 +84,25 @@ object RecentApps {
         val dismissed = DockPrefs.getDismissed(context)
         val blacklist = DockPrefs.getBlacklist(context)
         // Per app: when it was last used, and what the list is ordered by (the same time, or
-        // foreground time over the last week).
-        val usedAt: Map<String, Long>
-        val rank: Map<String, Long>
-        if (mostUsed) {
-            // Services also log foreground time, so keep only apps with a launcher icon.
-            val withIcon = packages
-                .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-                .map { it.activityInfo.packageName }
-                .toSet()
-            val used = HashMap<String, Long>()
-            val foreground = HashMap<String, Long>()
-            usage.queryAndAggregateUsageStats(now - WEEK_MS, now).forEach { (pkg, stats) ->
-                if (pkg in withIcon && pkg != context.packageName && stats.totalTimeInForeground > 0) {
-                    used[pkg] = stats.lastTimeUsed
-                    foreground[pkg] = stats.totalTimeInForeground
+        // foreground time over the last 7 days).
+        val (usedAt, rank) = when (sortType) {
+            DockPrefs.SortType.RECENT -> lastUsed to lastUsed
+            DockPrefs.SortType.MOST_USED -> {
+                // Services also log foreground time, so keep only apps with a launcher icon.
+                val withIcon = packages
+                    .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+                    .map { it.activityInfo.packageName }
+                    .toSet()
+                val used = HashMap<String, Long>()
+                val foreground = HashMap<String, Long>()
+                usage.queryAndAggregateUsageStats(now - WEEK_MS, now).forEach { (pkg, stats) ->
+                    if (pkg in withIcon && pkg != context.packageName && stats.totalTimeInForeground > 0) {
+                        used[pkg] = stats.lastTimeUsed
+                        foreground[pkg] = stats.totalTimeInForeground
+                    }
                 }
+                used to foreground
             }
-            usedAt = used
-            rank = foreground
-        } else {
-            usedAt = lastUsed
-            rank = lastUsed
         }
         val others = ranked(rank, usedAt, dismissed, excluded = launchers + blacklist + setOfNotNull(currentApp))
             .asSequence()
