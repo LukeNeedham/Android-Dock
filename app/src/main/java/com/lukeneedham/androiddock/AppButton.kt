@@ -6,13 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,18 +30,21 @@ enum class AppButtonStyle { Primary, Secondary, Text }
 private val BUTTON_MIN_SIZE = 48.dp
 
 /**
- * A pill-shaped button. What it holds is drawn in the style's content colour, so [AppText] and
- * [AppIcon] inside need no colour of their own.
+ * A pill-shaped button with a [text] label, and optionally an icon before it or after it. With a
+ * [trailingIcon] the label fills the space before it, so the icon sits at the button's end.
  */
 @Composable
 internal fun AppButton(
+    text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     style: AppButtonStyle = AppButtonStyle.Secondary,
     enabled: Boolean = true,
-    content: @Composable RowScope.() -> Unit,
+    leadingIcon: Int? = null,
+    trailingIcon: Int? = null,
 ) {
     val colors = AppTheme.current.colors.button(style)
+    val content = if (enabled) colors.content else colors.disabledContent
     Row(
         modifier = modifier
             .heightIn(min = BUTTON_MIN_SIZE)
@@ -52,16 +55,17 @@ internal fun AppButton(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CompositionLocalProvider(LocalAppContentColor provides if (enabled) colors.content else colors.disabledContent) {
-            content()
-        }
+        if (leadingIcon != null) Icon(painterResource(leadingIcon), contentDescription = null, tint = content)
+        Text(
+            text,
+            color = content,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = if (trailingIcon != null) Modifier.weight(1f) else Modifier,
+        )
+        if (trailingIcon != null) Icon(painterResource(trailingIcon), contentDescription = null, tint = content)
     }
-}
-
-/** A text label for an [AppButton]: the size and weight every button label shares. */
-@Composable
-internal fun RowScope.AppButtonLabel(text: String, modifier: Modifier = Modifier) {
-    AppText(text, modifier = modifier, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
 }
 
 /** A round button that holds only an icon, [BUTTON_MIN_SIZE] square. */
@@ -83,7 +87,7 @@ internal fun AppIconButton(
             .background(if (enabled) colors.background else colors.disabledBackground)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
     ) {
-        AppIcon(
+        Icon(
             painterResource(iconRes),
             contentDescription = contentDescription,
             tint = if (enabled) colors.content else colors.disabledContent,
@@ -102,8 +106,8 @@ private fun AppButtonsPreview() = Row {
             ) {
                 AppButtonStyle.entries.forEach { style ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AppButton(onClick = {}, style = style) { AppButtonLabel(style.name) }
-                        AppButton(onClick = {}, style = style, enabled = false) { AppButtonLabel("Disabled") }
+                        AppButton(text = style.name, onClick = {}, style = style)
+                        AppButton(text = "Disabled", onClick = {}, style = style, enabled = false)
                         AppIconButton(R.drawable.ic_add, contentDescription = "Add", onClick = {}, style = style)
                     }
                 }

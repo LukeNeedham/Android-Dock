@@ -1,5 +1,13 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.TextStyle
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.Image
@@ -51,7 +59,7 @@ internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            AppText(
+            Text(
                 stringResource(R.string.blacklist_description),
                 fontSize = 14.sp, lineHeight = 20.sp,
                 color = AppTheme.current.colors.secondaryText,
@@ -99,7 +107,7 @@ private fun AppRow(app: AppEntry, modifier: Modifier = Modifier, trailing: @Comp
         } else {
             Spacer(Modifier.size(36.dp))
         }
-        AppText(app.label, modifier = Modifier.weight(1f).padding(start = 12.dp))
+        Text(app.label, modifier = Modifier.weight(1f).padding(start = 12.dp), color = AppTheme.current.colors.text)
         trailing()
     }
 }
@@ -116,7 +124,7 @@ private fun BlacklistEditor(context: Context) {
         value = withContext(Dispatchers.IO) { hidden.toList().map { loadAppEntry(context, it) } }
     }
     if (hidden.isEmpty()) {
-        AppText(
+        Text(
             stringResource(R.string.blacklist_empty),
             fontSize = 14.sp, lineHeight = 20.sp,
             color = AppTheme.current.colors.secondaryText,
@@ -125,21 +133,22 @@ private fun BlacklistEditor(context: Context) {
     }
     entries.forEach { app ->
         AppRow(app) {
-            AppButton(style = AppButtonStyle.Text, onClick = {
+            AppButton(text = stringResource(R.string.blacklist_remove), style = AppButtonStyle.Text, onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 hidden.remove(app.packageName)
                 save()
-            }) { AppButtonLabel(stringResource(R.string.blacklist_remove)) }
+            })
         }
     }
     AppButton(
+        text = stringResource(R.string.blacklist_add),
         style = AppButtonStyle.Secondary,
         onClick = {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             picking = true
         },
         modifier = Modifier.padding(top = 16.dp),
-    ) { AppButtonLabel(stringResource(R.string.blacklist_add)) }
+    )
 
     if (picking) {
         AppPickerSheet(
@@ -156,22 +165,45 @@ private fun BlacklistEditor(context: Context) {
 }
 
 /** A bottom sheet listing the installed apps, for choosing one. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
     val apps by produceState<List<AppEntry>?>(null) {
         value = withContext(Dispatchers.IO) { loadLaunchableApps(context) }
     }
-    AppBottomSheet(onDismiss) {
-        AppText(
+    val colors = AppTheme.current.colors
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = colors.bottomSheet,
+        contentColor = colors.text,
+        tonalElevation = 0.dp,
+        scrimColor = colors.scrim,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = colors.outline) },
+    ) {
+        Text(
             stringResource(R.string.blacklist_pick_title),
             fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 24.dp),
+            color = AppTheme.current.colors.text,
         )
         var query by remember { mutableStateOf("") }
-        AppTextField(
+        OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            label = stringResource(R.string.blacklist_search),
+            singleLine = true,
+            label = { Text(stringResource(R.string.blacklist_search), color = colors.fieldLabel) },
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = colors.text,
+                unfocusedTextColor = colors.text,
+                focusedBorderColor = colors.fieldFocusedBorder,
+                unfocusedBorderColor = colors.fieldBorder,
+                focusedLabelColor = colors.fieldLabel,
+                unfocusedLabelColor = colors.fieldLabel,
+                cursorColor = colors.fieldFocusedBorder,
+            ),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         )
         val list = apps

@@ -1,5 +1,6 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.material3.Text
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -87,19 +88,21 @@ private fun OnboardingPage(step: OnboardingStep, onNext: () -> Unit, onSkipTrial
         OnboardingStep.Intro -> IntroPage(onNext)
         OnboardingStep.Accessibility -> StepPage(step, R.string.step_accessibility_title) {
             val context = LocalContext.current
-            AppText(stringResource(R.string.step_accessibility_description), fontSize = 16.sp, lineHeight = 24.sp)
+            Text(stringResource(R.string.step_accessibility_description), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
             AppButton(
+                text = stringResource(R.string.step_accessibility_action),
                 style = AppButtonStyle.Primary,
                 onClick = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-            ) { AppButtonLabel(stringResource(R.string.step_accessibility_action)) }
-            AppText(
+            )
+            Text(
                 stringResource(R.string.step_accessibility_hint),
                 fontSize = 14.sp, lineHeight = 20.sp,
                 color = AppTheme.current.colors.secondaryText,
                 modifier = Modifier.padding(top = 24.dp),
             )
             AppButton(
+                text = stringResource(R.string.step_app_info_action),
                 style = AppButtonStyle.Text,
                 onClick = {
                     context.startActivity(
@@ -110,44 +113,41 @@ private fun OnboardingPage(step: OnboardingStep, onNext: () -> Unit, onSkipTrial
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
-            ) { AppButtonLabel(stringResource(R.string.step_app_info_action)) }
+            )
         }
         OnboardingStep.UsageAccess -> StepPage(step, R.string.step_usage_title) {
             val context = LocalContext.current
-            AppText(stringResource(R.string.step_usage_description), fontSize = 16.sp, lineHeight = 24.sp)
+            Text(stringResource(R.string.step_usage_description), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
             AppButton(
+                text = stringResource(R.string.step_usage_action),
                 style = AppButtonStyle.Primary,
                 onClick = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-            ) { AppButtonLabel(stringResource(R.string.step_usage_action)) }
+            )
         }
         OnboardingStep.OpenFan -> {
             WhenFan(open = true, onNext)
             StepPage(step, R.string.step_open_title) {
                 val corner = stringResource(DockPrefs.getCorner(LocalContext.current).label).lowercase()
-                AppText(stringResource(R.string.step_open_description, corner), fontSize = 16.sp, lineHeight = 24.sp)
-                AppButton(style = AppButtonStyle.Text, onClick = onSkipTrial, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) {
-                    AppButtonLabel(stringResource(R.string.onboarding_skip))
-                }
+                Text(stringResource(R.string.step_open_description, corner), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
+                AppButton(text = stringResource(R.string.onboarding_skip), style = AppButtonStyle.Text, onClick = onSkipTrial, modifier = Modifier.fillMaxWidth().padding(top = 24.dp))
             }
         }
         OnboardingStep.CloseFan -> {
             WhenFan(open = false, onNext)
             StepPage(step, R.string.step_close_title) {
-                AppText(stringResource(R.string.step_close_description), fontSize = 16.sp, lineHeight = 24.sp)
+                Text(stringResource(R.string.step_close_description), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
             }
         }
         OnboardingStep.Done -> StepPage(step, R.string.step_done_title) {
-            AppText(stringResource(R.string.step_done_description), fontSize = 16.sp, lineHeight = 24.sp)
+            Text(stringResource(R.string.step_done_description), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
             listOf(
                 R.string.position_title,
                 R.string.fan_layout_title,
                 R.string.bg_title,
                 R.string.blacklist_title,
-            ).forEach { AppText("•  " + stringResource(it), modifier = Modifier.padding(top = 8.dp, start = 8.dp)) }
-            AppButton(style = AppButtonStyle.Primary, onClick = onNext, modifier = Modifier.fillMaxWidth().padding(top = 32.dp)) {
-                AppButtonLabel(stringResource(R.string.onboarding_finish))
-            }
+            ).forEach { Text("•  " + stringResource(it), modifier = Modifier.padding(top = 8.dp, start = 8.dp), color = AppTheme.current.colors.text) }
+            AppButton(text = stringResource(R.string.onboarding_finish), style = AppButtonStyle.Primary, onClick = onNext, modifier = Modifier.fillMaxWidth().padding(top = 32.dp))
         }
     }
 }
@@ -172,12 +172,12 @@ internal fun OnboardingHeader(step: OnboardingStep) {
             .topAndSideInsets()
             .padding(horizontal = 24.dp, vertical = 12.dp),
     ) {
-        AppText(
+        Text(
             stringResource(R.string.onboarding_header),
             fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
             color = AppTheme.current.colors.bannerText,
         )
-        AppText(
+        Text(
             stepCount(step),
             fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium,
             color = AppTheme.current.colors.bannerText,
@@ -197,10 +197,11 @@ private fun StepPage(step: OnboardingStep, title: Int, content: @Composable () -
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            AppText(
+            Text(
                 stringResource(title),
                 fontSize = 24.sp, lineHeight = 32.sp,
                 modifier = Modifier.padding(bottom = 8.dp),
+                color = AppTheme.current.colors.text,
             )
             content()
             NavBarSpacer()
@@ -222,26 +223,25 @@ private fun IntroPage(onStart: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 32.dp),
         ) {
-            AppText(stringResource(R.string.intro_title), fontSize = 32.sp, lineHeight = 40.sp)
-            AppText(
+            Text(stringResource(R.string.intro_title), fontSize = 32.sp, lineHeight = 40.sp, color = AppTheme.current.colors.text)
+            Text(
                 stringResource(R.string.intro_summary),
                 fontSize = 16.sp, lineHeight = 24.sp,
                 modifier = Modifier.padding(top = 12.dp),
+                color = AppTheme.current.colors.text,
             )
             IntroPoint(R.string.intro_point_tap_title, R.string.intro_point_tap_body)
             IntroPoint(R.string.intro_point_pick_title, R.string.intro_point_pick_body)
             IntroPoint(R.string.intro_point_hold_title, R.string.intro_point_hold_body)
         }
         Column(modifier = Modifier.navigationBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
-            AppText(
+            Text(
                 stringResource(R.string.intro_setup_note),
                 fontSize = 14.sp, lineHeight = 20.sp,
                 color = AppTheme.current.colors.secondaryText,
                 modifier = Modifier.padding(bottom = 12.dp),
             )
-            AppButton(style = AppButtonStyle.Primary, onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                AppButtonLabel(stringResource(R.string.intro_start))
-            }
+            AppButton(text = stringResource(R.string.intro_start), style = AppButtonStyle.Primary, onClick = onStart, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -249,8 +249,8 @@ private fun IntroPage(onStart: () -> Unit) {
 @Composable
 private fun IntroPoint(title: Int, body: Int) {
     Column(modifier = Modifier.padding(top = 28.dp)) {
-        AppText(stringResource(title), fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
-        AppText(
+        Text(stringResource(title), fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium, color = AppTheme.current.colors.text)
+        Text(
             stringResource(body),
             fontSize = 14.sp, lineHeight = 20.sp,
             color = AppTheme.current.colors.secondaryText,

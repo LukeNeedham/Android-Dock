@@ -1,5 +1,10 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Text
 import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -161,6 +166,12 @@ private fun plusCentre(width: Float, height: Float, density: Float, corner: Dock
     return Offset(x.coerceIn(r, width - r), height / 2)
 }
 
+private val CARD_SHAPE = RoundedCornerShape(12.dp)
+
+/** The colours of the panels that hold the controls for the selected part. */
+@Composable
+private fun cardColors() = AppTheme.current.colors.let { CardDefaults.cardColors(containerColor = it.card, contentColor = it.text) }
+
 /** How thick the bars for the margins are, beside the preview. */
 private val MARGIN_BAR = 50.dp
 
@@ -186,9 +197,10 @@ private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart
         parts.forEach { (part, label) ->
             val on = part == selected
             AppButton(
+                text = label,
                 onClick = { onSelect(part) },
                 style = if (on) AppButtonStyle.Primary else AppButtonStyle.Secondary,
-            ) { AppButtonLabel(label) }
+            )
         }
     }
 }
@@ -443,7 +455,7 @@ private fun MarginBar(label: String, selected: Boolean, vertical: Boolean, onCli
             .background(colors.background)
             .clickable(onClick = onClick),
     ) {
-        AppText(
+        Text(
             // The arrow points along the distance it changes; turned with the label, it still does.
             "↕  $label",
             fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium,
@@ -482,10 +494,10 @@ private fun RowsEditor(
 
     if (selected == null) {
         val bottom = selectedPart == FanPart.BottomMargin
-        AppCard(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = CARD_SHAPE, colors = cardColors()) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 val pad = if (bottom) bottomPad else sidePad
-                AppText(stringResource(R.string.slider_padding, pad), modifier = Modifier.padding(top = 12.dp))
+                Text(stringResource(R.string.slider_padding, pad), modifier = Modifier.padding(top = 12.dp), color = AppTheme.current.colors.text)
                 Slider(
                     value = pad.toFloat(),
                     onValueChange = { if (bottom) onBottomPad(it.toInt()) else onSidePad(it.toInt()) },
@@ -496,13 +508,21 @@ private fun RowsEditor(
         }
     } else if (selected < 0) {
         // The corner ring: its width, and whether it shows the app on screen. Nothing else.
-        AppCard(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = CARD_SHAPE, colors = cardColors()) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    AppCheckbox(checked = showCurrent, onCheckedChange = onShowCurrent)
-                    AppText(stringResource(R.string.row_show_current))
+                    Checkbox(
+                        checked = showCurrent,
+                        onCheckedChange = onShowCurrent,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = AppTheme.current.colors.checkboxChecked,
+                            uncheckedColor = AppTheme.current.colors.checkboxUnchecked,
+                            checkmarkColor = AppTheme.current.colors.checkboxCheckmark,
+                        ),
+                    )
+                    Text(stringResource(R.string.row_show_current), color = AppTheme.current.colors.text)
                 }
-                AppText(stringResource(R.string.row_width, currentWidth))
+                Text(stringResource(R.string.row_width, currentWidth), color = AppTheme.current.colors.text)
                 Slider(
                     value = currentWidth.toFloat(),
                     onValueChange = { onCurrentWidth(it.toInt()) },
@@ -514,10 +534,10 @@ private fun RowsEditor(
     } else {
     val index = selected.coerceIn(0, rows.lastIndex)
     val row = rows[index]
-    AppCard(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+    Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = CARD_SHAPE, colors = cardColors()) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
             Spacer(Modifier.height(12.dp))
-            AppText(stringResource(R.string.row_count, row.count))
+            Text(stringResource(R.string.row_count, row.count), color = AppTheme.current.colors.text)
             Slider(
                 value = row.count.toFloat(),
                 onValueChange = {
@@ -529,7 +549,7 @@ private fun RowsEditor(
                 steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
                 colors = appSliderColors(),
             )
-            AppText(stringResource(R.string.row_width, row.widthDp))
+            Text(stringResource(R.string.row_width, row.widthDp), color = AppTheme.current.colors.text)
             Slider(
                 value = row.widthDp.toFloat(),
                 onValueChange = {
@@ -540,6 +560,8 @@ private fun RowsEditor(
                 colors = appSliderColors(),
             )
             AppButton(
+                text = delete,
+                leadingIcon = R.drawable.ic_delete,
                 style = AppButtonStyle.Primary,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -549,10 +571,7 @@ private fun RowsEditor(
                 },
                 enabled = rows.size > 1,
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
-            ) {
-                AppIcon(painterResource(R.drawable.ic_delete), contentDescription = null)
-                AppButtonLabel(delete)
-            }
+            )
         }
     }
     }

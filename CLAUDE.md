@@ -21,10 +21,10 @@ off after an update, that is expected: tell them to switch it back on.
 - Theme: the UI reads `AppTheme.current` only, never `MaterialTheme`. `AppColors` (in `AppTheme.kt`) names a colour
   per use, so a new use gets a new name there instead of borrowing a generic slot. Buttons are `AppButton` and
   `AppIconButton` in one of three `AppButtonStyle`s (Primary, Secondary, Text), each with one set of colours and
-  a 48dp minimum size; do not add a one-off button. Text is `AppText` and icons `AppIcon`. Material components are
-  fine where the app has no own version (slider, bottom sheet, text field, dropdown menu, spinner), but there is no
-  `MaterialTheme`, so each must be given every colour, shape and text style explicitly from `AppTheme.current`; the
-  wrappers `appSliderColors`, `AppBottomSheet` and `AppTextField` do that.
+  a 48dp minimum size; do not add a one-off button. Everything else is a plain Material component with no app
+  wrapper. With no `MaterialTheme` and no content-colour tricks, each one is passed its colours (and shape and
+  text style) explicitly from `AppTheme.current.colors`, e.g. `Text(color = ...)` and `Icon(tint = ...)`; a
+  colour-only helper such as `appSliderColors()` is fine for a component that takes a colours object.
 - Builds: the PR build comment from CI carries the APK link. When it updates, paste the link in the
   chat.
 - Nothing can be built locally in the cloud session (no Android plugins offline). CI is the build.

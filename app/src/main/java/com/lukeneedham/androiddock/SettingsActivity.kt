@@ -1,5 +1,10 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -215,7 +220,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
-        AppText(stringResource(R.string.settings_title), fontSize = 28.sp, lineHeight = 36.sp)
+        Text(stringResource(R.string.settings_title), fontSize = 28.sp, lineHeight = 36.sp, color = AppTheme.current.colors.text)
         PermissionStatus(
             title = R.string.status_accessibility_title,
             ok = SetupState.isAccessibilityEnabled(context),
@@ -227,6 +232,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             onOpen = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
         )
         AppButton(
+            text = stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open),
             style = AppButtonStyle.Primary,
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -242,16 +248,17 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 24.dp),
-        ) { AppButtonLabel(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
+        )
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
         AppButton(
+            text = stringResource(R.string.trigger_open),
             style = AppButtonStyle.Secondary,
             onClick = { navigate(Route.Trigger) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
-        ) { AppButtonLabel(stringResource(R.string.trigger_open)) }
+        )
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
         // Read again on every return here.
@@ -259,15 +266,17 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AppButton(
+                    text = stringResource(R.string.fan_layout_open),
                     style = AppButtonStyle.Secondary,
                     onClick = { navigate(Route.FanLayout) },
                     modifier = Modifier.fillMaxWidth(),
-                ) { AppButtonLabel(stringResource(R.string.fan_layout_open)) }
+                )
                 AppButton(
+                    text = stringResource(R.string.bg_edit),
                     style = AppButtonStyle.Secondary,
                     onClick = { navigate(Route.FanBackground) },
                     modifier = Modifier.fillMaxWidth(),
-                ) { AppButtonLabel(stringResource(R.string.bg_edit)) }
+                )
             }
             // A small, read-only picture of the fan as it is now, background and layout together,
             // refreshed on every return here.
@@ -290,13 +299,12 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         var sortMenuOpen by remember { mutableStateOf(false) }
         Box(modifier = Modifier.padding(top = 8.dp)) {
             AppButton(
+                text = stringResource(sortType.label),
                 style = AppButtonStyle.Secondary,
                 onClick = { sortMenuOpen = true },
+                trailingIcon = R.drawable.ic_arrow_drop_down,
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                AppButtonLabel(stringResource(sortType.label), modifier = Modifier.weight(1f))
-                AppIcon(painterResource(R.drawable.ic_arrow_drop_down), contentDescription = null)
-            }
+            )
             DropdownMenu(
                 expanded = sortMenuOpen,
                 onDismissRequest = { sortMenuOpen = false },
@@ -306,7 +314,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             ) {
                 DockPrefs.SortType.entries.forEach { option ->
                     DropdownMenuItem(
-                        text = { AppText(stringResource(option.label)) },
+                        text = { Text(stringResource(option.label), color = AppTheme.current.colors.text) },
                         onClick = {
                             sortType = option
                             DockPrefs.setSortType(context, option)
@@ -321,21 +329,23 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         // Read again on every return here.
         val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0
         AppButton(
+            text = stringResource(R.string.blacklist_open, hiddenCount),
             style = AppButtonStyle.Secondary,
             onClick = { navigate(Route.Blacklist) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
-        ) { AppButtonLabel(stringResource(R.string.blacklist_open, hiddenCount)) }
+        )
 
         if (BuildConfig.DEBUG) {
             AppButton(
+                text = stringResource(R.string.debug_open),
                 style = AppButtonStyle.Secondary,
                 onClick = { navigate(Route.Debug) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 24.dp),
-            ) { AppButtonLabel(stringResource(R.string.debug_open)) }
+            )
         }
         NavBarSpacer()
     }
@@ -388,9 +398,9 @@ internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corne
                                 .background(if (isSelected) selectedColors.background else Color.Transparent)
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                         ) {
-                            AppText(stringResource(corner.label), color = content)
+                            Text(stringResource(corner.label), color = content)
                             if (isSelected) {
-                                AppIcon(
+                                Icon(
                                     painterResource(R.drawable.ic_check),
                                     contentDescription = null,
                                     tint = content,
@@ -411,37 +421,41 @@ internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corne
  */
 @Composable
 private fun PermissionStatus(title: Int, ok: Boolean, onOpen: () -> Unit) {
-    AppText(
+    Text(
         stringResource(title),
         fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(top = 24.dp),
+        color = AppTheme.current.colors.text,
     )
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        AppIcon(
+        Icon(
             painterResource(if (ok) R.drawable.ic_check else R.drawable.ic_close),
             contentDescription = null,
             tint = if (ok) AppTheme.current.colors.statusOk else AppTheme.current.colors.statusError,
         )
-        AppText(
+        Text(
             stringResource(if (ok) R.string.status_completed else R.string.status_not_completed),
             modifier = Modifier.weight(1f).padding(start = 8.dp),
+            color = AppTheme.current.colors.text,
         )
-        AppButton(style = AppButtonStyle.Text, onClick = onOpen) { AppButtonLabel(stringResource(R.string.status_open)) }
+        AppButton(text = stringResource(R.string.status_open), style = AppButtonStyle.Text, onClick = onOpen)
     }
 }
 
 @Composable
 internal fun SectionHeader(title: Int, description: Int?) {
-    AppText(
+    Text(
         stringResource(title),
         fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(top = 24.dp),
+        color = AppTheme.current.colors.text,
     )
     if (description != null) {
-        AppText(
+        Text(
             stringResource(description),
             fontSize = 14.sp, lineHeight = 20.sp,
             modifier = Modifier.padding(top = 4.dp),
+            color = AppTheme.current.colors.text,
         )
     }
 }
@@ -450,9 +464,10 @@ internal fun SectionHeader(title: Int, description: Int?) {
 @Composable
 internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: @Composable (Int) -> String, trigger: Int = 0) {
     var value by remember(trigger) { mutableIntStateOf(DockPrefs.get(context, setting, trigger)) }
-    AppText(
+    Text(
         label(value),
         modifier = Modifier.padding(top = 16.dp),
+        color = AppTheme.current.colors.text,
     )
     Slider(
         value = value.toFloat(),
@@ -484,7 +499,7 @@ internal fun ColorSettingRow(
             .clickable { open = true }
             .padding(top = 16.dp),
     ) {
-        AppText(stringResource(label), modifier = Modifier.weight(1f))
+        Text(stringResource(label), modifier = Modifier.weight(1f), color = AppTheme.current.colors.text)
         ColorSwatch(argb, Modifier.width(72.dp).height(32.dp))
     }
     if (open) {
@@ -510,11 +525,21 @@ internal fun ColorSwatch(argb: Int, modifier: Modifier) {
 }
 
 /** The bottom sheet shared by every colour setting: opacity, red, green and blue sliders. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ColorPickerSheet(title: Int, argb: Int, onChange: (Int) -> Unit, onDismiss: () -> Unit) {
-    AppBottomSheet(onDismiss) {
+    val colors = AppTheme.current.colors
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = colors.bottomSheet,
+        contentColor = colors.text,
+        tonalElevation = 0.dp,
+        scrimColor = colors.scrim,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = colors.outline) },
+    ) {
         Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
-            AppText(stringResource(title), fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
+            Text(stringResource(title), fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium, color = AppTheme.current.colors.text)
             ColorSwatch(argb, Modifier.padding(top = 8.dp).fillMaxWidth().height(40.dp))
             ColorSliders(argb, onChange)
         }
@@ -531,7 +556,7 @@ internal fun ColorSliders(argb: Int, onChange: (Int) -> Unit) {
         R.string.color_blue to 0,
     ).forEach { (name, shift) ->
         val value = (argb ushr shift) and 0xFF
-        AppText(stringResource(name, value), modifier = Modifier.padding(top = 8.dp))
+        Text(stringResource(name, value), modifier = Modifier.padding(top = 8.dp), color = AppTheme.current.colors.text)
         Slider(
             value = value.toFloat(),
             onValueChange = { onChange((argb and (0xFF shl shift).inv()) or (it.toInt() shl shift)) },

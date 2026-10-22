@@ -1,5 +1,6 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -72,7 +73,7 @@ internal fun SubPage(
                     modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp),
                 )
             }
-            AppText(stringResource(title), fontSize = 22.sp, lineHeight = 28.sp)
+            Text(stringResource(title), fontSize = 22.sp, lineHeight = 28.sp, color = AppTheme.current.colors.text)
         }
         CompositionLocalProvider(LocalFooterShown provides hasFooter) { content() }
         if (footer != null) Column(modifier = Modifier.navigationBarsPadding()) { footer() }

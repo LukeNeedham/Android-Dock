@@ -1,5 +1,6 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.material3.Text
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -282,10 +283,11 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                 onSelect = { selected = it },
                 onChange = onChange,
             )
-            AppText(
+            Text(
                 stringResource(R.string.stop_title, index + 1, stops.size, (stop.position * 100).roundToInt()),
                 fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 16.dp),
+                color = AppTheme.current.colors.text,
             )
             ColorSliders(stop.color) { color ->
                 onChange(stops.mapIndexed { i, s -> if (i == index) s.copy(color = color) else s })
@@ -296,6 +298,7 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             ) {
                 AppButton(
+                    text = stringResource(R.string.stop_add),
                     style = AppButtonStyle.Secondary,
                     onClick = {
                         val (added, at) = SheetGradient.added(stops)
@@ -304,8 +307,9 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                     },
                     enabled = stops.size < SheetGradient.STOPS_MAX,
                     modifier = Modifier.weight(1f),
-                ) { AppButtonLabel(stringResource(R.string.stop_add)) }
+                )
                 AppButton(
+                    text = stringResource(R.string.stop_remove),
                     style = AppButtonStyle.Secondary,
                     onClick = {
                         selected = index.coerceAtMost(stops.size - 2).coerceAtLeast(0)
@@ -313,7 +317,7 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                     },
                     enabled = stops.size > 1,
                     modifier = Modifier.weight(1f),
-                ) { AppButtonLabel(stringResource(R.string.stop_remove)) }
+                )
             }
             NavBarSpacer()
         }

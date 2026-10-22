@@ -1,5 +1,6 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -45,7 +46,7 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            AppText(stringResource(R.string.position_description), fontSize = 14.sp, lineHeight = 20.sp)
+            Text(stringResource(R.string.position_description), fontSize = 14.sp, lineHeight = 20.sp, color = AppTheme.current.colors.text)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -54,9 +55,10 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                 (0 until count).forEach { i ->
                     val on = i == selected
                     AppButton(
+                        text = stringResource(R.string.trigger_name, i + 1),
                         onClick = { selected = i },
                         style = if (on) AppButtonStyle.Primary else AppButtonStyle.Secondary,
-                    ) { AppButtonLabel(stringResource(R.string.trigger_name, i + 1)) }
+                    )
                 }
                 if (count < DockPrefs.TRIGGERS_MAX) {
                     AppIconButton(
@@ -72,6 +74,7 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                 }
             }
             AppButton(
+                text = stringResource(R.string.trigger_remove, selected + 1),
                 style = AppButtonStyle.Secondary,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -82,7 +85,7 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                 },
                 enabled = count > 1,
                 modifier = Modifier.padding(top = 20.dp),
-            ) { AppButtonLabel(stringResource(R.string.trigger_remove, selected + 1)) }
+            )
             key(selected, generation) {
                 var corner by remember { mutableStateOf(DockPrefs.getCorner(context, selected)) }
                 SectionHeader(R.string.corner_title, R.string.corner_description)
