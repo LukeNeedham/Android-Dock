@@ -49,5 +49,4 @@ Android does not give ordinary apps the list of running apps. Fan builds it from
 - Fan's own screens are left out, except Fan's settings while they are open.
 - The number of apps shown is however many the rings hold.
 - **App order** (main settings page) is either **Most recently used** (the default) or **Most used in the
-  past 7 days**, which orders apps by foreground time and lists only apps with a launcher icon. Double
-  tap still switches to the previous app.
+  past 7 days**, which orders apps by foreground time and lists only apps with a launcher icon.

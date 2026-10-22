@@ -20,7 +20,7 @@ object RecentApps {
     class Recents(val current: App?, val others: List<App>)
 
     /** The recent apps other than the one on screen; see [loadRecents]. */
-    fun load(context: Context, limit: Int): List<App> = loadRecents(context, limit).others
+    fun load(context: Context, limit: Int): List<App> = loadRecents(context, limit, DockPrefs.SortType.RECENT).others
 
     /**
      * The app on screen now, and up to [limit] of the most recently used apps from the last
@@ -39,7 +39,7 @@ object RecentApps {
      * The dock's own screens are left out, except the settings app, which counts as an app like
      * any other while it is open. The sheet and the accessibility service never count.
      */
-    fun loadRecents(context: Context, limit: Int, sortType: DockPrefs.SortType = DockPrefs.SortType.RECENT): Recents {
+    fun loadRecents(context: Context, limit: Int, sortType: DockPrefs.SortType): Recents {
         if (!SetupState.isUsageAccessGranted(context)) return Recents(null, emptyList())
         val packages = context.packageManager
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -87,22 +87,7 @@ object RecentApps {
         // foreground time over the last 7 days).
         val (usedAt, rank) = when (sortType) {
             DockPrefs.SortType.RECENT -> lastUsed to lastUsed
-            DockPrefs.SortType.MOST_USED -> {
-                // Services also log foreground time, so keep only apps with a launcher icon.
-                val withIcon = packages
-                    .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-                    .map { it.activityInfo.packageName }
-                    .toSet()
-                val used = HashMap<String, Long>()
-                val foreground = HashMap<String, Long>()
-                usage.queryAndAggregateUsageStats(now - WEEK_MS, now).forEach { (pkg, stats) ->
-                    if (pkg in withIcon && pkg != context.packageName && stats.totalTimeInForeground > 0) {
-                        used[pkg] = stats.lastTimeUsed
-                        foreground[pkg] = stats.totalTimeInForeground
-                    }
-                }
-                used to foreground
-            }
+            DockPrefs.SortType.MOST_USED -> mostUsed(context, usage, now)
         }
         val others = ranked(rank, usedAt, dismissed, excluded = launchers + blacklist + setOfNotNull(currentApp))
             .asSequence()
@@ -110,6 +95,26 @@ object RecentApps {
             .take(limit)
             .toList()
         return Recents(current, others)
+    }
+
+    /**
+     * When each app was last used, and its foreground time, both over the last 7 days. Only apps
+     * with a launcher icon are included, since services also log foreground time.
+     */
+    private fun mostUsed(context: Context, usage: UsageStatsManager, now: Long): Pair<Map<String, Long>, Map<String, Long>> {
+        val withIcon = context.packageManager
+            .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+            .map { it.activityInfo.packageName }
+            .toSet()
+        val usedAt = HashMap<String, Long>()
+        val foreground = HashMap<String, Long>()
+        usage.queryAndAggregateUsageStats(now - WEEK_MS, now).forEach { (pkg, stats) ->
+            if (pkg in withIcon && pkg != context.packageName && stats.totalTimeInForeground > 0) {
+                usedAt[pkg] = stats.lastTimeUsed
+                foreground[pkg] = stats.totalTimeInForeground
+            }
+        }
+        return usedAt to foreground
     }
 
     /**
