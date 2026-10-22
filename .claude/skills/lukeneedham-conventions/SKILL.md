@@ -31,7 +31,7 @@ in the PR for the work you were asked to do, saying so in the description. Never
   `LukeNeedham/ci-workflows/examples/`; the logic is in the shared reusable workflows there.
 - `apk-path` is `app/build/outputs/apk/debug/app-debug.apk`; `comment-header` is `<app>-app-link`.
 - Debug mode always comes from `BuildConfig.DEBUG` (the build config field).
-- Open a PR for completed work. When the build comment appears on the PR, paste its **AppHub link** (the `AppHub:` line) into the chat, not the APK download link. Paste the APK link only if the comment has no AppHub line.
+- Open a PR for completed work. Paste the PR's **AppHub link** (`https://www.lukeneedham.com/apphub/pr/<repo name>/<number>`, also in CI's AppHub comment) into the chat as soon as the PR is open, without waiting for the build, and not the APK download link.
 
 ## App icon
 - `app-icon.png` at the repo root is the app's icon for the app hub: a 512x512 circle on a transparent

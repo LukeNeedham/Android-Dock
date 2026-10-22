@@ -34,20 +34,28 @@ object DockPrefs {
      * was pressed. Every distance (the trigger's offsets and the fan's padding) is measured from
      * the two edges that meet there.
      */
-    enum class Corner(val bottom: Boolean, val end: Boolean, val label: Int, val verticalEdge: Int, val horizontalEdge: Int) {
-        BOTTOM_RIGHT(true, true, R.string.corner_bottom_right, R.string.edge_bottom, R.string.edge_right),
-        BOTTOM_LEFT(true, false, R.string.corner_bottom_left, R.string.edge_bottom, R.string.edge_left),
-        TOP_LEFT(false, false, R.string.corner_top_left, R.string.edge_top, R.string.edge_left),
-        TOP_RIGHT(false, true, R.string.corner_top_right, R.string.edge_top, R.string.edge_right),
+    enum class Corner(
+        /** What is persisted. Never change one: it is the stored value. */
+        val id: String,
+        val bottom: Boolean,
+        val end: Boolean,
+        val label: Int,
+        val verticalEdge: Int,
+        val horizontalEdge: Int,
+    ) {
+        BOTTOM_RIGHT("BOTTOM_RIGHT", true, true, R.string.corner_bottom_right, R.string.edge_bottom, R.string.edge_right),
+        BOTTOM_LEFT("BOTTOM_LEFT", true, false, R.string.corner_bottom_left, R.string.edge_bottom, R.string.edge_left),
+        TOP_LEFT("TOP_LEFT", false, false, R.string.corner_top_left, R.string.edge_top, R.string.edge_left),
+        TOP_RIGHT("TOP_RIGHT", false, true, R.string.corner_top_right, R.string.edge_top, R.string.edge_right),
     }
 
     const val CORNER_KEY = "corner"
 
     fun getCorner(context: Context, trigger: Int = 0): Corner =
-        Corner.entries.firstOrNull { it.name == prefs(context).getString(triggerKey(CORNER_KEY, trigger), null) } ?: Corner.BOTTOM_RIGHT
+        Corner.entries.firstOrNull { it.id == prefs(context).getString(triggerKey(CORNER_KEY, trigger), null) } ?: Corner.BOTTOM_RIGHT
 
     fun setCorner(context: Context, corner: Corner, trigger: Int = 0) {
-        prefs(context).edit().putString(triggerKey(CORNER_KEY, trigger), corner.name).apply()
+        prefs(context).edit().putString(triggerKey(CORNER_KEY, trigger), corner.id).apply()
     }
 
     fun prefs(context: Context): SharedPreferences =
@@ -77,7 +85,7 @@ object DockPrefs {
             .apply { ColorSetting.entries.forEach { remove(triggerKey(it.key, index)) } }
             .remove(triggerKey(CORNER_KEY, index))
             .putInt(triggerKey(Setting.HORIZONTAL_OFFSET.key, index), beside)
-            .putString(triggerKey(CORNER_KEY, index), getCorner(context, last).name)
+            .putString(triggerKey(CORNER_KEY, index), getCorner(context, last).id)
             .putInt(TRIGGER_COUNT_KEY, index + 1)
             .apply()
         return index
@@ -92,7 +100,7 @@ object DockPrefs {
         for (i in index until count - 1) {
             Setting.entries.forEach { editor.putInt(triggerKey(it.key, i), get(context, it, i + 1)) }
             ColorSetting.entries.forEach { editor.putInt(triggerKey(it.key, i), getColor(context, it, i + 1)) }
-            editor.putString(triggerKey(CORNER_KEY, i), getCorner(context, i + 1).name)
+            editor.putString(triggerKey(CORNER_KEY, i), getCorner(context, i + 1).id)
         }
         editor.remove(triggerKey(CORNER_KEY, count - 1))
         Setting.entries.forEach { editor.remove(triggerKey(it.key, count - 1)) }
@@ -225,6 +233,28 @@ object DockPrefs {
 
     fun setShowCurrent(context: Context, value: Boolean) {
         prefs(context).edit().putBoolean(SHOW_CURRENT_KEY, value).apply()
+    }
+
+    /** How the fan orders its apps. */
+    enum class SortType(
+        /** What is persisted. Never change one: it is the stored value. */
+        val id: String,
+        val label: Int,
+    ) {
+        /** Most recently used first. */
+        RECENT("recent", R.string.order_recent),
+
+        /** Most foreground time over the last 7 days first. */
+        MOST_USED("most_used", R.string.order_most_used),
+    }
+
+    private const val SORT_TYPE_KEY = "sort_type"
+
+    fun getSortType(context: Context): SortType =
+        SortType.entries.firstOrNull { it.id == prefs(context).getString(SORT_TYPE_KEY, null) } ?: SortType.RECENT
+
+    fun setSortType(context: Context, sortType: SortType) {
+        prefs(context).edit().putString(SORT_TYPE_KEY, sortType.id).apply()
     }
 
     /**

@@ -20,13 +20,14 @@ object RecentApps {
     class Recents(val current: App?, val others: List<App>)
 
     /** The recent apps other than the one on screen; see [loadRecents]. */
-    fun load(context: Context, limit: Int): List<App> = loadRecents(context, limit).others
+    fun load(context: Context, limit: Int): List<App> = loadRecents(context, limit, DockPrefs.SortType.RECENT).others
 
     /**
      * The app on screen now, and up to [limit] of the most recently used apps from the last
      * day, most recent first, not counting the one on screen. Android gives no list of running
      * apps to ordinary apps, so this is built from usage events (needs usage access). Runs off
-     * the main thread.
+     * the main thread. With [sortType], the others are ordered by recency or by foreground time over the
+     * last 7 days.
      *
      * The app on screen is not filtered by the blacklist or by dismissals, since it is open
      * whatever the user thinks of it. A launcher on screen means the home screen, so there is
@@ -38,7 +39,7 @@ object RecentApps {
      * The dock's own screens are left out, except the settings app, which counts as an app like
      * any other while it is open. The sheet and the accessibility service never count.
      */
-    fun loadRecents(context: Context, limit: Int): Recents {
+    fun loadRecents(context: Context, limit: Int, sortType: DockPrefs.SortType): Recents {
         if (!SetupState.isUsageAccessGranted(context)) return Recents(null, emptyList())
         val packages = context.packageManager
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -82,18 +83,54 @@ object RecentApps {
         val current = currentApp?.takeIf { it !in launchers }?.let { appOf(packages, it) }
         val dismissed = DockPrefs.getDismissed(context)
         val blacklist = DockPrefs.getBlacklist(context)
-        val others = lastUsed.entries
-            // A blacklisted app still counts as the app on screen above; it is only never listed.
-            .filter { it.key != currentApp && it.key !in launchers && it.key !in blacklist }
-            // Dismissed by the user, and not used since.
-            .filter { it.value > (dismissed[it.key] ?: 0L) }
-            .sortedByDescending { it.value }
+        // Per app: when it was last used, and what the list is ordered by (the same time, or
+        // foreground time over the last 7 days).
+        val (usedAt, rank) = when (sortType) {
+            DockPrefs.SortType.RECENT -> lastUsed to lastUsed
+            DockPrefs.SortType.MOST_USED -> mostUsed(context, usage, now)
+        }
+        val others = ranked(rank, usedAt, dismissed, excluded = launchers + blacklist + setOfNotNull(currentApp))
             .asSequence()
-            .mapNotNull { (pkg, _) -> appOf(packages, pkg) }
+            .mapNotNull { appOf(packages, it) }
             .take(limit)
             .toList()
         return Recents(current, others)
     }
+
+    /**
+     * When each app was last used, and its foreground time, both over the last 7 days. Only apps
+     * with a launcher icon are included, since services also log foreground time.
+     */
+    private fun mostUsed(context: Context, usage: UsageStatsManager, now: Long): Pair<Map<String, Long>, Map<String, Long>> {
+        val withIcon = context.packageManager
+            .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+            .map { it.activityInfo.packageName }
+            .toSet()
+        val usedAt = HashMap<String, Long>()
+        val foreground = HashMap<String, Long>()
+        usage.queryAndAggregateUsageStats(now - WEEK_MS, now).forEach { (pkg, stats) ->
+            if (pkg in withIcon && pkg != context.packageName && stats.totalTimeInForeground > 0) {
+                usedAt[pkg] = stats.lastTimeUsed
+                foreground[pkg] = stats.totalTimeInForeground
+            }
+        }
+        return usedAt to foreground
+    }
+
+    /**
+     * The packages of [rank], highest first, without the [excluded] ones and without those
+     * dismissed at or after they were last used ([usedAt]).
+     */
+    internal fun ranked(
+        rank: Map<String, Long>,
+        usedAt: Map<String, Long>,
+        dismissed: Map<String, Long>,
+        excluded: Set<String>,
+    ): List<String> = rank.keys
+        .filter { it !in excluded }
+        // Dismissed by the user, and not used since.
+        .filter { (usedAt[it] ?: 0L) > (dismissed[it] ?: 0L) }
+        .sortedByDescending { rank[it] }
 
     /** [pkg] as an [App], or null if it cannot be opened from the sheet. */
     private fun appOf(packages: PackageManager, pkg: String): App? {
@@ -117,5 +154,6 @@ object RecentApps {
     private const val ACTIVITY_STOPPED = 23
     private const val ACTIVITY_DESTROYED = 24
 
+    private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
     private const val WINDOW_MS = 24L * 60 * 60 * 1000
 }

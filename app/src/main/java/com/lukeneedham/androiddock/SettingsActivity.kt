@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -34,9 +35,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -209,6 +212,9 @@ private fun AppNavigation(resumes: Int) {
     )
 }
 
+/** The smallest accessible touch target; every button on the settings page is at least this tall. */
+private val BUTTON_MIN_HEIGHT = 48.dp
+
 @Composable
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
@@ -252,7 +258,8 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp),
+                .padding(top = 24.dp)
+                .heightIn(min = BUTTON_MIN_HEIGHT),
         ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
@@ -260,7 +267,8 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             onClick = { navigate(Route.Trigger) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = 8.dp)
+                .heightIn(min = BUTTON_MIN_HEIGHT),
         ) { Text(stringResource(R.string.trigger_open)) }
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
@@ -270,11 +278,11 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(
                     onClick = { navigate(Route.FanLayout) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = BUTTON_MIN_HEIGHT),
                 ) { Text(stringResource(R.string.fan_layout_open)) }
                 FilledTonalButton(
                     onClick = { navigate(Route.FanBackground) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = BUTTON_MIN_HEIGHT),
                 ) { Text(stringResource(R.string.bg_edit)) }
             }
             // A small, read-only picture of the fan as it is now, background and layout together,
@@ -293,6 +301,31 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             )
         }
 
+        SectionHeader(R.string.order_title, R.string.order_description)
+        var sortType by remember { mutableStateOf(DockPrefs.getSortType(context)) }
+        var sortMenuOpen by remember { mutableStateOf(false) }
+        Box(modifier = Modifier.padding(top = 8.dp)) {
+            OutlinedButton(
+                onClick = { sortMenuOpen = true },
+                modifier = Modifier.fillMaxWidth().heightIn(min = BUTTON_MIN_HEIGHT),
+            ) {
+                Text(stringResource(sortType.label), modifier = Modifier.weight(1f))
+                Icon(painterResource(R.drawable.ic_arrow_drop_down), contentDescription = null)
+            }
+            DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+                DockPrefs.SortType.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(option.label)) },
+                        onClick = {
+                            sortType = option
+                            DockPrefs.setSortType(context, option)
+                            sortMenuOpen = false
+                        },
+                    )
+                }
+            }
+        }
+
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         // Read again on every return here.
         val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0
@@ -300,7 +333,8 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             onClick = { navigate(Route.Blacklist) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = 8.dp)
+                .heightIn(min = BUTTON_MIN_HEIGHT),
         ) { Text(stringResource(R.string.blacklist_open, hiddenCount)) }
 
         if (BuildConfig.DEBUG) {
@@ -308,7 +342,8 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
                 onClick = { navigate(Route.Debug) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp),
+                    .padding(top = 24.dp)
+                    .heightIn(min = BUTTON_MIN_HEIGHT),
             ) { Text(stringResource(R.string.debug_open)) }
         }
         NavBarSpacer()

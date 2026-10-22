@@ -293,7 +293,7 @@ class DockActivity : AppCompatActivity() {
                 showEntries(sheetView, null, actionEntries(), rows, radius, textColor)
             } else {
                 Thread {
-                    val recents = RecentApps.loadRecents(this, maxItems)
+                    val recents = RecentApps.loadRecents(this, maxItems, DockPrefs.getSortType(this))
                     runOnUiThread {
                         // A newer load has started since, so this one is out of date.
                         if (isDestroyed || isFinishing || generation != loadGeneration) return@runOnUiThread

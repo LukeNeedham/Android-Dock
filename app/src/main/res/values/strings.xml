@@ -79,6 +79,10 @@
     <string name="row_title">Ring %1$d</string>
     <string name="row_count">Items: %1$d</string>
     <string name="row_current_title">Corner</string>
+    <string name="order_title">App order</string>
+    <string name="order_description">How the fan orders its apps.</string>
+    <string name="order_recent">Most recently used</string>
+    <string name="order_most_used">Most used in past week</string>
     <string name="row_show_current">Show current app</string>
     <string name="slider_padding">Margin: %1$d</string>
     <string name="blacklist_title">Hidden apps</string>
