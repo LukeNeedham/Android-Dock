@@ -19,34 +19,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.listSaver
@@ -70,7 +54,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -81,8 +67,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -90,6 +74,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.lukeneedham.common.ui.CrashesPage
 import com.lukeneedham.common.ui.DebugPage
 import com.lukeneedham.common.ui.LogsPage
+import com.lukeneedham.common.ui.ProvideDebugSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -112,10 +97,10 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge()
         openCount++
         setContent {
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+            AppTheme {
                 // Every app wraps its content in ProvideDebugSettings, even without a debug setting to read.
-                ProvideAppDebugSettings {
-                    Surface(modifier = Modifier.fillMaxSize()) {
+                ProvideDebugSettings(theme = AppTheme.current.toDebugTheme()) {
+                    Box(modifier = Modifier.fillMaxSize().background(AppTheme.current.colors.background)) {
                         AppNavigation(resumes)
                     }
                 }
@@ -212,9 +197,6 @@ private fun AppNavigation(resumes: Int) {
     )
 }
 
-/** The smallest accessible touch target; every button on the settings page is at least this tall. */
-private val BUTTON_MIN_HEIGHT = 48.dp
-
 @Composable
 private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
@@ -233,7 +215,7 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
-        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
+        AppText(stringResource(R.string.settings_title), fontSize = 28.sp, lineHeight = 36.sp)
         PermissionStatus(
             title = R.string.status_accessibility_title,
             ok = SetupState.isAccessibilityEnabled(context),
@@ -244,7 +226,8 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             ok = SetupState.isUsageAccessGranted(context),
             onOpen = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
         )
-        Button(
+        AppButton(
+            style = AppButtonStyle.Primary,
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 if (fanOpen) {
@@ -258,32 +241,33 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp)
-                .heightIn(min = BUTTON_MIN_HEIGHT),
-        ) { Text(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
+                .padding(top = 24.dp),
+        ) { AppButtonLabel(stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open)) }
 
         SectionHeader(R.string.position_title, R.string.trigger_summary)
-        FilledTonalButton(
+        AppButton(
+            style = AppButtonStyle.Secondary,
             onClick = { navigate(Route.Trigger) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
-                .heightIn(min = BUTTON_MIN_HEIGHT),
-        ) { Text(stringResource(R.string.trigger_open)) }
+                .padding(top = 8.dp),
+        ) { AppButtonLabel(stringResource(R.string.trigger_open)) }
 
         SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
         // Read again on every return here.
         val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(
+                AppButton(
+                    style = AppButtonStyle.Secondary,
                     onClick = { navigate(Route.FanLayout) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = BUTTON_MIN_HEIGHT),
-                ) { Text(stringResource(R.string.fan_layout_open)) }
-                FilledTonalButton(
+                    modifier = Modifier.fillMaxWidth(),
+                ) { AppButtonLabel(stringResource(R.string.fan_layout_open)) }
+                AppButton(
+                    style = AppButtonStyle.Secondary,
                     onClick = { navigate(Route.FanBackground) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = BUTTON_MIN_HEIGHT),
-                ) { Text(stringResource(R.string.bg_edit)) }
+                    modifier = Modifier.fillMaxWidth(),
+                ) { AppButtonLabel(stringResource(R.string.bg_edit)) }
             }
             // A small, read-only picture of the fan as it is now, background and layout together,
             // refreshed on every return here.
@@ -305,17 +289,24 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         var sortType by remember { mutableStateOf(DockPrefs.getSortType(context)) }
         var sortMenuOpen by remember { mutableStateOf(false) }
         Box(modifier = Modifier.padding(top = 8.dp)) {
-            OutlinedButton(
+            AppButton(
+                style = AppButtonStyle.Secondary,
                 onClick = { sortMenuOpen = true },
-                modifier = Modifier.fillMaxWidth().heightIn(min = BUTTON_MIN_HEIGHT),
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(stringResource(sortType.label), modifier = Modifier.weight(1f))
-                Icon(painterResource(R.drawable.ic_arrow_drop_down), contentDescription = null)
+                AppButtonLabel(stringResource(sortType.label), modifier = Modifier.weight(1f))
+                AppIcon(painterResource(R.drawable.ic_arrow_drop_down), contentDescription = null)
             }
-            DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+            DropdownMenu(
+                expanded = sortMenuOpen,
+                onDismissRequest = { sortMenuOpen = false },
+                shape = RoundedCornerShape(12.dp),
+                containerColor = AppTheme.current.colors.menu,
+                tonalElevation = 0.dp,
+            ) {
                 DockPrefs.SortType.entries.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(stringResource(option.label)) },
+                        text = { AppText(stringResource(option.label)) },
                         onClick = {
                             sortType = option
                             DockPrefs.setSortType(context, option)
@@ -329,22 +320,22 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
         SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
         // Read again on every return here.
         val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0
-        FilledTonalButton(
+        AppButton(
+            style = AppButtonStyle.Secondary,
             onClick = { navigate(Route.Blacklist) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
-                .heightIn(min = BUTTON_MIN_HEIGHT),
-        ) { Text(stringResource(R.string.blacklist_open, hiddenCount)) }
+                .padding(top = 8.dp),
+        ) { AppButtonLabel(stringResource(R.string.blacklist_open, hiddenCount)) }
 
         if (BuildConfig.DEBUG) {
-            FilledTonalButton(
+            AppButton(
+                style = AppButtonStyle.Secondary,
                 onClick = { navigate(Route.Debug) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp)
-                    .heightIn(min = BUTTON_MIN_HEIGHT),
-            ) { Text(stringResource(R.string.debug_open)) }
+                    .padding(top = 24.dp),
+            ) { AppButtonLabel(stringResource(R.string.debug_open)) }
         }
         NavBarSpacer()
     }
@@ -356,13 +347,13 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
  */
 @Composable
 internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corner) -> Unit) {
-    val outline = MaterialTheme.colorScheme.outline
+    val colors = AppTheme.current.colors
     Column(
         modifier = Modifier
             .padding(top = 8.dp)
             .fillMaxWidth()
             .height(140.dp)
-            .border(1.dp, outline, RoundedCornerShape(12.dp))
+            .border(1.dp, colors.outline, RoundedCornerShape(12.dp))
             .padding(6.dp),
     ) {
         // Each corner's whole quarter of the box is the click area; the button drawn in it stays small.
@@ -374,7 +365,8 @@ internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corne
                 line.forEach { corner ->
                     val isSelected = corner == selected
                     val shape = RoundedCornerShape(8.dp)
-                    val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    val selectedColors = colors.primaryButton
+                    val content = if (isSelected) selectedColors.content else colors.text
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -393,12 +385,12 @@ internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corne
                                     },
                                 )
                                 .clip(shape)
-                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                .background(if (isSelected) selectedColors.background else Color.Transparent)
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                         ) {
-                            Text(stringResource(corner.label), color = content)
+                            AppText(stringResource(corner.label), color = content)
                             if (isSelected) {
-                                Icon(
+                                AppIcon(
                                     painterResource(R.drawable.ic_check),
                                     contentDescription = null,
                                     tint = content,
@@ -419,36 +411,36 @@ internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corne
  */
 @Composable
 private fun PermissionStatus(title: Int, ok: Boolean, onOpen: () -> Unit) {
-    Text(
+    AppText(
         stringResource(title),
-        style = MaterialTheme.typography.titleMedium,
+        fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(top = 24.dp),
     )
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Icon(
+        AppIcon(
             painterResource(if (ok) R.drawable.ic_check else R.drawable.ic_close),
             contentDescription = null,
-            tint = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            tint = if (ok) AppTheme.current.colors.statusOk else AppTheme.current.colors.statusError,
         )
-        Text(
+        AppText(
             stringResource(if (ok) R.string.status_completed else R.string.status_not_completed),
             modifier = Modifier.weight(1f).padding(start = 8.dp),
         )
-        TextButton(onClick = onOpen) { Text(stringResource(R.string.status_open)) }
+        AppButton(style = AppButtonStyle.Text, onClick = onOpen) { AppButtonLabel(stringResource(R.string.status_open)) }
     }
 }
 
 @Composable
 internal fun SectionHeader(title: Int, description: Int?) {
-    Text(
+    AppText(
         stringResource(title),
-        style = MaterialTheme.typography.titleMedium,
+        fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(top = 24.dp),
     )
     if (description != null) {
-        Text(
+        AppText(
             stringResource(description),
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 14.sp, lineHeight = 20.sp,
             modifier = Modifier.padding(top = 4.dp),
         )
     }
@@ -458,7 +450,7 @@ internal fun SectionHeader(title: Int, description: Int?) {
 @Composable
 internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: @Composable (Int) -> String, trigger: Int = 0) {
     var value by remember(trigger) { mutableIntStateOf(DockPrefs.get(context, setting, trigger)) }
-    Text(
+    AppText(
         label(value),
         modifier = Modifier.padding(top = 16.dp),
     )
@@ -469,6 +461,7 @@ internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: 
             DockPrefs.set(context, setting, value, trigger)
         },
         valueRange = setting.min.toFloat()..setting.max(context).toFloat(),
+        colors = appSliderColors(),
     )
 }
 
@@ -491,7 +484,7 @@ internal fun ColorSettingRow(
             .clickable { open = true }
             .padding(top = 16.dp),
     ) {
-        Text(stringResource(label), modifier = Modifier.weight(1f))
+        AppText(stringResource(label), modifier = Modifier.weight(1f))
         ColorSwatch(argb, Modifier.width(72.dp).height(32.dp))
     }
     if (open) {
@@ -517,12 +510,11 @@ internal fun ColorSwatch(argb: Int, modifier: Modifier) {
 }
 
 /** The bottom sheet shared by every colour setting: opacity, red, green and blue sliders. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ColorPickerSheet(title: Int, argb: Int, onChange: (Int) -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AppBottomSheet(onDismiss) {
         Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
-            Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
+            AppText(stringResource(title), fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
             ColorSwatch(argb, Modifier.padding(top = 8.dp).fillMaxWidth().height(40.dp))
             ColorSliders(argb, onChange)
         }
@@ -539,11 +531,12 @@ internal fun ColorSliders(argb: Int, onChange: (Int) -> Unit) {
         R.string.color_blue to 0,
     ).forEach { (name, shift) ->
         val value = (argb ushr shift) and 0xFF
-        Text(stringResource(name, value), modifier = Modifier.padding(top = 8.dp))
+        AppText(stringResource(name, value), modifier = Modifier.padding(top = 8.dp))
         Slider(
             value = value.toFloat(),
             onValueChange = { onChange((argb and (0xFF shl shift).inv()) or (it.toInt() shl shift)) },
             valueRange = 0f..255f,
+            colors = appSliderColors(),
         )
     }
 }

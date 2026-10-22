@@ -18,16 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -43,7 +33,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -59,10 +51,10 @@ internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            Text(
+            AppText(
                 stringResource(R.string.blacklist_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp, lineHeight = 20.sp,
+                color = AppTheme.current.colors.secondaryText,
                 modifier = Modifier.padding(bottom = 16.dp),
             )
             BlacklistEditor(context)
@@ -107,7 +99,7 @@ private fun AppRow(app: AppEntry, modifier: Modifier = Modifier, trailing: @Comp
         } else {
             Spacer(Modifier.size(36.dp))
         }
-        Text(app.label, modifier = Modifier.weight(1f).padding(start = 12.dp))
+        AppText(app.label, modifier = Modifier.weight(1f).padding(start = 12.dp))
         trailing()
     }
 }
@@ -124,29 +116,30 @@ private fun BlacklistEditor(context: Context) {
         value = withContext(Dispatchers.IO) { hidden.toList().map { loadAppEntry(context, it) } }
     }
     if (hidden.isEmpty()) {
-        Text(
+        AppText(
             stringResource(R.string.blacklist_empty),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp, lineHeight = 20.sp,
+            color = AppTheme.current.colors.secondaryText,
             modifier = Modifier.padding(vertical = 8.dp),
         )
     }
     entries.forEach { app ->
         AppRow(app) {
-            TextButton(onClick = {
+            AppButton(style = AppButtonStyle.Text, onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 hidden.remove(app.packageName)
                 save()
-            }) { Text(stringResource(R.string.blacklist_remove)) }
+            }) { AppButtonLabel(stringResource(R.string.blacklist_remove)) }
         }
     }
-    FilledTonalButton(
+    AppButton(
+        style = AppButtonStyle.Secondary,
         onClick = {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             picking = true
         },
         modifier = Modifier.padding(top = 16.dp),
-    ) { Text(stringResource(R.string.blacklist_add)) }
+    ) { AppButtonLabel(stringResource(R.string.blacklist_add)) }
 
     if (picking) {
         AppPickerSheet(
@@ -163,29 +156,27 @@ private fun BlacklistEditor(context: Context) {
 }
 
 /** A bottom sheet listing the installed apps, for choosing one. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
     val apps by produceState<List<AppEntry>?>(null) {
         value = withContext(Dispatchers.IO) { loadLaunchableApps(context) }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Text(
+    AppBottomSheet(onDismiss) {
+        AppText(
             stringResource(R.string.blacklist_pick_title),
-            style = MaterialTheme.typography.titleMedium,
+            fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
         var query by remember { mutableStateOf("") }
-        OutlinedTextField(
+        AppTextField(
             value = query,
             onValueChange = { query = it },
-            singleLine = true,
-            label = { Text(stringResource(R.string.blacklist_search)) },
+            label = stringResource(R.string.blacklist_search),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         )
         val list = apps
         if (list == null) {
-            CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+            CircularProgressIndicator(color = AppTheme.current.colors.accent, modifier = Modifier.padding(24.dp))
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
                 items(

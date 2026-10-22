@@ -31,23 +31,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.res.painterResource
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,7 +60,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
@@ -172,16 +161,6 @@ private fun plusCentre(width: Float, height: Float, density: Float, corner: Dock
     return Offset(x.coerceIn(r, width - r), height / 2)
 }
 
-/** Sliders on this page have a white accent. */
-@Composable
-private fun whiteSliderColors() = SliderDefaults.colors(
-    thumbColor = Color.White,
-    activeTrackColor = Color.White,
-    inactiveTrackColor = Color.White.copy(alpha = 0.3f),
-    activeTickColor = Color.Black.copy(alpha = 0.4f),
-    inactiveTickColor = Color.White.copy(alpha = 0.5f),
-)
-
 /** How thick the bars for the margins are, beside the preview. */
 private val MARGIN_BAR = 50.dp
 
@@ -206,17 +185,10 @@ private fun PartList(ringCount: Int, corner: DockPrefs.Corner, selected: FanPart
     ) {
         parts.forEach { (part, label) ->
             val on = part == selected
-            val base = MaterialTheme.colorScheme.surfaceVariant
-            Text(
-                label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (on) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (on) Color.White else base)
-                    .clickable { onSelect(part) }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            )
+            AppButton(
+                onClick = { onSelect(part) },
+                style = if (on) AppButtonStyle.Primary else AppButtonStyle.Secondary,
+            ) { AppButtonLabel(label) }
         }
     }
 }
@@ -279,8 +251,7 @@ internal fun FanPreview(
         // Whatever is selected is highlighted the same way as a ring: the preview's background with
         // a translucent white over it.
         val highlight = Color.White.copy(alpha = 0.2f)
-        val barColor = MaterialTheme.colorScheme.surfaceVariant
-        val barSelectedColor = Color.White
+        val addColors = AppTheme.current.colors.primaryButton
         // The rings are centred on the corner moved in by the padding, but the background is
         // centred on the corner itself, and reaches far enough to hold the outermost ring.
         val backgroundDp = radiusDp + hypot(sidePad.toFloat(), bottomPad.toFloat())
@@ -290,7 +261,7 @@ internal fun FanPreview(
             modifier = Modifier
                 .padding(start = insetStart, top = insetTop, end = if (corner.end) bar else 0.dp, bottom = if (corner.bottom) bar else 0.dp)
                 .then(if (thumbnailDp != null) Modifier.fillMaxSize() else Modifier)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(AppTheme.current.colors.previewBackground)
                 .then(if (interactive) Modifier.horizontalScroll(scroll) else Modifier),
         ) {
         Canvas(
@@ -417,11 +388,11 @@ internal fun FanPreview(
             if (onAddRow != null && interactive) {
                 val plus = plusCentre(size.width, size.height, dp, corner, radiusDp, sidePad)
                 val r = PLUS_RADIUS_DP * dp
-                drawCircle(Color.White, r, plus)
+                drawCircle(addColors.background, r, plus)
                 val arm = r * 0.5f
                 val stroke = 2.5f * dp
-                drawLine(Color.Black, Offset(plus.x - arm, plus.y), Offset(plus.x + arm, plus.y), strokeWidth = stroke)
-                drawLine(Color.Black, Offset(plus.x, plus.y - arm), Offset(plus.x, plus.y + arm), strokeWidth = stroke)
+                drawLine(addColors.content, Offset(plus.x - arm, plus.y), Offset(plus.x + arm, plus.y), strokeWidth = stroke)
+                drawLine(addColors.content, Offset(plus.x, plus.y - arm), Offset(plus.x, plus.y + arm), strokeWidth = stroke)
             }
             // A margin is empty space, showing the background; only when selected is it highlighted.
             if (interactive) {
@@ -440,7 +411,7 @@ internal fun FanPreview(
             // The bottom bar spans the preview's width and the side bar its height, on the far
             // side of the preview from the corner's edge they edit.
             MarginBar(
-                bottomLabel, selected == FanPart.BottomMargin, barColor, barSelectedColor, vertical = false, onClick = { onSelect(FanPart.BottomMargin) },
+                bottomLabel, selected == FanPart.BottomMargin, vertical = false, onClick = { onSelect(FanPart.BottomMargin) },
                 modifier = Modifier
                     .align(if (corner.bottom) Alignment.BottomStart else Alignment.TopStart)
                     .offset(x = insetStart)
@@ -448,7 +419,7 @@ internal fun FanPreview(
                     .height(bar),
             )
             MarginBar(
-                sideLabel, selected == FanPart.SideMargin, barColor, barSelectedColor, vertical = true, onClick = { onSelect(FanPart.SideMargin) },
+                sideLabel, selected == FanPart.SideMargin, vertical = true, onClick = { onSelect(FanPart.SideMargin) },
                 modifier = Modifier
                     .align(if (corner.end) Alignment.TopEnd else Alignment.TopStart)
                     .offset(y = insetTop)
@@ -464,19 +435,19 @@ internal fun FanPreview(
  * highlighted like a selected ring. The margin it edits is plain space beside it. [vertical] bars stand at the side, and turn their label to run along them.
  */
 @Composable
-private fun MarginBar(label: String, selected: Boolean, color: Color, selectedColor: Color, vertical: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    val colors = MaterialTheme.colorScheme
+private fun MarginBar(label: String, selected: Boolean, vertical: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val colors = AppTheme.current.colors.button(if (selected) AppButtonStyle.Primary else AppButtonStyle.Secondary)
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .background(if (selected) selectedColor else color)
+            .background(colors.background)
             .clickable(onClick = onClick),
     ) {
-        Text(
+        AppText(
             // The arrow points along the distance it changes; turned with the label, it still does.
             "↕  $label",
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) Color.Black else colors.onSurfaceVariant,
+            fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium,
+            color = colors.content,
             maxLines = 1,
             softWrap = false,
             modifier = if (vertical) Modifier.wrapContentSize(unbounded = true).rotate(-90f) else Modifier,
@@ -511,42 +482,42 @@ private fun RowsEditor(
 
     if (selected == null) {
         val bottom = selectedPart == FanPart.BottomMargin
-        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        AppCard(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 val pad = if (bottom) bottomPad else sidePad
-                Text(stringResource(R.string.slider_padding, pad), modifier = Modifier.padding(top = 12.dp))
+                AppText(stringResource(R.string.slider_padding, pad), modifier = Modifier.padding(top = 12.dp))
                 Slider(
                     value = pad.toFloat(),
                     onValueChange = { if (bottom) onBottomPad(it.toInt()) else onSidePad(it.toInt()) },
                     valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
-                    colors = whiteSliderColors(),
+                    colors = appSliderColors(),
                 )
             }
         }
     } else if (selected < 0) {
         // The corner ring: its width, and whether it shows the app on screen. Nothing else.
-        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        AppCard(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    Checkbox(checked = showCurrent, onCheckedChange = onShowCurrent, colors = CheckboxDefaults.colors(checkedColor = Color.White, checkmarkColor = Color.Black))
-                    Text(stringResource(R.string.row_show_current))
+                    AppCheckbox(checked = showCurrent, onCheckedChange = onShowCurrent)
+                    AppText(stringResource(R.string.row_show_current))
                 }
-                Text(stringResource(R.string.row_width, currentWidth))
+                AppText(stringResource(R.string.row_width, currentWidth))
                 Slider(
                     value = currentWidth.toFloat(),
                     onValueChange = { onCurrentWidth(it.toInt()) },
                     valueRange = DockPrefs.currentWidthMin(showCurrent).toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
-                    colors = whiteSliderColors(),
+                    colors = appSliderColors(),
                 )
             }
         }
     } else {
     val index = selected.coerceIn(0, rows.lastIndex)
     val row = rows[index]
-    Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+    AppCard(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
             Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.row_count, row.count))
+            AppText(stringResource(R.string.row_count, row.count))
             Slider(
                 value = row.count.toFloat(),
                 onValueChange = {
@@ -556,9 +527,9 @@ private fun RowsEditor(
                 },
                 valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
                 steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
-                colors = whiteSliderColors(),
+                colors = appSliderColors(),
             )
-            Text(stringResource(R.string.row_width, row.widthDp))
+            AppText(stringResource(R.string.row_width, row.widthDp))
             Slider(
                 value = row.widthDp.toFloat(),
                 onValueChange = {
@@ -566,9 +537,10 @@ private fun RowsEditor(
                     save()
                 },
                 valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
-                colors = whiteSliderColors(),
+                colors = appSliderColors(),
             )
-            Button(
+            AppButton(
+                style = AppButtonStyle.Primary,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     rows.removeAt(index)
@@ -576,17 +548,10 @@ private fun RowsEditor(
                     save()
                 },
                 enabled = rows.size > 1,
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black,
-                    disabledContainerColor = Color.White.copy(alpha = 0.3f),
-                    disabledContentColor = Color.Black.copy(alpha = 0.5f),
-                ),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
             ) {
-                Icon(painterResource(R.drawable.ic_delete), contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text(delete)
+                AppIcon(painterResource(R.drawable.ic_delete), contentDescription = null)
+                AppButtonLabel(delete)
             }
         }
     }
