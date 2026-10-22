@@ -28,4 +28,4 @@ jobs:
       # java-version: '17'
       # java-distribution: zulu
       # timezone: Europe/Amsterdam       # used for the timestamps in the comment and release
-      # comment-header: example-app-link # change only if a PR needs several APK comments
+      comment-header: android-dock-app-link # change only if a PR needs several APK comments
