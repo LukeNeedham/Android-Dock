@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -36,7 +37,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -295,19 +298,23 @@ private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
 
         SectionHeader(R.string.order_title, R.string.order_description)
         var sortType by remember { mutableStateOf(DockPrefs.getSortType(context)) }
-        DockPrefs.SortType.entries.forEach { option ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectable(
-                        selected = option == sortType,
-                        role = Role.RadioButton,
-                        onClick = { sortType = option; DockPrefs.setSortType(context, option) },
-                    ),
-            ) {
-                RadioButton(selected = option == sortType, onClick = null)
-                Text(stringResource(option.label), modifier = Modifier.padding(start = 8.dp))
+        var sortMenuOpen by remember { mutableStateOf(false) }
+        Box {
+            OutlinedButton(
+                onClick = { sortMenuOpen = true },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) { Text(stringResource(sortType.label)) }
+            DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+                DockPrefs.SortType.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(option.label)) },
+                        onClick = {
+                            sortType = option
+                            DockPrefs.setSortType(context, option)
+                            sortMenuOpen = false
+                        },
+                    )
+                }
             }
         }
 
