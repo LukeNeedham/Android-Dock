@@ -34,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -485,10 +486,11 @@ private fun RowsEditor(
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 val pad = if (bottom) bottomPad else sidePad
                 AppText(stringResource(R.string.slider_padding, pad), modifier = Modifier.padding(top = 12.dp))
-                AppSlider(
+                Slider(
                     value = pad.toFloat(),
                     onValueChange = { if (bottom) onBottomPad(it.toInt()) else onSidePad(it.toInt()) },
                     valueRange = 0f..DockPrefs.PADDING_MAX.toFloat(),
+                    colors = appSliderColors(),
                 )
             }
         }
@@ -501,10 +503,11 @@ private fun RowsEditor(
                     AppText(stringResource(R.string.row_show_current))
                 }
                 AppText(stringResource(R.string.row_width, currentWidth))
-                AppSlider(
+                Slider(
                     value = currentWidth.toFloat(),
                     onValueChange = { onCurrentWidth(it.toInt()) },
                     valueRange = DockPrefs.currentWidthMin(showCurrent).toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
+                    colors = appSliderColors(),
                 )
             }
         }
@@ -515,7 +518,7 @@ private fun RowsEditor(
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
             Spacer(Modifier.height(12.dp))
             AppText(stringResource(R.string.row_count, row.count))
-            AppSlider(
+            Slider(
                 value = row.count.toFloat(),
                 onValueChange = {
                     if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -524,15 +527,17 @@ private fun RowsEditor(
                 },
                 valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
                 steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
+                colors = appSliderColors(),
             )
             AppText(stringResource(R.string.row_width, row.widthDp))
-            AppSlider(
+            Slider(
                 value = row.widthDp.toFloat(),
                 onValueChange = {
                     rows[index] = row.copy(widthDp = it.toInt())
                     save()
                 },
                 valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
+                colors = appSliderColors(),
             )
             AppButton(
                 style = AppButtonStyle.Primary,

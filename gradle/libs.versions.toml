@@ -3,6 +3,7 @@ agp = "9.4.1"
 kotlin = "2.4.21"
 coreKtx = "1.19.1"
 appcompat = "1.8.0"
+material = "1.14.0"
 composeBom = "2026.09.00"
 activityCompose = "1.13.0"
 # 1.2.0 needs minSdk 24; 1.1.7 is the newest that supports the app's minSdk 23.
@@ -13,8 +14,10 @@ junit = "4.13.2"
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 common = { module = "com.lukeneedham:common", version.ref = "common" }

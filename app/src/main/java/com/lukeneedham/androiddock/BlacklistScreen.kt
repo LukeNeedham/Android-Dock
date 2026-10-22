@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -175,7 +176,7 @@ private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (Stri
         )
         val list = apps
         if (list == null) {
-            AppProgress(modifier = Modifier.padding(24.dp))
+            CircularProgressIndicator(color = AppTheme.current.colors.accent, modifier = Modifier.padding(24.dp))
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
                 items(
