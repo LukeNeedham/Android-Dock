@@ -1,27 +1,17 @@
 package com.lukeneedham.androiddock
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.layout.Column
@@ -29,16 +19,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * The triggers on a page of their own: pick one from the list, then set where it sits, how big
@@ -60,7 +46,7 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
         ) {
-            Text(stringResource(R.string.position_description), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.position_description), fontSize = 14.sp, lineHeight = 20.sp, color = AppTheme.current.colors.text)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -68,36 +54,28 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
             ) {
                 (0 until count).forEach { i ->
                     val on = i == selected
-                    Text(
-                        stringResource(R.string.trigger_name, i + 1),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (on) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (on) Color.White else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { selected = i }
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    AppButton(
+                        text = stringResource(R.string.trigger_name, i + 1),
+                        onClick = { selected = i },
+                        style = if (on) AppButtonStyle.Primary else AppButtonStyle.Secondary,
                     )
                 }
                 if (count < DockPrefs.TRIGGERS_MAX) {
-                    Icon(
-                        painterResource(R.drawable.ic_add),
+                    AppIconButton(
+                        iconRes = R.drawable.ic_add,
                         contentDescription = stringResource(R.string.trigger_add),
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF424242))
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                selected = DockPrefs.addTrigger(context)
-                                count = DockPrefs.getTriggerCount(context)
-                            }
-                            .padding(8.dp),
+                        style = AppButtonStyle.Secondary,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            selected = DockPrefs.addTrigger(context)
+                            count = DockPrefs.getTriggerCount(context)
+                        },
                     )
                 }
             }
-            FilledTonalButton(
+            AppButton(
+                text = stringResource(R.string.trigger_remove, selected + 1),
+                style = AppButtonStyle.Secondary,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     DockPrefs.removeTrigger(context, selected)
@@ -107,7 +85,7 @@ internal fun TriggerScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Uni
                 },
                 enabled = count > 1,
                 modifier = Modifier.padding(top = 20.dp),
-            ) { Text(stringResource(R.string.trigger_remove, selected + 1)) }
+            )
             key(selected, generation) {
                 var corner by remember { mutableStateOf(DockPrefs.getCorner(context, selected)) }
                 SectionHeader(R.string.corner_title, R.string.corner_description)

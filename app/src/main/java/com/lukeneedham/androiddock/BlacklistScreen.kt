@@ -1,5 +1,13 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.TextStyle
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.Image
@@ -18,16 +26,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -43,7 +41,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -61,8 +61,8 @@ internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
         ) {
             Text(
                 stringResource(R.string.blacklist_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp, lineHeight = 20.sp,
+                color = AppTheme.current.colors.secondaryText,
                 modifier = Modifier.padding(bottom = 16.dp),
             )
             BlacklistEditor(context)
@@ -107,7 +107,7 @@ private fun AppRow(app: AppEntry, modifier: Modifier = Modifier, trailing: @Comp
         } else {
             Spacer(Modifier.size(36.dp))
         }
-        Text(app.label, modifier = Modifier.weight(1f).padding(start = 12.dp))
+        Text(app.label, modifier = Modifier.weight(1f).padding(start = 12.dp), color = AppTheme.current.colors.text)
         trailing()
     }
 }
@@ -126,27 +126,29 @@ private fun BlacklistEditor(context: Context) {
     if (hidden.isEmpty()) {
         Text(
             stringResource(R.string.blacklist_empty),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp, lineHeight = 20.sp,
+            color = AppTheme.current.colors.secondaryText,
             modifier = Modifier.padding(vertical = 8.dp),
         )
     }
     entries.forEach { app ->
         AppRow(app) {
-            TextButton(onClick = {
+            AppButton(text = stringResource(R.string.blacklist_remove), style = AppButtonStyle.Text, onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 hidden.remove(app.packageName)
                 save()
-            }) { Text(stringResource(R.string.blacklist_remove)) }
+            })
         }
     }
-    FilledTonalButton(
+    AppButton(
+        text = stringResource(R.string.blacklist_add),
+        style = AppButtonStyle.Secondary,
         onClick = {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             picking = true
         },
         modifier = Modifier.padding(top = 16.dp),
-    ) { Text(stringResource(R.string.blacklist_add)) }
+    )
 
     if (picking) {
         AppPickerSheet(
@@ -169,23 +171,44 @@ private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (Stri
     val apps by produceState<List<AppEntry>?>(null) {
         value = withContext(Dispatchers.IO) { loadLaunchableApps(context) }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val colors = AppTheme.current.colors
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = colors.bottomSheet,
+        contentColor = colors.text,
+        tonalElevation = 0.dp,
+        scrimColor = colors.scrim,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = colors.outline) },
+    ) {
         Text(
             stringResource(R.string.blacklist_pick_title),
-            style = MaterialTheme.typography.titleMedium,
+            fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 24.dp),
+            color = AppTheme.current.colors.text,
         )
         var query by remember { mutableStateOf("") }
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            label = { Text(stringResource(R.string.blacklist_search)) },
+            label = { Text(stringResource(R.string.blacklist_search), color = colors.fieldLabel) },
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = colors.text,
+                unfocusedTextColor = colors.text,
+                focusedBorderColor = colors.fieldFocusedBorder,
+                unfocusedBorderColor = colors.fieldBorder,
+                focusedLabelColor = colors.fieldLabel,
+                unfocusedLabelColor = colors.fieldLabel,
+                cursorColor = colors.fieldFocusedBorder,
+            ),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         )
         val list = apps
         if (list == null) {
-            CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+            CircularProgressIndicator(color = AppTheme.current.colors.accent, modifier = Modifier.padding(24.dp))
         } else {
             LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
                 items(

@@ -1,5 +1,6 @@
 package com.lukeneedham.androiddock
 
+import androidx.compose.material3.Text
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -14,10 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -131,7 +128,7 @@ private fun GradientBox(
     val latestOnChange by rememberUpdatedState(onChange)
     val description = stringResource(R.string.bg_box_description)
     val textMeasurer = rememberTextMeasurer()
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = AppTheme.current.colors.accent
 
     Canvas(
         modifier = modifier
@@ -288,8 +285,9 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
             )
             Text(
                 stringResource(R.string.stop_title, index + 1, stops.size, (stop.position * 100).roundToInt()),
-                style = MaterialTheme.typography.titleSmall,
+                fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 16.dp),
+                color = AppTheme.current.colors.text,
             )
             ColorSliders(stop.color) { color ->
                 onChange(stops.mapIndexed { i, s -> if (i == index) s.copy(color = color) else s })
@@ -299,7 +297,9 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             ) {
-                FilledTonalButton(
+                AppButton(
+                    text = stringResource(R.string.stop_add),
+                    style = AppButtonStyle.Secondary,
                     onClick = {
                         val (added, at) = SheetGradient.added(stops)
                         selected = at
@@ -307,15 +307,17 @@ internal fun FanBackgroundScreen(onBack: (() -> Unit)?) {
                     },
                     enabled = stops.size < SheetGradient.STOPS_MAX,
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.stop_add)) }
-                OutlinedButton(
+                )
+                AppButton(
+                    text = stringResource(R.string.stop_remove),
+                    style = AppButtonStyle.Secondary,
                     onClick = {
                         selected = index.coerceAtMost(stops.size - 2).coerceAtLeast(0)
                         onChange(SheetGradient.removed(stops, index))
                     },
                     enabled = stops.size > 1,
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.stop_remove)) }
+                )
             }
             NavBarSpacer()
         }
