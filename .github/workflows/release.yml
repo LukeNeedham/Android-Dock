@@ -1,7 +1,4 @@
-# Publishes a permanent, signed release (tag + APK). Run it from the Actions tab on main, with a
-# version such as 0.3.0. The steps live in the shared ci-workflows repo.
-# Needs four repo secrets: RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS,
-# RELEASE_KEY_PASSWORD. Setup guide: https://github.com/LukeNeedham/ci-workflows/blob/main/docs/setup.md
+# Copied from LukeNeedham/ci-workflows (callers/release.yml). Do not edit it here: change it there.
 name: Release
 
 on:
@@ -18,7 +15,7 @@ on:
         default: ''
 
 permissions:
-  contents: write       # create the tag and the release
+  contents: write
 
 jobs:
   release:
