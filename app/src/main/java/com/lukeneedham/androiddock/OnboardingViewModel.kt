@@ -6,9 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 
-/** The [step] to show, or null when onboarding is over and the app can open, and the [corner] the fan opens in. */
-internal data class OnboardingUiState(val step: OnboardingStep?, val corner: DockPrefs.Corner)
-
 /**
  * Where the user is in the onboarding. The permission steps are checked against the system, so [refresh] runs when the
  * user comes back from the system settings.

@@ -17,15 +17,6 @@ import kotlinx.coroutines.withContext
 /** An app's name and icon, for the lists of apps. */
 internal class AppEntry(val packageName: String, val label: String, val icon: ImageBitmap?)
 
-/**
- * The apps that never show in the sheet ([hidden], with their names and icons), and the apps the user can pick to hide
- * ([pickableApps]: every app with a launcher icon, null until they are loaded).
- */
-internal data class BlacklistUiState(
-    val hidden: List<AppEntry>,
-    val pickableApps: List<AppEntry>? = null,
-)
-
 private const val APP_ICON_PX = 96
 
 /** Reads and saves the blacklist. Names and icons come from the package manager, off the main thread. */

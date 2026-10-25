@@ -9,15 +9,6 @@ import androidx.lifecycle.AndroidViewModel
 /** One of the numbers that place a trigger, with the largest it can be. */
 internal data class TriggerSlider(val setting: DockPrefs.Setting, val value: Int, val max: Int)
 
-/** The triggers and the settings of the [selected] one (an index into the [count] triggers). */
-internal data class TriggerUiState(
-    val count: Int,
-    val selected: Int,
-    val corner: DockPrefs.Corner,
-    val sliders: List<TriggerSlider>,
-    val buttonColor: Int,
-)
-
 /** Reads and saves the settings of the triggers; the running service applies every change live. */
 internal class TriggerViewModel(application: Application) : AndroidViewModel(application) {
     var uiState by mutableStateOf(load(selected = 0))

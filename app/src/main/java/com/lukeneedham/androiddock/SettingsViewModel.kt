@@ -17,15 +17,6 @@ internal data class FanPreviewState(
     val corner: DockPrefs.Corner,
 )
 
-/** What the home page shows. */
-internal data class SettingsUiState(
-    val accessibilityOk: Boolean,
-    val usageAccessOk: Boolean,
-    val fan: FanPreviewState,
-    val sortType: DockPrefs.SortType,
-    val hiddenCount: Int,
-)
-
 /** Reads the settings the home page shows, again on every [refresh] (when the user comes back to it). */
 internal class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     var uiState by mutableStateOf(load())

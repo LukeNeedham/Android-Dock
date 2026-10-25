@@ -131,16 +131,16 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-/** The settings app's navigation: a back stack of [AppNavKey]s, shown by Navigation 3. */
+/** The settings app's navigation: a back stack of [Route]s, shown by Navigation 3. */
 @Composable
 private fun AppNavigation(resumes: Int) {
     // Saved as key names, so the stack survives rotation and the process being recreated.
     val backStack = rememberSaveable(
-        saver = listSaver<SnapshotStateList<AppNavKey>, String>(
+        saver = listSaver<SnapshotStateList<Route>, String>(
             save = { stack -> stack.map { it.name } },
-            restore = { names -> names.map { AppNavKey.of(it) }.toMutableStateList() },
+            restore = { names -> names.map { Route.of(it) }.toMutableStateList() },
         ),
-    ) { mutableStateListOf<AppNavKey>(SettingsNavKey) }
+    ) { mutableStateListOf<Route>(Route.Settings) }
     val back: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
 
     // Until setup is done the app is only the onboarding flow, one page per step.
@@ -161,18 +161,18 @@ private fun AppNavigation(resumes: Int) {
         entryProvider = { key ->
             NavEntry(key) {
                 when (key) {
-                    SettingsNavKey -> SettingsPage(resumes) { backStack.add(it) }
-                    TriggerNavKey -> TriggerPage(back)
-                    FanLayoutNavKey -> FanLayoutPage(back)
-                    FanBackgroundNavKey -> FanBackgroundPage(back)
-                    BlacklistNavKey -> BlacklistPage(back)
-                    DebugNavKey -> DebugPage(
+                    Route.Settings -> SettingsPage(resumes) { backStack.add(it) }
+                    Route.Trigger -> TriggerPage(back)
+                    Route.FanLayout -> FanLayoutPage(back)
+                    Route.FanBackground -> FanBackgroundPage(back)
+                    Route.Blacklist -> BlacklistPage(back)
+                    Route.Debug -> DebugPage(
                         onBack = back,
-                        onOpenLogs = { backStack.add(LogsNavKey) },
-                        onOpenCrashes = { backStack.add(CrashesNavKey) },
+                        onOpenLogs = { backStack.add(Route.Logs) },
+                        onOpenCrashes = { backStack.add(Route.Crashes) },
                     )
-                    LogsNavKey -> LogsPage(onBack = back)
-                    CrashesNavKey -> CrashesPage(onBack = back)
+                    Route.Logs -> LogsPage(onBack = back)
+                    Route.Crashes -> CrashesPage(onBack = back)
                 }
             }
         },
