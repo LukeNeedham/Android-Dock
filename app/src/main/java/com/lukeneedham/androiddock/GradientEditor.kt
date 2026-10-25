@@ -111,7 +111,7 @@ private fun nearestStop(
  * selects its stop ([selected], reported to [onSelect]).
  */
 @Composable
-private fun GradientBox(
+internal fun GradientBox(
     stops: List<ColorStop>,
     corner: DockPrefs.Corner,
     modifier: Modifier = Modifier,
