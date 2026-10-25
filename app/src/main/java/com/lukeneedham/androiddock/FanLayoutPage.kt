@@ -1,6 +1,8 @@
 package com.lukeneedham.androiddock
 
 import androidx.compose.material3.Card
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -74,35 +76,57 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
+/** The fan layout page: gets [FanLayoutViewModel] and only calls [FanLayoutPageContent]. */
+@Composable
+internal fun FanLayoutPage(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
+    val viewModel = viewModel<FanLayoutViewModel>()
+    FanLayoutPageContent(
+        state = viewModel.uiState,
+        onBack = onBack,
+        footer = footer,
+        header = header,
+        onSelect = viewModel::onSelect,
+        onAddRow = viewModel::onAddRow,
+        onDeleteRow = viewModel::onDeleteRow,
+        onRowCountChange = viewModel::onRowCountChange,
+        onRowWidthChange = viewModel::onRowWidthChange,
+        onBottomPadChange = viewModel::onBottomPadChange,
+        onSidePadChange = viewModel::onSidePadChange,
+        onCurrentWidthChange = viewModel::onCurrentWidthChange,
+        onShowCurrentChange = viewModel::onShowCurrentChange,
+    )
+}
+
 /**
  * The fan's layout, on a page of its own: a preview of the fan at the top, drawn with placeholder
  * circles for apps, and below it the controls for the rows. Every change shows in the preview as
  * it is made.
  */
 @Composable
-internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
-    val context = LocalContext.current
+internal fun FanLayoutPageContent(
+    state: FanLayoutUiState,
+    onBack: (() -> Unit)?,
+    footer: (@Composable () -> Unit)? = null,
+    header: (@Composable () -> Unit)? = null,
+    onSelect: (FanPart) -> Unit,
+    onAddRow: () -> Unit,
+    onDeleteRow: (Int) -> Unit,
+    onRowCountChange: (Int, Int) -> Unit,
+    onRowWidthChange: (Int, Int) -> Unit,
+    onBottomPadChange: (Int) -> Unit,
+    onSidePadChange: (Int) -> Unit,
+    onCurrentWidthChange: (Int) -> Unit,
+    onShowCurrentChange: (Boolean) -> Unit,
+) {
     val haptic = LocalHapticFeedback.current
-    val corner = DockPrefs.getCorner(context)
-    var inner by remember { mutableIntStateOf(DockPrefs.getCurrentWidth(context)) }
-    var showCurrent by remember { mutableStateOf(DockPrefs.getShowCurrent(context)) }
-    val currentWidth = inner.coerceAtLeast(DockPrefs.currentWidthMin(showCurrent))
-    var bottomPad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM)) }
-    var sidePad by remember { mutableIntStateOf(DockPrefs.getPadding(context, DockPrefs.Padding.SIDE)) }
-    val rows = remember { mutableStateListOf<DockPrefs.Row>().apply { addAll(DockPrefs.getRows(context)) } }
-    // The part of the fan the controls edit, chosen in the preview or the list above the controls,
-    // and tinted in the preview.
-    var selected by remember { mutableStateOf<FanPart>(FanPart.Ring(0)) }
-    // The background is edited on the main page; here it only shows behind the fan.
-    val stops = remember { DockPrefs.getSheetStops(context) }
 
     SubPage(R.string.fan_layout_title, onBack, footer, header) {
-        FanPreview(currentWidth, bottomPad, sidePad, rows.toList(), selected, stops, corner = corner, showCurrent = showCurrent, onSelect = { selected = it },
-            onAddRow = if (rows.size < DockPrefs.ROWS_MAX) ({
+        FanPreview(
+            state.currentWidth, state.bottomPad, state.sidePad, state.rows, state.selected, state.stops,
+            corner = state.corner, showCurrent = state.showCurrent, onSelect = onSelect,
+            onAddRow = if (state.rows.size < DockPrefs.ROWS_MAX) ({
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                rows.add(DockPrefs.newRow())
-                selected = FanPart.Ring(rows.lastIndex)
-                DockPrefs.setRows(context, rows.toList())
+                onAddRow()
             }) else null,
         )
         Column(
@@ -111,30 +135,17 @@ internal fun FanLayoutScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
-            PartList(rows.size, corner, selected, onSelect = { selected = it })
+            PartList(state.rows.size, state.corner, state.selected, onSelect = onSelect)
             RowsEditor(
-                context, rows, selected, corner,
-                bottomPad = bottomPad,
-                sidePad = sidePad,
-                onBottomPad = {
-                    bottomPad = it
-                    DockPrefs.setPadding(context, DockPrefs.Padding.BOTTOM, it)
-                },
-                onSidePad = {
-                    sidePad = it
-                    DockPrefs.setPadding(context, DockPrefs.Padding.SIDE, it)
-                },
-                currentWidth = currentWidth,
-                showCurrent = showCurrent,
-                onCurrentWidth = {
-                    inner = it
-                    DockPrefs.setCurrentWidth(context, it)
-                },
-                onShowCurrent = {
-                    showCurrent = it
-                    DockPrefs.setShowCurrent(context, it)
-                },
-            ) { selected = it }
+                state = state,
+                onBottomPad = onBottomPadChange,
+                onSidePad = onSidePadChange,
+                onCurrentWidth = onCurrentWidthChange,
+                onShowCurrent = onShowCurrentChange,
+                onRowCount = onRowCountChange,
+                onRowWidth = onRowWidthChange,
+                onDeleteRow = onDeleteRow,
+            )
             NavBarSpacer()
         }
     }
@@ -468,35 +479,30 @@ private fun MarginBar(label: String, selected: Boolean, vertical: Boolean, onCli
 }
 
 /**
- * Edits the sheet's rings: one set of controls for the [selected] ring, which is chosen by tapping it
+ * Edits the sheet's rings: one set of controls for the selected part of the fan, which is chosen by tapping it
  * in the preview. Delete acts on the selected ring too.
  */
 @Composable
 private fun RowsEditor(
-    context: Context,
-    rows: MutableList<DockPrefs.Row>,
-    selectedPart: FanPart,
-    corner: DockPrefs.Corner,
-    bottomPad: Int,
-    sidePad: Int,
+    state: FanLayoutUiState,
     onBottomPad: (Int) -> Unit,
     onSidePad: (Int) -> Unit,
-    currentWidth: Int,
-    showCurrent: Boolean,
     onCurrentWidth: (Int) -> Unit,
     onShowCurrent: (Boolean) -> Unit,
-    onSelect: (FanPart) -> Unit,
+    onRowCount: (Int, Int) -> Unit,
+    onRowWidth: (Int, Int) -> Unit,
+    onDeleteRow: (Int) -> Unit,
 ) {
-    val selected = (selectedPart as? FanPart.Ring)?.index
+    val rows = state.rows
+    val selected = (state.selected as? FanPart.Ring)?.index
     val haptic = LocalHapticFeedback.current
     val delete = stringResource(R.string.row_delete)
-    fun save() = DockPrefs.setRows(context, rows.toList())
 
     if (selected == null) {
-        val bottom = selectedPart == FanPart.BottomMargin
+        val bottom = state.selected == FanPart.BottomMargin
         Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = CARD_SHAPE, colors = cardColors()) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-                val pad = if (bottom) bottomPad else sidePad
+                val pad = if (bottom) state.bottomPad else state.sidePad
                 Text(stringResource(R.string.slider_padding, pad), modifier = Modifier.padding(top = 12.dp), color = AppTheme.current.colors.text)
                 Slider(
                     value = pad.toFloat(),
@@ -512,7 +518,7 @@ private fun RowsEditor(
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     Checkbox(
-                        checked = showCurrent,
+                        checked = state.showCurrent,
                         onCheckedChange = onShowCurrent,
                         colors = CheckboxDefaults.colors(
                             checkedColor = AppTheme.current.colors.checkboxChecked,
@@ -522,58 +528,81 @@ private fun RowsEditor(
                     )
                     Text(stringResource(R.string.row_show_current), color = AppTheme.current.colors.text)
                 }
-                Text(stringResource(R.string.row_width, currentWidth), color = AppTheme.current.colors.text)
+                Text(stringResource(R.string.row_width, state.currentWidth), color = AppTheme.current.colors.text)
                 Slider(
-                    value = currentWidth.toFloat(),
+                    value = state.currentWidth.toFloat(),
                     onValueChange = { onCurrentWidth(it.toInt()) },
-                    valueRange = DockPrefs.currentWidthMin(showCurrent).toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
+                    valueRange = DockPrefs.currentWidthMin(state.showCurrent).toFloat()..DockPrefs.CURRENT_WIDTH_MAX.toFloat(),
                     colors = appSliderColors(),
                 )
             }
         }
     } else {
-    val index = selected.coerceIn(0, rows.lastIndex)
-    val row = rows[index]
-    Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = CARD_SHAPE, colors = cardColors()) {
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.row_count, row.count), color = AppTheme.current.colors.text)
-            Slider(
-                value = row.count.toFloat(),
-                onValueChange = {
-                    if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    rows[index] = row.copy(count = it.toInt())
-                    save()
-                },
-                valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
-                steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
-                colors = appSliderColors(),
-            )
-            Text(stringResource(R.string.row_width, row.widthDp), color = AppTheme.current.colors.text)
-            Slider(
-                value = row.widthDp.toFloat(),
-                onValueChange = {
-                    rows[index] = row.copy(widthDp = it.toInt())
-                    save()
-                },
-                valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
-                colors = appSliderColors(),
-            )
-            AppButton(
-                text = delete,
-                leadingIcon = R.drawable.ic_delete,
-                style = AppButtonStyle.Primary,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    rows.removeAt(index)
-                    onSelect(FanPart.Ring(index.coerceAtMost(rows.lastIndex)))
-                    save()
-                },
-                enabled = rows.size > 1,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
-            )
+        val index = selected.coerceIn(0, rows.lastIndex)
+        val row = rows[index]
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = CARD_SHAPE, colors = cardColors()) {
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.row_count, row.count), color = AppTheme.current.colors.text)
+                Slider(
+                    value = row.count.toFloat(),
+                    onValueChange = {
+                        if (it.toInt() != row.count) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onRowCount(index, it.toInt())
+                    },
+                    valueRange = DockPrefs.ROW_COUNT_MIN.toFloat()..DockPrefs.ROW_COUNT_MAX.toFloat(),
+                    steps = DockPrefs.ROW_COUNT_MAX - DockPrefs.ROW_COUNT_MIN - 1,
+                    colors = appSliderColors(),
+                )
+                Text(stringResource(R.string.row_width, row.widthDp), color = AppTheme.current.colors.text)
+                Slider(
+                    value = row.widthDp.toFloat(),
+                    onValueChange = { onRowWidth(index, it.toInt()) },
+                    valueRange = DockPrefs.ROW_WIDTH_MIN.toFloat()..DockPrefs.ROW_WIDTH_MAX.toFloat(),
+                    colors = appSliderColors(),
+                )
+                AppButton(
+                    text = delete,
+                    leadingIcon = R.drawable.ic_delete,
+                    style = AppButtonStyle.Primary,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDeleteRow(index)
+                    },
+                    enabled = rows.size > 1,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
+                )
+            }
         }
     }
-    }
     Spacer(Modifier.height(24.dp))
+}
+
+@Preview
+@Composable
+private fun Preview() {
+    AppTheme {
+        FanLayoutPageContent(
+            state = FanLayoutUiState(
+                corner = DockPrefs.Corner.BOTTOM_RIGHT,
+                innerWidth = 100,
+                showCurrent = true,
+                bottomPad = 24,
+                sidePad = 8,
+                rows = DockPrefs.DEFAULT_ROWS,
+                stops = SheetGradient.DEFAULT,
+                selected = FanPart.Ring(0),
+            ),
+            onBack = {},
+            onSelect = {},
+            onAddRow = {},
+            onDeleteRow = {},
+            onRowCountChange = { _, _ -> },
+            onRowWidthChange = { _, _ -> },
+            onBottomPadChange = {},
+            onSidePadChange = {},
+            onCurrentWidthChange = {},
+            onShowCurrentChange = {},
+        )
+    }
 }

@@ -1,0 +1,38 @@
+# The data of this app's README.md. CI renders README.md from it (docs/readme.md in LukeNeedham/ci-workflows):
+# edit this file, never README.md.
+
+name: "Fan: Fast App Nav"
+tagline: Switch apps from anywhere, in one tap.
+
+description: |
+  Fan puts a small trigger in a corner of your screen. Tap it to open a fan filled with your recent apps, pick one and
+  you're there.
+
+  - **Tap** the trigger to open the fan of recent apps (tap again to close it).
+  - **Double tap** it to jump straight back to the previous app.
+  - **Long press** it to open the same fan showing actions: Back, Home, Recents, Screenshot, Power menu, Flashlight,
+    System settings and Fan settings.
+  - **Long press an app** in the fan to open its App Info page, where it can be force stopped.
+
+  You choose the screen corner, the trigger's size, position and colour, how many rings of apps the fan has, the
+  background gradient, and which apps never appear.
+
+user:
+  install: Download the latest APK from the [latest release](https://github.com/LukeNeedham/Android-Dock/releases/latest/download/Android-Dock.apk) and install it, or install a build from the AppHub app.
+  steps:
+    - "Open **Fan** once. It walks you through two permissions: the **accessibility service** (to see taps on the trigger) and **usage access** (to know which apps you used recently)."
+    - Customise the fan and trigger to your heart's content.
+    - Tap the trigger in the corner of your screen to open your fan!
+    - "**After every update, switch accessibility back on** (Settings > Accessibility > Fan). Android turns it off on each install and it cannot be fixed from inside the app. See [Known limitations](docs/known-limitations.md)."
+
+sections:
+  - title: Documentation
+    body: |
+      | Doc | Covers |
+      |---|---|
+      | [Setup](docs/setup.md) | Installing, the two permissions, restricted settings, gesture navigation |
+      | [Using Fan](docs/using-fan.md) | The fan, the actions mode, double tap, how the recents list is chosen |
+      | [Customising](docs/customising.md) | Corner, trigger, fan layout, colours, hidden apps |
+      | [Known limitations](docs/known-limitations.md) | Accessibility reset on update, older Android versions, Google Play |
+      | [How it works](docs/how-it-works.md) | Architecture: the overlay, the sheet, the recents list |
+      | [Development](docs/development.md) | Building, CI, releases, project layout, the debug log |

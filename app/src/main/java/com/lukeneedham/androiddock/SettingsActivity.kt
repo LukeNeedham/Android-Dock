@@ -37,11 +37,13 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import androidx.compose.runtime.getValue
@@ -83,9 +85,6 @@ import com.lukeneedham.common.ui.ProvideDebugSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-
-/** The pages of the settings app. */
-internal enum class Route { Settings, Trigger, FanLayout, Blacklist, Debug, Logs, Crashes, FanBackground }
 
 /**
  * What the user sees when they open the app: a checklist that walks them through the setup the
@@ -132,45 +131,23 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-/** The settings app's navigation: a back stack of [Route]s, shown by Navigation 3. */
+/** The settings app's navigation: a back stack of [AppNavKey]s, shown by Navigation 3. */
 @Composable
 private fun AppNavigation(resumes: Int) {
-    // Saved as route names, so the stack survives rotation and the process being recreated.
+    // Saved as key names, so the stack survives rotation and the process being recreated.
     val backStack = rememberSaveable(
-        saver = listSaver<SnapshotStateList<Route>, String>(
+        saver = listSaver<SnapshotStateList<AppNavKey>, String>(
             save = { stack -> stack.map { it.name } },
-            restore = { names -> names.map { Route.valueOf(it) }.toMutableStateList() },
+            restore = { names -> names.map { AppNavKey.of(it) }.toMutableStateList() },
         ),
-    ) { mutableStateListOf(Route.Settings) }
+    ) { mutableStateListOf<AppNavKey>(SettingsNavKey) }
     val back: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
 
     // Until setup is done the app is only the onboarding flow, one page per step.
-    val context = LocalContext.current
-    var introSeen by remember { mutableStateOf(DockPrefs.getIntroSeen(context)) }
-    var finished by remember { mutableStateOf(DockPrefs.getOnboardingFinished(context)) }
-    // How far through trying the fan the user is; the permission steps are re-checked on every resume.
-    var tryStep by rememberSaveable { mutableStateOf(OnboardingStep.OpenFan) }
-    val step = if (resumes >= 0) OnboardingStep.current(context, introSeen, finished, tryStep) else null
-    if (step != null) {
-        OnboardingFlow(
-            step,
-            onNext = {
-                when (step) {
-                    OnboardingStep.Intro -> {
-                        introSeen = true
-                        DockPrefs.setIntroSeen(context)
-                    }
-                    OnboardingStep.OpenFan -> tryStep = OnboardingStep.CloseFan
-                    OnboardingStep.CloseFan -> tryStep = OnboardingStep.Done
-                    OnboardingStep.Done -> {
-                        finished = true
-                        DockPrefs.setOnboardingFinished(context)
-                    }
-                    else -> {}
-                }
-            },
-            onSkipTrial = { tryStep = OnboardingStep.Done },
-        )
+    val onboarding = viewModel<OnboardingViewModel>()
+    LaunchedEffect(resumes) { onboarding.refresh() }
+    if (onboarding.uiState.step != null) {
+        OnboardingPage()
         return
     }
 
@@ -181,174 +158,25 @@ private fun AppNavigation(resumes: Int) {
         transitionSpec = { slideInHorizontally { it } togetherWith slideOutHorizontally { -it } },
         popTransitionSpec = { slideInHorizontally { -it } togetherWith slideOutHorizontally { it } },
         predictivePopTransitionSpec = { slideInHorizontally { -it } togetherWith slideOutHorizontally { it } },
-        entryProvider = { route ->
-            NavEntry(route) {
-                when (route) {
-                    Route.Settings -> SettingsScreen(resumes) { backStack.add(it) }
-                    Route.Trigger -> TriggerScreen(back)
-                    Route.FanLayout -> FanLayoutScreen(back)
-                    Route.FanBackground -> FanBackgroundScreen(back)
-                    Route.Blacklist -> BlacklistScreen(back)
-                    Route.Debug -> DebugPage(
+        entryProvider = { key ->
+            NavEntry(key) {
+                when (key) {
+                    SettingsNavKey -> SettingsPage(resumes) { backStack.add(it) }
+                    TriggerNavKey -> TriggerPage(back)
+                    FanLayoutNavKey -> FanLayoutPage(back)
+                    FanBackgroundNavKey -> FanBackgroundPage(back)
+                    BlacklistNavKey -> BlacklistPage(back)
+                    DebugNavKey -> DebugPage(
                         onBack = back,
-                        onOpenLogs = { backStack.add(Route.Logs) },
-                        onOpenCrashes = { backStack.add(Route.Crashes) },
+                        onOpenLogs = { backStack.add(LogsNavKey) },
+                        onOpenCrashes = { backStack.add(CrashesNavKey) },
                     )
-                    Route.Logs -> LogsPage(onBack = back)
-                    Route.Crashes -> CrashesPage(onBack = back)
+                    LogsNavKey -> LogsPage(onBack = back)
+                    CrashesNavKey -> CrashesPage(onBack = back)
                 }
             }
         },
     )
-}
-
-@Composable
-private fun SettingsScreen(resumes: Int, navigate: (Route) -> Unit) {
-    val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
-    // The fan opens over this page, so its state is polled; nothing else announces it.
-    val fanOpen by produceState(DockActivity.isOpen) {
-        while (true) {
-            value = DockActivity.isOpen
-            delay(150)
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .topAndSideInsets()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-    ) {
-        Text(stringResource(R.string.settings_title), fontSize = 28.sp, lineHeight = 36.sp, color = AppTheme.current.colors.text)
-        PermissionStatus(
-            title = R.string.status_accessibility_title,
-            ok = SetupState.isAccessibilityEnabled(context),
-            onOpen = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
-        )
-        PermissionStatus(
-            title = R.string.status_usage_title,
-            ok = SetupState.isUsageAccessGranted(context),
-            onOpen = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
-        )
-        AppButton(
-            text = stringResource(if (fanOpen) R.string.fan_close else R.string.fan_open),
-            style = AppButtonStyle.Primary,
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                if (fanOpen) {
-                    DockActivity.close(haptic = false)
-                } else {
-                    DockActivity.altRequested = false
-                    DockActivity.requestedTrigger = 0
-                    DockActivity.starting = true
-                    context.startActivity(Intent(context, DockActivity::class.java))
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 24.dp),
-        )
-
-        SectionHeader(R.string.position_title, R.string.trigger_summary)
-        AppButton(
-            text = stringResource(R.string.trigger_open),
-            style = AppButtonStyle.Secondary,
-            onClick = { navigate(Route.Trigger) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-        )
-
-        SectionHeader(R.string.sheet_title_section, R.string.fan_layout_summary)
-        // Read again on every return here.
-        val stops = if (resumes >= 0) DockPrefs.getSheetStops(context) else SheetGradient.DEFAULT
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                AppButton(
-                    text = stringResource(R.string.fan_layout_open),
-                    style = AppButtonStyle.Secondary,
-                    onClick = { navigate(Route.FanLayout) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                AppButton(
-                    text = stringResource(R.string.bg_edit),
-                    style = AppButtonStyle.Secondary,
-                    onClick = { navigate(Route.FanBackground) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            // A small, read-only picture of the fan as it is now, background and layout together,
-            // refreshed on every return here.
-            FanPreview(
-                inner = if (resumes >= 0) DockPrefs.getCurrentWidth(context) else 0,
-                bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
-                sidePad = DockPrefs.getPadding(context, DockPrefs.Padding.SIDE),
-                rows = if (resumes >= 0) DockPrefs.getRows(context) else emptyList(),
-                selected = null,
-                showCurrent = DockPrefs.getShowCurrent(context),
-                stops = stops,
-                corner = if (resumes >= 0) DockPrefs.getCorner(context) else DockPrefs.Corner.BOTTOM_RIGHT,
-                thumbnailDp = 112,
-                modifier = Modifier.padding(start = 16.dp),
-            )
-        }
-
-        SectionHeader(R.string.order_title, R.string.order_description)
-        var sortType by remember { mutableStateOf(DockPrefs.getSortType(context)) }
-        var sortMenuOpen by remember { mutableStateOf(false) }
-        Box(modifier = Modifier.padding(top = 8.dp)) {
-            AppButton(
-                text = stringResource(sortType.label),
-                style = AppButtonStyle.Secondary,
-                onClick = { sortMenuOpen = true },
-                trailingIcon = R.drawable.ic_arrow_drop_down,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            DropdownMenu(
-                expanded = sortMenuOpen,
-                onDismissRequest = { sortMenuOpen = false },
-                shape = RoundedCornerShape(12.dp),
-                containerColor = AppTheme.current.colors.menu,
-                tonalElevation = 0.dp,
-            ) {
-                DockPrefs.SortType.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(option.label), color = AppTheme.current.colors.text) },
-                        onClick = {
-                            sortType = option
-                            DockPrefs.setSortType(context, option)
-                            sortMenuOpen = false
-                        },
-                    )
-                }
-            }
-        }
-
-        SectionHeader(R.string.blacklist_title, R.string.blacklist_description)
-        // Read again on every return here.
-        val hiddenCount = if (resumes >= 0) DockPrefs.getBlacklist(context).size else 0
-        AppButton(
-            text = stringResource(R.string.blacklist_open, hiddenCount),
-            style = AppButtonStyle.Secondary,
-            onClick = { navigate(Route.Blacklist) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-        )
-
-        if (BuildConfig.DEBUG) {
-            AppButton(
-                text = stringResource(R.string.debug_open),
-                style = AppButtonStyle.Secondary,
-                onClick = { navigate(Route.Debug) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp),
-            )
-        }
-        NavBarSpacer()
-    }
 }
 
 /**
@@ -415,33 +243,6 @@ internal fun CornerPicker(selected: DockPrefs.Corner, onSelect: (DockPrefs.Corne
     }
 }
 
-/**
- * One check on the home page: its [title], then whether it is set up (a tick and "Completed", or a
- * cross and "Not completed"), with a link to its system page at the right edge.
- */
-@Composable
-private fun PermissionStatus(title: Int, ok: Boolean, onOpen: () -> Unit) {
-    Text(
-        stringResource(title),
-        fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
-        modifier = Modifier.padding(top = 24.dp),
-        color = AppTheme.current.colors.text,
-    )
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Icon(
-            painterResource(if (ok) R.drawable.ic_check else R.drawable.ic_close),
-            contentDescription = null,
-            tint = if (ok) AppTheme.current.colors.statusOk else AppTheme.current.colors.statusError,
-        )
-        Text(
-            stringResource(if (ok) R.string.status_completed else R.string.status_not_completed),
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
-            color = AppTheme.current.colors.text,
-        )
-        AppButton(text = stringResource(R.string.status_open), style = AppButtonStyle.Text, onClick = onOpen)
-    }
-}
-
 @Composable
 internal fun SectionHeader(title: Int, description: Int?) {
     Text(
@@ -456,62 +257,6 @@ internal fun SectionHeader(title: Int, description: Int?) {
             fontSize = 14.sp, lineHeight = 20.sp,
             modifier = Modifier.padding(top = 4.dp),
             color = AppTheme.current.colors.text,
-        )
-    }
-}
-
-/** A labelled slider that saves its value as it moves; the running service applies it live. */
-@Composable
-internal fun SettingSlider(context: Context, setting: DockPrefs.Setting, label: @Composable (Int) -> String, trigger: Int = 0) {
-    var value by remember(trigger) { mutableIntStateOf(DockPrefs.get(context, setting, trigger)) }
-    Text(
-        label(value),
-        modifier = Modifier.padding(top = 16.dp),
-        color = AppTheme.current.colors.text,
-    )
-    Slider(
-        value = value.toFloat(),
-        onValueChange = {
-            value = it.toInt()
-            DockPrefs.set(context, setting, value, trigger)
-        },
-        valueRange = setting.min.toFloat()..setting.max(context).toFloat(),
-        colors = appSliderColors(),
-    )
-}
-
-/** A colour setting shown as a swatch; tapping it opens [ColorPickerSheet]. */
-@Composable
-internal fun ColorSettingRow(
-    context: Context,
-    setting: DockPrefs.ColorSetting,
-    label: Int,
-    trigger: Int = 0,
-    onChange: (Int) -> Unit = {},
-) {
-    var argb by remember(trigger) { mutableIntStateOf(DockPrefs.getColor(context, setting, trigger)) }
-    var open by remember { mutableStateOf(false) }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { open = true }
-            .padding(top = 16.dp),
-    ) {
-        Text(stringResource(label), modifier = Modifier.weight(1f), color = AppTheme.current.colors.text)
-        ColorSwatch(argb, Modifier.width(72.dp).height(32.dp))
-    }
-    if (open) {
-        ColorPickerSheet(
-            title = label,
-            argb = argb,
-            onChange = {
-                argb = it
-                DockPrefs.setColor(context, setting, it, trigger)
-                onChange(it)
-            },
-            onDismiss = { open = false },
         )
     }
 }

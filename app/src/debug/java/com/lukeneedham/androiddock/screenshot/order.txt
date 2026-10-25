@@ -1,0 +1,7 @@
+# the order of the README: the intro of the setup, then the home page and the pages it opens
+OnboardingPage
+SettingsPage
+TriggerPage
+FanLayoutPage
+FanBackgroundPage
+BlacklistPage
