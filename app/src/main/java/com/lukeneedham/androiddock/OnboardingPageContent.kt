@@ -26,7 +26,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -66,10 +67,18 @@ internal enum class OnboardingStep {
 
 /**
  * The page for [step], sliding in from the right and the old one out to the left. [onNext] moves
- * on from the step; the pages that wait for the fan to open or close call it themselves.
+ * on from the step.
  */
 @Composable
-internal fun OnboardingFlow(step: OnboardingStep, onNext: () -> Unit, onSkipTrial: () -> Unit) {
+internal fun OnboardingPageContent(
+    step: OnboardingStep,
+    corner: DockPrefs.Corner,
+    onNext: () -> Unit,
+    onSkipTrial: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
+    onOpenUsageAccessSettings: () -> Unit,
+    onOpenAppInfo: () -> Unit,
+) {
     AnimatedContent(
         targetState = step,
         transitionSpec = {
@@ -77,22 +86,29 @@ internal fun OnboardingFlow(step: OnboardingStep, onNext: () -> Unit, onSkipTria
                 .using(SizeTransform(clip = false))
         },
         label = "onboarding",
-    ) { page ->
-        OnboardingPage(page, onNext, onSkipTrial)
+    ) { shown ->
+        OnboardingStepContent(shown, corner, onNext, onSkipTrial, onOpenAccessibilitySettings, onOpenUsageAccessSettings, onOpenAppInfo)
     }
 }
 
 @Composable
-private fun OnboardingPage(step: OnboardingStep, onNext: () -> Unit, onSkipTrial: () -> Unit) {
+private fun OnboardingStepContent(
+    step: OnboardingStep,
+    corner: DockPrefs.Corner,
+    onNext: () -> Unit,
+    onSkipTrial: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
+    onOpenUsageAccessSettings: () -> Unit,
+    onOpenAppInfo: () -> Unit,
+) {
     when (step) {
         OnboardingStep.Intro -> IntroPage(onNext)
         OnboardingStep.Accessibility -> StepPage(step, R.string.step_accessibility_title) {
-            val context = LocalContext.current
             Text(stringResource(R.string.step_accessibility_description), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
             AppButton(
                 text = stringResource(R.string.step_accessibility_action),
                 style = AppButtonStyle.Primary,
-                onClick = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+                onClick = onOpenAccessibilitySettings,
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             )
             Text(
@@ -104,37 +120,27 @@ private fun OnboardingPage(step: OnboardingStep, onNext: () -> Unit, onSkipTrial
             AppButton(
                 text = stringResource(R.string.step_app_info_action),
                 style = AppButtonStyle.Text,
-                onClick = {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null),
-                        ),
-                    )
-                },
+                onClick = onOpenAppInfo,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         OnboardingStep.UsageAccess -> StepPage(step, R.string.step_usage_title) {
-            val context = LocalContext.current
             Text(stringResource(R.string.step_usage_description), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
             AppButton(
                 text = stringResource(R.string.step_usage_action),
                 style = AppButtonStyle.Primary,
-                onClick = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
+                onClick = onOpenUsageAccessSettings,
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             )
         }
         OnboardingStep.OpenFan -> {
-            WhenFan(open = true, onNext)
             StepPage(step, R.string.step_open_title) {
-                val corner = stringResource(DockPrefs.getCorner(LocalContext.current).label).lowercase()
-                Text(stringResource(R.string.step_open_description, corner), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
+                val cornerName = stringResource(corner.label).lowercase()
+                Text(stringResource(R.string.step_open_description, cornerName), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
                 AppButton(text = stringResource(R.string.onboarding_skip), style = AppButtonStyle.Text, onClick = onSkipTrial, modifier = Modifier.fillMaxWidth().padding(top = 24.dp))
             }
         }
         OnboardingStep.CloseFan -> {
-            WhenFan(open = false, onNext)
             StepPage(step, R.string.step_close_title) {
                 Text(stringResource(R.string.step_close_description), fontSize = 16.sp, lineHeight = 24.sp, color = AppTheme.current.colors.text)
             }
@@ -149,16 +155,6 @@ private fun OnboardingPage(step: OnboardingStep, onNext: () -> Unit, onSkipTrial
             ).forEach { Text("•  " + stringResource(it), modifier = Modifier.padding(top = 8.dp, start = 8.dp), color = AppTheme.current.colors.text) }
             AppButton(text = stringResource(R.string.onboarding_finish), style = AppButtonStyle.Primary, onClick = onNext, modifier = Modifier.fillMaxWidth().padding(top = 32.dp))
         }
-    }
-}
-
-/** Calls [onReached] once the fan is open ([open]) or closed ([open] false). The fan opens over this app, so it is polled. */
-@Composable
-private fun WhenFan(open: Boolean, onReached: () -> Unit) {
-    val reached by rememberUpdatedState(onReached)
-    LaunchedEffect(open) {
-        while (DockActivity.isOpen != open) delay(100)
-        reached()
     }
 }
 
@@ -255,6 +251,22 @@ private fun IntroPoint(title: Int, body: Int) {
             fontSize = 14.sp, lineHeight = 20.sp,
             color = AppTheme.current.colors.secondaryText,
             modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun Preview() {
+    AppTheme {
+        OnboardingPageContent(
+            step = OnboardingStep.Intro,
+            corner = DockPrefs.Corner.BOTTOM_RIGHT,
+            onNext = {},
+            onSkipTrial = {},
+            onOpenAccessibilitySettings = {},
+            onOpenUsageAccessSettings = {},
+            onOpenAppInfo = {},
         )
     }
 }

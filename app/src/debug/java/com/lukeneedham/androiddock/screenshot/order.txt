@@ -1,0 +1,6 @@
+OnboardingPage
+SettingsPage
+TriggerPage
+FanLayoutPage
+FanBackgroundPage
+BlacklistPage

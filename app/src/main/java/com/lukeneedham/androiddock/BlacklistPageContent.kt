@@ -1,6 +1,8 @@
 package com.lukeneedham.androiddock
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -50,8 +52,15 @@ import kotlinx.coroutines.withContext
 
 /** The apps that never show in the sheet, on a page of their own. */
 @Composable
-internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
-    val context = LocalContext.current
+internal fun BlacklistPageContent(
+    state: BlacklistUiState,
+    onBack: (() -> Unit)?,
+    footer: (@Composable () -> Unit)? = null,
+    header: (@Composable () -> Unit)? = null,
+    onRemove: (String) -> Unit,
+    onAdd: (String) -> Unit,
+    onPickerOpen: () -> Unit,
+) {
     SubPage(R.string.blacklist_title, onBack, footer, header) {
         Column(
             modifier = Modifier
@@ -65,39 +74,11 @@ internal fun BlacklistScreen(onBack: (() -> Unit)?, footer: (@Composable () -> U
                 color = AppTheme.current.colors.secondaryText,
                 modifier = Modifier.padding(bottom = 16.dp),
             )
-            BlacklistEditor(context)
+            BlacklistEditor(state, onRemove, onAdd, onPickerOpen)
             NavBarSpacer()
         }
     }
 }
-
-/** An app's name and icon, for the lists of apps. */
-private class AppEntry(val packageName: String, val label: String, val icon: ImageBitmap?)
-
-private const val APP_ICON_PX = 96
-
-private fun loadAppEntry(context: Context, packageName: String): AppEntry {
-    val packages = context.packageManager
-    return try {
-        val info = packages.getApplicationInfo(packageName, 0)
-        AppEntry(
-            packageName,
-            packages.getApplicationLabel(info).toString(),
-            packages.getApplicationIcon(info).toBitmap(APP_ICON_PX, APP_ICON_PX).asImageBitmap(),
-        )
-    } catch (e: Exception) {
-        AppEntry(packageName, packageName, null)
-    }
-}
-
-/** Every app with a launcher icon, by name. Slow: run it off the main thread. */
-private fun loadLaunchableApps(context: Context): List<AppEntry> =
-    context.packageManager
-        .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
-        .map { it.activityInfo.packageName }
-        .distinct()
-        .map { loadAppEntry(context, it) }
-        .sortedBy { it.label.lowercase() }
 
 @Composable
 private fun AppRow(app: AppEntry, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
@@ -114,16 +95,11 @@ private fun AppRow(app: AppEntry, modifier: Modifier = Modifier, trailing: @Comp
 
 /** The blacklist: the apps that never show in the sheet, with a way to add and remove them. */
 @Composable
-private fun BlacklistEditor(context: Context) {
+private fun BlacklistEditor(state: BlacklistUiState, onRemove: (String) -> Unit, onAdd: (String) -> Unit, onPickerOpen: () -> Unit) {
     val haptic = LocalHapticFeedback.current
-    val hidden = remember { mutableStateListOf<String>().apply { addAll(DockPrefs.getBlacklist(context).sorted()) } }
     var picking by remember { mutableStateOf(false) }
-    fun save() = DockPrefs.setBlacklist(context, hidden.toList())
 
-    val entries by produceState(emptyList<AppEntry>(), hidden.toList()) {
-        value = withContext(Dispatchers.IO) { hidden.toList().map { loadAppEntry(context, it) } }
-    }
-    if (hidden.isEmpty()) {
+    if (state.hidden.isEmpty()) {
         Text(
             stringResource(R.string.blacklist_empty),
             fontSize = 14.sp, lineHeight = 20.sp,
@@ -131,12 +107,11 @@ private fun BlacklistEditor(context: Context) {
             modifier = Modifier.padding(vertical = 8.dp),
         )
     }
-    entries.forEach { app ->
+    state.hidden.forEach { app ->
         AppRow(app) {
             AppButton(text = stringResource(R.string.blacklist_remove), style = AppButtonStyle.Text, onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                hidden.remove(app.packageName)
-                save()
+                onRemove(app.packageName)
             })
         }
     }
@@ -145,6 +120,7 @@ private fun BlacklistEditor(context: Context) {
         style = AppButtonStyle.Secondary,
         onClick = {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onPickerOpen()
             picking = true
         },
         modifier = Modifier.padding(top = 16.dp),
@@ -152,11 +128,10 @@ private fun BlacklistEditor(context: Context) {
 
     if (picking) {
         AppPickerSheet(
-            context = context,
-            exclude = hidden.toSet(),
+            apps = state.pickableApps,
+            exclude = state.hidden.map { it.packageName }.toSet(),
             onPick = {
-                hidden.add(it)
-                save()
+                onAdd(it)
                 picking = false
             },
             onDismiss = { picking = false },
@@ -167,10 +142,7 @@ private fun BlacklistEditor(context: Context) {
 /** A bottom sheet listing the installed apps, for choosing one. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
-    val apps by produceState<List<AppEntry>?>(null) {
-        value = withContext(Dispatchers.IO) { loadLaunchableApps(context) }
-    }
+private fun AppPickerSheet(apps: List<AppEntry>?, exclude: Set<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
     val colors = AppTheme.current.colors
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -223,3 +195,16 @@ private fun AppPickerSheet(context: Context, exclude: Set<String>, onPick: (Stri
     }
 }
 
+@Preview
+@Composable
+private fun Preview() {
+    AppTheme {
+        BlacklistPageContent(
+            state = BlacklistUiState(hidden = listOf(AppEntry("com.example.news", "News", null), AppEntry("com.example.maps", "Maps", null))),
+            onBack = {},
+            onRemove = {},
+            onAdd = {},
+            onPickerOpen = {},
+        )
+    }
+}
