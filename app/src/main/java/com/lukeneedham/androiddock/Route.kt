@@ -1,23 +1,32 @@
 package com.lukeneedham.androiddock
 
 import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
 
-/** The pages of the settings app, as routes: [Route.Settings] is the page of `SettingsPage`, and so on. [name] is what is saved. */
+/** The pages of the settings app, as routes: [Route.Settings] is the page of `SettingsPage`, and so on. */
+@Serializable
 internal sealed interface Route : NavKey {
-    val name: String
+    @Serializable
+    data object Settings : Route
 
-    data object Settings : Route { override val name = "Settings" }
-    data object Trigger : Route { override val name = "Trigger" }
-    data object FanLayout : Route { override val name = "FanLayout" }
-    data object FanBackground : Route { override val name = "FanBackground" }
-    data object Blacklist : Route { override val name = "Blacklist" }
-    data object Debug : Route { override val name = "Debug" }
-    data object Logs : Route { override val name = "Logs" }
-    data object Crashes : Route { override val name = "Crashes" }
+    @Serializable
+    data object Trigger : Route
 
-    companion object {
-        private val all: List<Route> by lazy { listOf(Settings, Trigger, FanLayout, FanBackground, Blacklist, Debug, Logs, Crashes) }
+    @Serializable
+    data object FanLayout : Route
 
-        fun of(name: String): Route = all.first { it.name == name }
-    }
+    @Serializable
+    data object FanBackground : Route
+
+    @Serializable
+    data object Blacklist : Route
+
+    @Serializable
+    data object Debug : Route
+
+    @Serializable
+    data object Logs : Route
+
+    @Serializable
+    data object Crashes : Route
 }

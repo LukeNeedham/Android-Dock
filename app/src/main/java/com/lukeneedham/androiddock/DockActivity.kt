@@ -353,7 +353,7 @@ class DockActivity : AppCompatActivity() {
             })
             add(action(R.drawable.ic_action_fan_settings, R.string.action_settings) {
                 Logger.i("actions: opening settings")
-                startActivity(Intent(this@DockActivity, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                startActivity(Intent(this@DockActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             })
             add(action(R.drawable.ic_action_settings, R.string.action_system_settings) {
                 startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

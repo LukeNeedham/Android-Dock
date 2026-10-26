@@ -12,10 +12,10 @@ off after an update, that is expected: tell them to switch it back on.
 ## Conventions
 
 - Logging and crash capture come from the shared `com.lukeneedham:common` library, started by
-  `DebugKit.init` in `DockApp`. Log with `Logger.i/d/w/e(...)` (no `Context` needed), never `Log` or
+  `DebugKit.init` in `App`. Log with `Logger.i/d/w/e(...)` (no `Context` needed), never `Log` or
   `println`. Do not add another crash handler or log file. The debug, logs and crashes pages are the
-  library's, wired in as `Route.Debug`, `Route.Logs` and `Route.Crashes` (`Route.kt`) in `AppNavigation` of `SettingsActivity`.
-- `SettingsActivity` wraps its Compose content in `ProvideDebugSettings` (the library's single provider of debug
+  library's, wired in as `Route.Debug`, `Route.Logs` and `Route.Crashes` (`Route.kt`) in `Router` (`Router.kt`), which `AppNavigation` shows.
+- `Root` (called only by `MainActivity`) wraps its Compose content in `ProvideDebugSettings` (the library's single provider of debug
   composition locals). Keep it wrapped, even though no debug setting is read yet, so a setting added to the library
   later reaches the app with only a version bump.
 - Theme: the UI reads `AppTheme.current` only, never `MaterialTheme`. `AppColors` (in `AppTheme.kt`) names a colour

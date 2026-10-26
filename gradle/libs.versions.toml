@@ -9,6 +9,7 @@ activityCompose = "1.13.0"
 # 1.2.0 needs minSdk 24; 1.1.7 is the newest that supports the app's minSdk 23.
 navigation3 = "1.1.7"
 lifecycle = "2.10.0"
+kotlinxSerialization = "1.11.0"
 common = "0.8.0"
 junit = "4.13.2"
 
@@ -21,6 +22,7 @@ compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeB
 compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 common = { module = "com.lukeneedham:common", version.ref = "common" }
 compose-ui = { module = "androidx.compose.ui:ui" }
@@ -31,3 +33,4 @@ junit = { module = "junit:junit", version.ref = "junit" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
