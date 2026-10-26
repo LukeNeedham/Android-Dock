@@ -26,7 +26,7 @@
     </queries>
 
     <application
-        android:name=".DockApp"
+        android:name=".App"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -36,7 +36,7 @@
 
         <!-- Settings and onboarding. The only launcher entry. -->
         <activity
-            android:name=".SettingsActivity"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

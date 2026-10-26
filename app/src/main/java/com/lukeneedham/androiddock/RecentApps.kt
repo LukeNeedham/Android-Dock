@@ -45,7 +45,7 @@ object RecentApps {
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
         val events = usage.queryEvents(now - WINDOW_MS, now)
-        val settingsOpen = SettingsActivity.isOpen
+        val settingsOpen = MainActivity.isOpen
         val lastUsed = HashMap<String, Long>()
         // The activities of each app that have been started and not yet destroyed. Swiping an
         // app away in the system's recents finishes them all, so an app with none left is no
@@ -61,7 +61,7 @@ object RecentApps {
                 type != ACTIVITY_DESTROYED
             ) continue
             if (event.packageName == context.packageName) {
-                if (!settingsOpen || event.className != SettingsActivity::class.java.name) continue
+                if (!settingsOpen || event.className != MainActivity::class.java.name) continue
             }
             val live = liveActivities.getOrPut(event.packageName) { HashSet() }
             val activity = event.className.orEmpty()

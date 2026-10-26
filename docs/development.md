@@ -47,7 +47,7 @@ about 512,000 characters. The page also has an animation speed setting, which Fa
 
 All of it comes from `com.lukeneedham:common` (`Logger`, `DebugKit`, `DebugPage`, `LogsPage`,
 `CrashesPage`), published from [ci-workflows](https://github.com/LukeNeedham/ci-workflows/tree/main/common).
-Log with `Logger.i/d/w/e(...)`, which needs no `Context`. `DockApp` starts it with
+Log with `Logger.i/d/w/e(...)`, which needs no `Context`. `App` starts it with
 `DebugKit.init`, before the service or any activity can log. Crashes are saved in release builds too;
 there is just no page to read them on.
 
