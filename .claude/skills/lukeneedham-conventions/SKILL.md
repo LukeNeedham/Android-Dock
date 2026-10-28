@@ -66,6 +66,10 @@ below are enough.
   `Copyright (c) <year> Luke Needham. All rights reserved.`
 
 ## Pages and screenshots
+- **The content of a bottom sheet is always its own composable, in its own file, with its own preview** (`docs/pages.md`):
+  `XSheetContent` in `XSheetContent.kt`, stateless (state down, events up) and unaware of the sheet around it, with at least
+  one `private` `@Preview` wrapped in `AppTheme`. `XSheet` is only the container (scrim, surface, drag handle, animation,
+  insets) and only puts `XSheetContent` in it.
 - **Every page is `XPage` + `XPageContent`, always** (`docs/pages.md`, which has the migration steps). `XPage` is public:
   it gets its ViewModel, always named **`XViewModel`** (`koinViewModel<XViewModel>()`), collects the state, handles
   lifecycle and one-off events, turns navigation into lambdas, and only calls `XPageContent`; no preview.
