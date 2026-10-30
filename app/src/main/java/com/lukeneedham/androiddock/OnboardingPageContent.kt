@@ -1,7 +1,6 @@
 package com.lukeneedham.androiddock
 
 import androidx.compose.material3.Text
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
