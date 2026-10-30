@@ -1,20 +1,20 @@
 package com.lukeneedham.androiddock
 
-import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 
 /**
  * Where the user is in the onboarding. The permission steps are checked against the system, so [refresh] runs when the
  * user comes back from the system settings.
  */
-internal class OnboardingViewModel(application: Application) : AndroidViewModel(application) {
-    private val context get() = getApplication<Application>()
-
-    private var introSeen = DockPrefs.getIntroSeen(application)
-    private var finished = DockPrefs.getOnboardingFinished(application)
+internal class OnboardingViewModel(
+    private val settings: DockSettings,
+    private val setupStatus: SetupStatus,
+) : ViewModel() {
+    private var introSeen = settings.getIntroSeen()
+    private var finished = settings.getOnboardingFinished()
 
     // How far through trying the fan the user is
     private var tryStep = OnboardingStep.OpenFan
@@ -31,13 +31,13 @@ internal class OnboardingViewModel(application: Application) : AndroidViewModel(
         when (uiState.step) {
             OnboardingStep.Intro -> {
                 introSeen = true
-                DockPrefs.setIntroSeen(context)
+                settings.setIntroSeen()
             }
             OnboardingStep.OpenFan -> tryStep = OnboardingStep.CloseFan
             OnboardingStep.CloseFan -> tryStep = OnboardingStep.Done
             OnboardingStep.Done -> {
                 finished = true
-                DockPrefs.setOnboardingFinished(context)
+                settings.setOnboardingFinished()
             }
             else -> {}
         }
@@ -50,7 +50,13 @@ internal class OnboardingViewModel(application: Application) : AndroidViewModel(
     }
 
     private fun compute() = OnboardingUiState(
-        step = OnboardingStep.current(context, introSeen, finished, tryStep),
-        corner = DockPrefs.getCorner(context),
+        step = OnboardingStep.current(
+            introSeen = introSeen,
+            finished = finished,
+            accessibilityOk = setupStatus.isAccessibilityEnabled(),
+            usageAccessOk = setupStatus.isUsageAccessGranted(),
+            tryStep = tryStep,
+        ),
+        corner = settings.getCorner(),
     )
 }

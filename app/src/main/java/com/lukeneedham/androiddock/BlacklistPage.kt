@@ -2,7 +2,6 @@ package com.lukeneedham.androiddock
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -49,11 +48,12 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.koin.compose.viewmodel.koinViewModel
 
 /** The blacklist page: gets [BlacklistViewModel] and only calls [BlacklistPageContent]. */
 @Composable
 internal fun BlacklistPage(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
-    val viewModel = viewModel<BlacklistViewModel>()
+    val viewModel = koinViewModel<BlacklistViewModel>()
     BlacklistPageContent(
         state = viewModel.uiState,
         onBack = onBack,

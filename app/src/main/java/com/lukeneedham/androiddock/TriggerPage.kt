@@ -9,7 +9,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Alignment
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -33,11 +32,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.koin.compose.viewmodel.koinViewModel
 
 /** The triggers page: gets [TriggerViewModel] and only calls [TriggerPageContent]. */
 @Composable
 internal fun TriggerPage(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
-    val viewModel = viewModel<TriggerViewModel>()
+    val viewModel = koinViewModel<TriggerViewModel>()
     TriggerPageContent(
         state = viewModel.uiState,
         onBack = onBack,

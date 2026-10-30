@@ -1,7 +1,6 @@
 package com.lukeneedham.androiddock
 
 import androidx.compose.material3.Text
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -55,10 +54,16 @@ internal enum class OnboardingStep {
          * The step to show now, or null when onboarding is over and the app can open. [tryStep] is
          * how far through the fan trial the user is: the [OpenFan], [CloseFan] or [Done] step.
          */
-        fun current(context: Context, introSeen: Boolean, finished: Boolean, tryStep: OnboardingStep): OnboardingStep? = when {
+        fun current(
+            introSeen: Boolean,
+            finished: Boolean,
+            accessibilityOk: Boolean,
+            usageAccessOk: Boolean,
+            tryStep: OnboardingStep,
+        ): OnboardingStep? = when {
             !introSeen -> Intro
-            !SetupState.isAccessibilityEnabled(context) -> Accessibility
-            !SetupState.isUsageAccessGranted(context) -> UsageAccess
+            !accessibilityOk -> Accessibility
+            !usageAccessOk -> UsageAccess
             finished -> null
             else -> tryStep
         }

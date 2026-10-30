@@ -11,9 +11,13 @@ navigation3 = "1.1.7"
 lifecycle = "2.10.0"
 kotlinxSerialization = "1.11.0"
 common = "0.8.0"
+koin = "4.2.2"
 junit = "4.13.2"
 
 [libraries]
+koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
+koin-android = { module = "io.insert-koin:koin-android" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-androidx-compose" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 material = { module = "com.google.android.material:material", version.ref = "material" }

@@ -1,10 +1,9 @@
 package com.lukeneedham.androiddock
 
-import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 
 /** The fan as the small preview on the home page draws it: the settings it is made of. */
 internal data class FanPreviewState(
@@ -18,7 +17,10 @@ internal data class FanPreviewState(
 )
 
 /** Reads the settings the home page shows, again on every [refresh] (when the user comes back to it). */
-internal class SettingsViewModel(application: Application) : AndroidViewModel(application) {
+internal class SettingsViewModel(
+    private val settings: DockSettings,
+    private val setupStatus: SetupStatus,
+) : ViewModel() {
     var uiState by mutableStateOf(load())
         private set
 
@@ -27,26 +29,25 @@ internal class SettingsViewModel(application: Application) : AndroidViewModel(ap
     }
 
     fun onSortTypeSelect(sortType: DockPrefs.SortType) {
-        DockPrefs.setSortType(getApplication(), sortType)
+        settings.setSortType(sortType)
         uiState = uiState.copy(sortType = sortType)
     }
 
     private fun load(): SettingsUiState {
-        val context = getApplication<Application>()
         return SettingsUiState(
-            accessibilityOk = SetupState.isAccessibilityEnabled(context),
-            usageAccessOk = SetupState.isUsageAccessGranted(context),
+            accessibilityOk = setupStatus.isAccessibilityEnabled(),
+            usageAccessOk = setupStatus.isUsageAccessGranted(),
             fan = FanPreviewState(
-                inner = DockPrefs.getCurrentWidth(context),
-                bottomPad = DockPrefs.getPadding(context, DockPrefs.Padding.BOTTOM),
-                sidePad = DockPrefs.getPadding(context, DockPrefs.Padding.SIDE),
-                rows = DockPrefs.getRows(context),
-                showCurrent = DockPrefs.getShowCurrent(context),
-                stops = DockPrefs.getSheetStops(context),
-                corner = DockPrefs.getCorner(context),
+                inner = settings.getCurrentWidth(),
+                bottomPad = settings.getPadding(DockPrefs.Padding.BOTTOM),
+                sidePad = settings.getPadding(DockPrefs.Padding.SIDE),
+                rows = settings.getRows(),
+                showCurrent = settings.getShowCurrent(),
+                stops = settings.getSheetStops(),
+                corner = settings.getCorner(),
             ),
-            sortType = DockPrefs.getSortType(context),
-            hiddenCount = DockPrefs.getBlacklist(context).size,
+            sortType = settings.getSortType(),
+            hiddenCount = settings.getBlacklist().size,
         )
     }
 }

@@ -1,23 +1,22 @@
 package com.lukeneedham.androiddock
 
-import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 
 /** Reads and saves the background gradient of the fan. */
-internal class FanBackgroundViewModel(application: Application) : AndroidViewModel(application) {
+internal class FanBackgroundViewModel(private val settings: DockSettings) : ViewModel() {
     var uiState by mutableStateOf(
         FanBackgroundUiState(
-            stops = DockPrefs.getSheetStops(application),
-            corner = DockPrefs.getCorner(application),
+            stops = settings.getSheetStops(),
+            corner = settings.getCorner(),
         ),
     )
         private set
 
     fun onStopsChange(stops: List<ColorStop>) {
-        DockPrefs.setSheetStops(getApplication(), stops)
+        settings.setSheetStops(stops)
         uiState = uiState.copy(stops = stops)
     }
 }

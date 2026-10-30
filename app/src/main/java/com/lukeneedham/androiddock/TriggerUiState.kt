@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
 
 /** The triggers and the settings of the [selected] one (an index into the [count] triggers). */
 internal data class TriggerUiState(

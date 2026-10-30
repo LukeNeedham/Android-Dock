@@ -1,25 +1,22 @@
 package com.lukeneedham.androiddock
 
-import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 
 /** Reads and saves the fan's layout; the running service applies every change live. */
-internal class FanLayoutViewModel(application: Application) : AndroidViewModel(application) {
-    private val context get() = getApplication<Application>()
-
+internal class FanLayoutViewModel(private val settings: DockSettings) : ViewModel() {
     var uiState by mutableStateOf(
         FanLayoutUiState(
-            corner = DockPrefs.getCorner(application),
-            innerWidth = DockPrefs.getCurrentWidth(application),
-            showCurrent = DockPrefs.getShowCurrent(application),
-            bottomPad = DockPrefs.getPadding(application, DockPrefs.Padding.BOTTOM),
-            sidePad = DockPrefs.getPadding(application, DockPrefs.Padding.SIDE),
-            rows = DockPrefs.getRows(application),
+            corner = settings.getCorner(),
+            innerWidth = settings.getCurrentWidth(),
+            showCurrent = settings.getShowCurrent(),
+            bottomPad = settings.getPadding(DockPrefs.Padding.BOTTOM),
+            sidePad = settings.getPadding(DockPrefs.Padding.SIDE),
+            rows = settings.getRows(),
             // The background is edited on its own page; here it only shows behind the fan.
-            stops = DockPrefs.getSheetStops(application),
+            stops = settings.getSheetStops(),
             selected = FanPart.Ring(0),
         ),
     )
@@ -31,13 +28,13 @@ internal class FanLayoutViewModel(application: Application) : AndroidViewModel(a
 
     fun onAddRow() {
         val rows = uiState.rows + DockPrefs.newRow()
-        DockPrefs.setRows(context, rows)
+        settings.setRows(rows)
         uiState = uiState.copy(rows = rows, selected = FanPart.Ring(rows.lastIndex))
     }
 
     fun onDeleteRow(index: Int) {
         val rows = uiState.rows.filterIndexed { i, _ -> i != index }
-        DockPrefs.setRows(context, rows)
+        settings.setRows(rows)
         uiState = uiState.copy(rows = rows, selected = FanPart.Ring(index.coerceAtMost(rows.lastIndex)))
     }
 
@@ -46,28 +43,28 @@ internal class FanLayoutViewModel(application: Application) : AndroidViewModel(a
     fun onRowWidthChange(index: Int, widthDp: Int) = changeRow(index) { it.copy(widthDp = widthDp) }
 
     fun onBottomPadChange(value: Int) {
-        DockPrefs.setPadding(context, DockPrefs.Padding.BOTTOM, value)
+        settings.setPadding(DockPrefs.Padding.BOTTOM, value)
         uiState = uiState.copy(bottomPad = value)
     }
 
     fun onSidePadChange(value: Int) {
-        DockPrefs.setPadding(context, DockPrefs.Padding.SIDE, value)
+        settings.setPadding(DockPrefs.Padding.SIDE, value)
         uiState = uiState.copy(sidePad = value)
     }
 
     fun onCurrentWidthChange(value: Int) {
-        DockPrefs.setCurrentWidth(context, value)
+        settings.setCurrentWidth(value)
         uiState = uiState.copy(innerWidth = value)
     }
 
     fun onShowCurrentChange(value: Boolean) {
-        DockPrefs.setShowCurrent(context, value)
+        settings.setShowCurrent(value)
         uiState = uiState.copy(showCurrent = value)
     }
 
     private fun changeRow(index: Int, change: (DockPrefs.Row) -> DockPrefs.Row) {
         val rows = uiState.rows.mapIndexed { i, row -> if (i == index) change(row) else row }
-        DockPrefs.setRows(context, rows)
+        settings.setRows(rows)
         uiState = uiState.copy(rows = rows)
     }
 }
