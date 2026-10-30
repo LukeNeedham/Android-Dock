@@ -1,11 +1,11 @@
 package com.lukeneedham.androiddock
 
 import android.app.Application
-import com.lukeneedham.androiddock.di.appModule
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.startKoin
+import com.lukeneedham.androiddock.di.KoinModules
 import com.lukeneedham.common.DebugKit
 import com.lukeneedham.common.DebugKitConfig
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
 
 /**
  * Starts the shared debug kit (logger and crash handler). This runs when the process is created,
@@ -17,7 +17,7 @@ class App : Application() {
         DebugKit.init(DebugKitConfig(enabled = BuildConfig.DEBUG))
         startKoin {
             androidContext(this@App)
-            modules(appModule)
+            modules(KoinModules.modules)
         }
     }
 }

@@ -10,17 +10,25 @@ import com.lukeneedham.androiddock.SettingsViewModel
 import com.lukeneedham.androiddock.SetupStatus
 import com.lukeneedham.androiddock.TriggerViewModel
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
-val appModule = module {
-    single { DockSettings(androidContext()) }
-    single { SetupStatus(androidContext()) }
-    single { InstalledApps(androidContext()) }
-    viewModelOf(::BlacklistViewModel)
-    viewModelOf(::FanBackgroundViewModel)
-    viewModelOf(::FanLayoutViewModel)
-    viewModelOf(::OnboardingViewModel)
-    viewModelOf(::SettingsViewModel)
-    viewModelOf(::TriggerViewModel)
+object KoinModules {
+    private val data = module {
+        single { DockSettings(androidContext()) }
+        single { SetupStatus(androidContext()) }
+        single { InstalledApps(androidContext()) }
+    }
+
+    private val viewModels = module {
+        viewModelOf(::BlacklistViewModel)
+        viewModelOf(::FanBackgroundViewModel)
+        viewModelOf(::FanLayoutViewModel)
+        viewModelOf(::OnboardingViewModel)
+        viewModelOf(::SettingsViewModel)
+        viewModelOf(::TriggerViewModel)
+    }
+
+    val modules: List<Module> = listOf(data, viewModels)
 }
