@@ -21,13 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.roundToInt
+import org.koin.compose.viewmodel.koinViewModel
 
 /** The background page: gets [FanBackgroundViewModel] and only calls [FanBackgroundPageContent]. */
 @Composable
 internal fun FanBackgroundPage(onBack: (() -> Unit)?) {
-    val viewModel = viewModel<FanBackgroundViewModel>()
+    val viewModel = koinViewModel<FanBackgroundViewModel>()
     FanBackgroundPageContent(
         state = viewModel.uiState,
         onBack = onBack,

@@ -34,15 +34,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import org.koin.compose.viewmodel.koinViewModel
 
 /** The home page of the settings app: it gets [SettingsViewModel], opens the system pages and the fan, and only calls [SettingsPageContent]. */
 @Composable
 internal fun SettingsPage(resumes: Int, navigate: (Route) -> Unit) {
     val context = LocalContext.current
-    val viewModel = viewModel<SettingsViewModel>()
+    val viewModel = koinViewModel<SettingsViewModel>()
     // Read again on every return to this page
     LaunchedEffect(resumes) { viewModel.refresh() }
     // The fan opens over this page, so its state is polled; nothing else announces it.

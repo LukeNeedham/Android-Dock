@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
 
 /**
  * The fan's layout as the page edits it. [selected] is the part of the fan the controls edit, and [currentWidth] the

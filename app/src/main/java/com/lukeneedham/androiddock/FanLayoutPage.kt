@@ -2,7 +2,6 @@ package com.lukeneedham.androiddock
 
 import androidx.compose.material3.Card
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -75,11 +74,12 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import org.koin.compose.viewmodel.koinViewModel
 
 /** The fan layout page: gets [FanLayoutViewModel] and only calls [FanLayoutPageContent]. */
 @Composable
 internal fun FanLayoutPage(onBack: (() -> Unit)?, footer: (@Composable () -> Unit)? = null, header: (@Composable () -> Unit)? = null) {
-    val viewModel = viewModel<FanLayoutViewModel>()
+    val viewModel = koinViewModel<FanLayoutViewModel>()
     FanLayoutPageContent(
         state = viewModel.uiState,
         onBack = onBack,

@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -35,12 +34,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import org.koin.compose.viewmodel.koinViewModel
 
 /** The onboarding: gets [OnboardingViewModel], opens the system pages the steps point to, and waits for the fan to open and close. */
 @Composable
 internal fun OnboardingPage() {
     val context = LocalContext.current
-    val viewModel = viewModel<OnboardingViewModel>()
+    val viewModel = koinViewModel<OnboardingViewModel>()
     val state = viewModel.uiState
     val step = state.step ?: return
     // The fan opens over this app, so the trial steps poll for it.
